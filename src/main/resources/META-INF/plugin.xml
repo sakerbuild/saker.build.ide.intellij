@@ -26,6 +26,18 @@
         <toolWindow id="saker.build"
                     anchor="bottom"
                     factoryClass="saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory"/>
+        <projectConfigurable displayName="Saker.build Project Settings"
+                             provider="saker.build.ide.intellij.properties.SakerBuildProjectConfigurableProvider"
+                             groupId="build"
+                             groupWeight="1000">
+            <!--
+            The saker.build project settings has a large groupWeight in order to make it appear above other settings.
+            This is advantageous as if someone uses saker.build for a project, we consider it to be the main
+            (and maybe only) build tool that is used for a given project. It is the core and significant component
+            of the build behaviour for a given project. Therefore we aim to present it at the head of the Build tool
+            settings tree.
+            -->
+        </projectConfigurable>
     </extensions>
 
     <actions>
@@ -35,7 +47,8 @@
                           relative-to-action="ShowProjectStructureSettings"
                           anchor="after"/>
         </action>
-        <action class="saker.build.ide.intellij.UnconfigureSakerBuildProjectAction"
+        <action id="SAKER_BUILD_REMOVE_NATURE"
+                class="saker.build.ide.intellij.UnconfigureSakerBuildProjectAction"
                 text="Remove saker.build support">
             <add-to-group group-id="FileMainSettingsGroup"
                           relative-to-action="ShowProjectStructureSettings"

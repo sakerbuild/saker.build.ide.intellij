@@ -12,6 +12,8 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
+import com.intellij.openapi.options.Configurable;
+import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -22,6 +24,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import org.apache.commons.io.output.WriterOutputStream;
+import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.daemon.DaemonEnvironment;
@@ -780,6 +783,33 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
 
     protected void close() throws IOException {
 
+    }
+
+    @Override
+    public Configurable getProjectPropertiesConfigurable() {
+        return new Configurable() {
+            @Nls(capitalization = Nls.Capitalization.Title)
+            @Override
+            public String getDisplayName() {
+                return "Hello settings";
+            }
+
+            @Nullable
+            @Override
+            public JComponent createComponent() {
+                return new JLabel("Project configurable");
+            }
+
+            @Override
+            public boolean isModified() {
+                return false;
+            }
+
+            @Override
+            public void apply() throws ConfigurationException {
+
+            }
+        };
     }
 
     private static class ProgressMonitorWrapper implements ExecutionProgressMonitor, TaskProgressMonitor {

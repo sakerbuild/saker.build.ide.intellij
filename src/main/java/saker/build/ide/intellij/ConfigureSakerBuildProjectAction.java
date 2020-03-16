@@ -6,6 +6,8 @@ import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
 public class ConfigureSakerBuildProjectAction extends AnAction {
+    public static final String ID = "SAKER_BUILD_REMOVE_NATURE";
+
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
         Project project = e.getProject();

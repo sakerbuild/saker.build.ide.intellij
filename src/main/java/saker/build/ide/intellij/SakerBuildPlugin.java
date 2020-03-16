@@ -8,6 +8,7 @@ import com.intellij.openapi.actionSystem.*;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.extensions.Extensions;
 import com.intellij.openapi.extensions.ExtensionsArea;
+import com.intellij.openapi.options.ConfigurableEP;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFileManager;
@@ -162,6 +163,13 @@ public class SakerBuildPlugin {
                 "saker.build.ide.intellij.impl.TargetsActionGroup");
         registerExtension(implplugindesc, rootarea, "SAKER_BUILD_MODULE_TYPE", "com.intellij.moduleType",
                 "implementationClass", "saker.build.ide.intellij.impl.SakerBuildModuleType");
+
+        Element applicationConfigurable = new Element("applicationConfigurable");
+        applicationConfigurable.setAttribute("provider",
+                "saker.build.ide.intellij.impl.properties.SakerBuildApplicationConfigurableProvider");
+        applicationConfigurable.setAttribute("displayName", "Saker.build");
+        applicationConfigurable.setAttribute("groupId", "build.tools");
+        rootarea.registerExtension(implplugindesc, applicationConfigurable, "com.intellij");
     }
 
     public static void close() {
@@ -193,7 +201,9 @@ public class SakerBuildPlugin {
     private static void registerExtension(IdeaPluginDescriptor implplugindesc, ExtensionsArea rootarea, String id,
             String point, String implattrname, String implclass) {
         Element moduletypeextension = new Element("extension");
-        moduletypeextension.setAttribute("id", id);
+        if (id != null) {
+            moduletypeextension.setAttribute("id", id);
+        }
         moduletypeextension.setAttribute("point", point);
         moduletypeextension.setAttribute(implattrname, implclass);
         rootarea.registerExtension(implplugindesc, moduletypeextension, "com.intellij");
