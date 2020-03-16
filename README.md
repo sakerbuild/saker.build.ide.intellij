@@ -1,4 +1,4 @@
-# saker.build.ide.eclipse
+# saker.build.ide.intellij
 
 The IntelliJ IDE plugin for the [saker.build system](https://saker.build). The plugin embeds the saker.build runtime and provides support for invoking it from the IDE.
 
