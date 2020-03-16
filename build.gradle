@@ -1,0 +1,54 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '0.4.16'
+}
+
+
+group 'saker.build'
+version '0.8.0-SNAPSHOT'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+sourceSets {
+    main {
+        java {
+            srcDirs 'src/main/java'
+        }
+    }
+    pluginImpl {
+        java {
+            srcDirs = ['src/impl/java']
+            compileClasspath += main.output
+            compileClasspath += main.compileClasspath
+        }
+    }
+}
+tasks.withType(Jar) {
+    dependsOn pluginImplClasses
+    into('impl') {
+        from sourceSets.pluginImpl.java.outputDir
+    }
+}
+
+configurations {
+    pluginImpl.extendsFrom compile
+}
+
+dependencies {
+    pluginImplCompileOnly files('src/main/resources/saker.build.jar')
+    pluginImplCompileOnly files('src/main/resources/saker.build-ide.jar')
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+}
+
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+    version '2019.3.3'
+}
+patchPluginXml {
+    changeNotes """
+      Add change notes here.<br>
+      <em>most HTML tags may be used</em>"""
+}

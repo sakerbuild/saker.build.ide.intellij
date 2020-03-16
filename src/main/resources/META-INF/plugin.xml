@@ -1,0 +1,54 @@
+<idea-plugin>
+    <id>saker.build.ide.intellij</id>
+    <name>Saker.build system plug-in for IntelliJ</name>
+    <vendor email="support@saker.build"
+            url="https://saker.build">saker.build
+    </vendor>
+
+    <description><![CDATA[
+    Enter short description for your plugin here.<br>
+    <em>most HTML tags may be used</em>
+    ]]></description>
+
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <depends>com.intellij.modules.platform</depends>
+
+    <applicationListeners>
+        <listener class="saker.build.ide.intellij.SakerBuildAppLifecycleListener"
+                  topic="com.intellij.ide.AppLifecycleListener"/>
+    </applicationListeners>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!--
+        <moduleType id="SAKER_BUILD_MODULE_TYPE" implementationClass="saker.build.ide.intellij.impl.SakerBuildModuleType"/>
+        -->
+        <toolWindow id="saker.build"
+                    anchor="bottom"
+                    factoryClass="saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory"/>
+    </extensions>
+
+    <actions>
+        <action class="saker.build.ide.intellij.ConfigureSakerBuildProjectAction"
+                text="Add saker.build support">
+            <add-to-group group-id="FileMainSettingsGroup"
+                          relative-to-action="ShowProjectStructureSettings"
+                          anchor="after"/>
+        </action>
+        <action class="saker.build.ide.intellij.UnconfigureSakerBuildProjectAction"
+                text="Remove saker.build support">
+            <add-to-group group-id="FileMainSettingsGroup"
+                          relative-to-action="ShowProjectStructureSettings"
+                          anchor="after"/>
+        </action>
+        <action id="SAKER_BUILD_RUN_BUILD"
+                class="saker.build.ide.intellij.RunBuildAction"
+                text="Run saker.build"
+                description="Execute project build with saker.build">
+            <keyboard-shortcut first-keystroke="control alt shift F9"
+                               keymap="$default"/>
+            <add-to-group group-id="BuildMenu"/>
+        </action>
+    </actions>
+    <idea-version since-build="193"/>
+</idea-plugin>
