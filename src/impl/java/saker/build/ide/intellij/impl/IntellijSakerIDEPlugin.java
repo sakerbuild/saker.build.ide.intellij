@@ -1,6 +1,10 @@
 package saker.build.ide.intellij.impl;
 
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
+import org.jetbrains.annotations.NotNull;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.ISakerBuildPluginImpl;
 import saker.build.ide.intellij.ImplementationStartArguments;
@@ -8,6 +12,8 @@ import saker.build.ide.intellij.SakerBuildPlugin;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.properties.IDEPluginProperties;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.io.IOUtils;
 
 import java.io.Closeable;
@@ -24,6 +30,7 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
     private final Object projectsLock = new Object();
     private final Map<Project, IntellijSakerIDEProject> projects = new ConcurrentHashMap<>();
+    private final Object configurationChangeLock = new Object();
 
     public IntellijSakerIDEPlugin() {
         sakerPlugin = new SakerIDEPlugin();
@@ -80,6 +87,24 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
             intellijproject.initialize();
             return intellijproject;
         }
+    }
+
+    public final IDEPluginProperties getIDEPluginProperties() {
+        return sakerPlugin.getIDEPluginProperties();
+    }
+
+    public final void setIDEPluginProperties(IDEPluginProperties properties) {
+        synchronized (configurationChangeLock) {
+            sakerPlugin.setIDEPluginProperties(properties);
+        }
+
+        ProgressManager progmanager = ProgressManager.getInstance();
+        progmanager.run(new Task.Backgroundable(null, "Saker.build execution", true) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                sakerPlugin.updateForPluginProperties(properties);
+            }
+        });
     }
 
     @Override

@@ -791,7 +791,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             @Nls(capitalization = Nls.Capitalization.Title)
             @Override
             public String getDisplayName() {
-                return "Hello settings";
+                return "Saker.build Project Settings";
             }
 
             @Nullable

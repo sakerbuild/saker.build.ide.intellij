@@ -169,7 +169,15 @@ public class SakerBuildPlugin {
                 "saker.build.ide.intellij.impl.properties.SakerBuildApplicationConfigurableProvider");
         applicationConfigurable.setAttribute("displayName", "Saker.build");
         applicationConfigurable.setAttribute("groupId", "build.tools");
+
+        Element envuserparametersConfigurable = new Element("configurable");
+        envuserparametersConfigurable.setAttribute("displayName", "Environment User Parameters");
+        envuserparametersConfigurable.setAttribute("implementation",
+                "saker.build.ide.intellij.impl.properties.EnvironmentUserParametersConfigurable");
+        applicationConfigurable.addContent(envuserparametersConfigurable);
+
         rootarea.registerExtension(implplugindesc, applicationConfigurable, "com.intellij");
+
     }
 
     public static void close() {
