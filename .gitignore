@@ -1,3 +1,13 @@
 /build/
 /.gradle
 /out
+
+/.idea/workspace.xml
+/.idea/codeStyles
+/.idea/inspectionProfiles
+/.idea/vcs.xml
+/.idea/uiDesigner.xml
+/.idea/gradle.xml
+/.idea/misc.xml
+/.idea/jarRepositories.xml
+/.idea/compiler.xml
