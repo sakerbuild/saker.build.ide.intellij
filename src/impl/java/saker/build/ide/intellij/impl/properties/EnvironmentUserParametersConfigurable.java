@@ -1,5 +1,6 @@
 package saker.build.ide.intellij.impl.properties;
 
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
@@ -20,7 +21,7 @@ public class EnvironmentUserParametersConfigurable implements Configurable {
 
     public EnvironmentUserParametersConfigurable() {
         plugin = IntellijSakerIDEPlugin.getInstance();
-        form = new UserParametersForm();
+        form = new UserParametersForm(ApplicationManager.getApplication());
         form.setUserParameterKind("environment");
     }
 

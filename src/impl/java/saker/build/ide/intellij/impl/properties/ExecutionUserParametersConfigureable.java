@@ -22,7 +22,7 @@ public class ExecutionUserParametersConfigureable implements Configurable {
     public ExecutionUserParametersConfigureable(IntellijSakerIDEProject project) {
         this.project = project;
 
-        form = new UserParametersForm();
+        form = new UserParametersForm(project.getProject());
         form.setUserParameterKind("execution");
     }
 

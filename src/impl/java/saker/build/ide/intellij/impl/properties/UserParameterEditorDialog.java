@@ -1,13 +1,22 @@
 package saker.build.ide.intellij.impl.properties;
 
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.ComponentValidator;
+import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import org.jetbrains.annotations.Nullable;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.*;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
+import java.util.Collections;
+import java.util.Set;
 
 public class UserParameterEditorDialog extends JDialog {
     private JPanel contentPane;
@@ -18,12 +27,16 @@ public class UserParameterEditorDialog extends JDialog {
     private JLabel titleLabel;
     private JLabel infoLabel;
 
-    public UserParameterEditorDialog(String title, JComponent relative) {
+    private Set<String> existingKeys = Collections.emptySet();
+
+    public UserParameterEditorDialog(Disposable disposable, String title, JComponent relative) {
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
         setTitle(title);
         setLocationRelativeTo(relative);
+
+        buttonOK.setEnabled(false);
 
         buttonOK.addActionListener(new ActionListener() {
             @Override
@@ -56,13 +69,73 @@ public class UserParameterEditorDialog extends JDialog {
             }
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
+        ComponentValidator validator = new ComponentValidator(disposable) {
+            @Override
+            public void updateInfo(@Nullable ValidationInfo info) {
+                super.updateInfo(info);
+                if (info == null || info.okEnabled) {
+                    buttonOK.setEnabled(true);
+                } else {
+                    buttonOK.setEnabled(false);
+                }
+            }
+        };
+
+        keyTextField.getDocument().addDocumentListener(new DocumentListener() {
+            @Override
+            public void insertUpdate(DocumentEvent e) {
+                validator.revalidate();
+            }
+
+            @Override
+            public void removeUpdate(DocumentEvent e) {
+                validator.revalidate();
+            }
+
+            @Override
+            public void changedUpdate(DocumentEvent e) {
+                validator.revalidate();
+            }
+
+        });
+
+        keyTextField.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
+
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                validator.revalidate();
+            }
+        });
+
+        validator.withValidator(() -> {
+            String key = keyTextField.getText();
+            if (existingKeys.contains(key)) {
+                return new ValidationInfo("User parameter already exists with key.", keyTextField);
+            }
+            if (key.isEmpty()) {
+                return new ValidationInfo("User parameter name must not be empty.", keyTextField);
+            }
+            return null;
+        }).installOn(keyTextField);
+
         pack();
         setMinimumSize(getSize());
+    }
+
+    public void setExistingKeys(Set<String> existingKeys) {
+        this.existingKeys = existingKeys;
     }
 
     public void setEditValues(String key, String value) {
         keyTextField.setText(key);
         valueTextField.setText(value);
+        if (!key.isEmpty()) {
+            buttonOK.setEnabled(true);
+        }
     }
 
     protected void onOK() {

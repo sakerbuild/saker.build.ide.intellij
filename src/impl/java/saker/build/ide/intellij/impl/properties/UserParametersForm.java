@@ -1,5 +1,7 @@
 package saker.build.ide.intellij.impl.properties;
 
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.project.Project;
 import com.intellij.ui.AddEditRemovePanel;
 import com.intellij.ui.table.JBTable;
 import com.intellij.uiDesigner.core.GridConstraints;
@@ -13,6 +15,7 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import javax.swing.*;
 import java.awt.*;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -23,8 +26,10 @@ public class UserParametersForm {
 
     private AddEditRemovePanel<Map.Entry<String, String>> parametersEditPanel;
     private String userParameterKind = "";
+    private Disposable disposable;
 
-    public UserParametersForm() {
+    public UserParametersForm(Disposable disposable) {
+        this.disposable = disposable;
         $$$setupUI$$$();
 
         parametersEditPanel = new AddEditRemovePanel<Map.Entry<String, String>>(new UserParametersTableModel(),
@@ -83,7 +88,7 @@ public class UserParametersForm {
 
     protected Map.Entry<String, String> editUserParameter(Map.Entry<String, String> entry) {
         Map.Entry<String, String>[] result = new Map.Entry[] { entry };
-        UserParameterEditorDialog dialog = new UserParameterEditorDialog(
+        UserParameterEditorDialog dialog = new UserParameterEditorDialog(disposable,
                 "Edit " + userParameterKind + " user parameter", getParametersPanel()) {
             @Override
             protected void onOK() {
@@ -92,6 +97,9 @@ public class UserParametersForm {
                 super.onOK();
             }
         };
+        Set<String> existingkeys = getKeys();
+        existingkeys.remove(entry.getKey());
+        dialog.setExistingKeys(existingkeys);
         initDialogMessages(dialog);
         dialog.setEditValues(entry.getKey(), entry.getValue());
         dialog.setVisible(true);
@@ -100,8 +108,8 @@ public class UserParametersForm {
 
     protected Map.Entry<String, String> addUserParameter() {
         Map.Entry<String, String>[] result = new Map.Entry[] { null };
-        UserParameterEditorDialog dialog = new UserParameterEditorDialog("Add " + userParameterKind + " user parameter",
-                getParametersPanel()) {
+        UserParameterEditorDialog dialog = new UserParameterEditorDialog(disposable,
+                "Add " + userParameterKind + " user " + "parameter", getParametersPanel()) {
             @Override
             protected void onOK() {
                 result[0] = ImmutableUtils
@@ -109,9 +117,18 @@ public class UserParametersForm {
                 super.onOK();
             }
         };
+        dialog.setExistingKeys(getKeys());
         initDialogMessages(dialog);
         dialog.setVisible(true);
         return result[0];
+    }
+
+    private Set<String> getKeys() {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        for (Map.Entry<String, String> entry : parametersEditPanel.getData()) {
+            result.add(entry.getKey());
+        }
+        return result;
     }
 
     private void initDialogMessages(UserParameterEditorDialog dialog) {
