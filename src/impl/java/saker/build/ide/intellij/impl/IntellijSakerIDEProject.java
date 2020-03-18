@@ -2,8 +2,6 @@ package saker.build.ide.intellij.impl;
 
 import com.intellij.execution.filters.BrowserHyperlinkInfo;
 import com.intellij.execution.filters.FileHyperlinkInfo;
-import com.intellij.execution.filters.HyperlinkInfo;
-import com.intellij.execution.filters.OpenFileHyperlinkInfo;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.ide.util.PropertiesComponent;
@@ -13,18 +11,15 @@ import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.options.Configurable;
-import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.TextRange;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import org.apache.commons.io.output.WriterOutputStream;
-import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.daemon.DaemonEnvironment;
@@ -33,6 +28,7 @@ import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.ide.configuration.IDEConfiguration;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
+import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.configuration.ProjectIDEConfigurationCollection;
@@ -786,30 +782,49 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     @Override
+    public Project getProject() {
+        return project;
+    }
+
+    @Override
     public Configurable getProjectPropertiesConfigurable() {
-        return new Configurable() {
-            @Nls(capitalization = Nls.Capitalization.Title)
-            @Override
-            public String getDisplayName() {
-                return "Saker.build Project Settings";
-            }
+        return new SakerBuildProjectConfigurable(this);
+    }
 
-            @Nullable
-            @Override
-            public JComponent createComponent() {
-                return new JLabel("Project configurable");
+    public void setIDEProjectProperties(IDEProjectProperties properties) {
+        synchronized (configurationChangeLock) {
+            try {
+                projectPropertiesChanging();
+            } catch (Exception e) {
+                displayException(e);
             }
+            try {
+                sakerProject.setIDEProjectProperties(properties);
+                ProgressManager progmanager = ProgressManager.getInstance();
+                progmanager.run(new Task.Backgroundable(null, "Updating saker.build project properties", true) {
+                    @Override
+                    public void run(@NotNull ProgressIndicator indicator) {
+                        sakerProject.updateForProjectProperties(properties);
+                    }
+                });
 
-            @Override
-            public boolean isModified() {
-                return false;
+            } finally {
+                try {
+                    projectPropertiesChanged();
+                } catch (Exception e) {
+                    //don't propagate exceptions
+                    displayException(e);
+                }
             }
+        }
+    }
 
-            @Override
-            public void apply() throws ConfigurationException {
+    private void projectPropertiesChanging() {
+        //TODO
+    }
 
-            }
-        };
+    private void projectPropertiesChanged() {
+        //TODO
     }
 
     private static class ProgressMonitorWrapper implements ExecutionProgressMonitor, TaskProgressMonitor {

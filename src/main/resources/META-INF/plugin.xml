@@ -26,9 +26,11 @@
         <toolWindow id="saker.build"
                     anchor="bottom"
                     factoryClass="saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory"/>
-        <projectConfigurable displayName="Saker.build Project Settings"
+        <projectConfigurable id="SAKER_BUILD_PROJECT_SETTINGS"
+                             displayName="Saker.build Project Settings"
                              provider="saker.build.ide.intellij.properties.SakerBuildProjectConfigurableProvider"
                              groupId="build"
+                             dynamic="true"
                              groupWeight="1000">
             <!--
             The saker.build project settings has a large groupWeight in order to make it appear above other settings.

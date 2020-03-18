@@ -2,32 +2,34 @@ package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
+import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
-import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
-import saker.build.ide.support.SimpleIDEPluginProperties;
-import saker.build.ide.support.properties.IDEPluginProperties;
+import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
+import saker.build.ide.support.properties.IDEProjectProperties;
+import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 
 import javax.swing.*;
 import java.util.*;
 
-public class EnvironmentUserParametersConfigurable implements Configurable {
-    private final IntellijSakerIDEPlugin plugin;
+public class ExecutionUserParametersConfigureable implements Configurable {
+    private final IntellijSakerIDEProject project;
     private Set<? extends Map.Entry<String, String>> userParameters = null;
 
     private final UserParametersForm form;
 
-    public EnvironmentUserParametersConfigurable() {
-        plugin = IntellijSakerIDEPlugin.getInstance();
+    public ExecutionUserParametersConfigureable(IntellijSakerIDEProject project) {
+        this.project = project;
+
         form = new UserParametersForm();
-        form.setUserParameterKind("environment");
+        form.setUserParameterKind("execution");
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)
     @Override
     public String getDisplayName() {
-        return "Environment User Parameters";
+        return "User Parameters";
     }
 
     @Nullable
@@ -38,7 +40,7 @@ public class EnvironmentUserParametersConfigurable implements Configurable {
 
     @Override
     public void reset() {
-        IDEPluginProperties props = plugin.getIDEPluginProperties();
+        IDEProjectProperties props = project.getIDEProjectProperties();
         if (props != null) {
             this.userParameters = props.getUserParameters();
         }
@@ -59,10 +61,7 @@ public class EnvironmentUserParametersConfigurable implements Configurable {
 
     @Override
     public void apply() throws ConfigurationException {
-        Set<Map.Entry<String, String>> vals = getCurrentValues();
-        plugin.setIDEPluginProperties(
-                SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties()).setUserParameters(vals).build());
-        this.userParameters = vals;
+        project.setIDEProjectProperties(SimpleIDEProjectProperties.builder(project.getIDEProjectProperties())
+                .setUserParameters(getCurrentValues()).build());
     }
-
 }

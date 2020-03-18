@@ -99,7 +99,7 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
         }
 
         ProgressManager progmanager = ProgressManager.getInstance();
-        progmanager.run(new Task.Backgroundable(null, "Saker.build execution", true) {
+        progmanager.run(new Task.Backgroundable(null, "Updating saker.build plugin properties", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 sakerPlugin.updateForPluginProperties(properties);

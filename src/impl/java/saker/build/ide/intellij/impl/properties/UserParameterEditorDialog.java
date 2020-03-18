@@ -3,6 +3,7 @@ package saker.build.ide.intellij.impl.properties;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.*;
 import java.awt.*;
@@ -14,6 +15,8 @@ public class UserParameterEditorDialog extends JDialog {
     private JButton buttonCancel;
     private JTextField keyTextField;
     private JTextField valueTextField;
+    private JLabel titleLabel;
+    private JLabel infoLabel;
 
     public UserParameterEditorDialog(String title, JComponent relative) {
         setContentPane(contentPane);
@@ -23,12 +26,14 @@ public class UserParameterEditorDialog extends JDialog {
         setLocationRelativeTo(relative);
 
         buttonOK.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onOK();
             }
         });
 
         buttonCancel.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
@@ -37,6 +42,7 @@ public class UserParameterEditorDialog extends JDialog {
         // call onCancel() when cross is clicked
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
+            @Override
             public void windowClosing(WindowEvent e) {
                 onCancel();
             }
@@ -44,6 +50,7 @@ public class UserParameterEditorDialog extends JDialog {
 
         // call onCancel() on ESCAPE
         contentPane.registerKeyboardAction(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
@@ -68,9 +75,12 @@ public class UserParameterEditorDialog extends JDialog {
         dispose();
     }
 
-    protected void onDelete() {
-        // add your code here if necessary
-        dispose();
+    public JLabel getTitleLabel() {
+        return titleLabel;
+    }
+
+    public JLabel getInfoLabel() {
+        return infoLabel;
     }
 
     public JTextField getKeyTextField() {
@@ -105,17 +115,17 @@ public class UserParameterEditorDialog extends JDialog {
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
                         GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JLabel label1 = new JLabel();
-        Font label1Font = this.$$$getFont$$$(null, Font.BOLD, -1, label1.getFont());
-        if (label1Font != null) {
-            label1.setFont(label1Font);
+        titleLabel = new JLabel();
+        Font titleLabelFont = this.$$$getFont$$$(null, Font.BOLD, -1, titleLabel.getFont());
+        if (titleLabelFont != null) {
+            titleLabel.setFont(titleLabelFont);
         }
-        label1.setText("Environment user parameter");
-        panel1.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        titleLabel.setText("Environment user parameter");
+        panel1.add(titleLabel, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JLabel label2 = new JLabel();
-        label2.setText("Specify an environment user parameter for your build (-E option).");
-        panel1.add(label2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        infoLabel = new JLabel();
+        infoLabel.setText("Specify an environment user parameter for your build (-E option).");
+        panel1.add(infoLabel, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 1, false));
         final JPanel panel2 = new JPanel();
         panel2.setLayout(new GridLayoutManager(2, 1, new Insets(10, 10, 10, 10), -1, -1));
@@ -128,13 +138,13 @@ public class UserParameterEditorDialog extends JDialog {
         panel2.add(panel3, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                 GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0,
                 false));
-        final JLabel label3 = new JLabel();
-        label3.setText("Name:");
-        panel3.add(label3, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        final JLabel label1 = new JLabel();
+        label1.setText("Name:");
+        panel3.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JLabel label4 = new JLabel();
-        label4.setText("Value");
-        panel3.add(label4, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        final JLabel label2 = new JLabel();
+        label2.setText("Value");
+        panel3.add(label2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         keyTextField = new JTextField();
         panel3.add(keyTextField,

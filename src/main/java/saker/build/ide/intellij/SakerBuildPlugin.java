@@ -42,6 +42,7 @@ import java.util.zip.ZipFile;
 public class SakerBuildPlugin {
     private static final String NATURE_KEY_NAME = "saker.build.project.nature";
     public static final Key<Boolean> SAKER_BUILD_NATURE_KEY = new Key<>(NATURE_KEY_NAME);
+    private static IdeaPluginDescriptor implementationPluginDescriptor;
 
     private static volatile ISakerBuildPluginImpl pluginImpl;
 
@@ -133,10 +134,9 @@ public class SakerBuildPlugin {
                 JarFile sbide = createMultiReleaseJarFile(exportEmbeddedJar("saker.build-ide.jar"));
                 jarcl = new ImplementationClassLoader(Arrays.asList(sbjf, sbide));
 
-                IdeaPluginDescriptor implplugindesc = new ForwardingImplementationPluginDescriptor(plugindescriptor,
-                        jarcl);
+                implementationPluginDescriptor = new ForwardingImplementationPluginDescriptor(plugindescriptor, jarcl);
 
-                registerPluginComponents(jarcl, implplugindesc);
+                registerPluginComponents(jarcl);
 
                 Class<? extends ISakerBuildPluginImpl> pluginimplclass = Class
                         .forName("saker.build.ide.intellij.impl.IntellijSakerIDEPlugin", false, jarcl)
@@ -154,15 +154,14 @@ public class SakerBuildPlugin {
         }
     }
 
-    private static void registerPluginComponents(ClassLoader jarcl, IdeaPluginDescriptor implplugindesc) throws
-            Exception {
+    private static void registerPluginComponents(ClassLoader jarcl) throws Exception {
         ActionManager actionmanager = ActionManager.getInstance();
 
         ExtensionsArea rootarea = Extensions.getRootArea();
         registerTargetsMenuAction(actionmanager, jarcl, "SAKER_BUILD_TARGETS_ACTION_GROUP",
                 "saker.build.ide.intellij.impl.TargetsActionGroup");
-        registerExtension(implplugindesc, rootarea, "SAKER_BUILD_MODULE_TYPE", "com.intellij.moduleType",
-                "implementationClass", "saker.build.ide.intellij.impl.SakerBuildModuleType");
+        registerExtension(implementationPluginDescriptor, rootarea, "SAKER_BUILD_MODULE_TYPE",
+                "com.intellij.moduleType", "implementationClass", "saker.build.ide.intellij.impl.SakerBuildModuleType");
 
         Element applicationConfigurable = new Element("applicationConfigurable");
         applicationConfigurable.setAttribute("provider",
@@ -170,14 +169,18 @@ public class SakerBuildPlugin {
         applicationConfigurable.setAttribute("displayName", "Saker.build");
         applicationConfigurable.setAttribute("groupId", "build.tools");
 
-        Element envuserparametersConfigurable = new Element("configurable");
-        envuserparametersConfigurable.setAttribute("displayName", "Environment User Parameters");
-        envuserparametersConfigurable.setAttribute("implementation",
+        Element envuserparametersconfigurable = new Element("configurable");
+        envuserparametersconfigurable.setAttribute("displayName", "Environment User Parameters");
+        envuserparametersconfigurable.setAttribute("implementation",
                 "saker.build.ide.intellij.impl.properties.EnvironmentUserParametersConfigurable");
-        applicationConfigurable.addContent(envuserparametersConfigurable);
+        applicationConfigurable.addContent(envuserparametersconfigurable);
 
-        rootarea.registerExtension(implplugindesc, applicationConfigurable, "com.intellij");
+        rootarea.registerExtension(implementationPluginDescriptor, applicationConfigurable, "com.intellij");
 
+    }
+
+    public static IdeaPluginDescriptor getImplementationPluginDescriptor() {
+        return implementationPluginDescriptor;
     }
 
     public static void close() {
