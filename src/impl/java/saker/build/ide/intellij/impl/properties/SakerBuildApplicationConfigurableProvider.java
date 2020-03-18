@@ -28,7 +28,6 @@ public class SakerBuildApplicationConfigurableProvider extends ConfigurableProvi
         @Nullable
         @Override
         public JComponent createComponent() {
-            new EnvironmentUserParametersForm();
             JPanel panel = new JPanel(new GridLayoutManager(1, 1));
             GridConstraints constraints = new GridConstraints();
             constraints.setAnchor(GridConstraints.ANCHOR_NORTHWEST);

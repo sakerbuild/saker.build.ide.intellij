@@ -8,18 +8,8 @@ import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
-import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.*;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import javax.swing.table.DefaultTableModel;
-import javax.swing.table.TableModel;
-import java.awt.*;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
-import java.awt.event.MouseAdapter;
-import java.awt.event.MouseEvent;
 import java.util.*;
 
 public class EnvironmentUserParametersConfigurable implements Configurable {
@@ -29,63 +19,52 @@ public class EnvironmentUserParametersConfigurable implements Configurable {
     private EnvironmentUserParametersForm form;
 
     public EnvironmentUserParametersConfigurable() {
-        form = new EnvironmentUserParametersForm();
-        JTable table = form.getUserParametersTable();
-        table.addMouseListener(new MouseAdapter() {
-            public void mousePressed(MouseEvent mouseEvent) {
-                if (mouseEvent.getClickCount() == 2) {
-                    int rowidx = table.getSelectedRow();
-                    if (rowidx != -1) {
-                        DefaultTableModel model = (DefaultTableModel) table.getModel();
-                        UserParameterEditorDialog dialog = new UserParameterEditorDialog(
-                                "Edit environment user parameter", table) {
-                            @Override
-                            protected void onOK() {
-                                model.setValueAt(getKeyTextField().getText(), rowidx, 0);
-                                model.setValueAt(getValueTextField().getText(), rowidx, 1);
-                                super.onOK();
-                                model.fireTableDataChanged();
-                            }
+        form = new EnvironmentUserParametersForm() {
 
-                            @Override
-                            protected void onDelete() {
-                                model.removeRow(rowidx);
-                                super.onDelete();
-                                model.fireTableDataChanged();
-                            }
-                        };
-                        dialog.setEditValues((String) model.getValueAt(rowidx, 0),
-                                (String) model.getValueAt(rowidx, 1));
-                        int colidx = table.getSelectedColumn();
-                        JTextField editedtf;
-                        if (colidx == 1) {
-                            editedtf = dialog.getValueTextField();
-                        } else {
-                            editedtf = dialog.getKeyTextField();
-                        }
-                        editedtf.select(0, editedtf.getText().length());
-                        editedtf.requestFocus();
-                        dialog.setVisible(true);
-                    }
-                }
-            }
-        });
-        form.getAddButton().addActionListener(new ActionListener() {
             @Override
-            public void actionPerformed(ActionEvent e) {
-                UserParameterEditorDialog dialog = new UserParameterEditorDialog("Add environment user parameter",
-                        table) {
+            protected Map.Entry<String, String> editUserParameter(Map.Entry<String, String> entry) {
+                Map.Entry<String, String>[] result = new Map.Entry[] { entry };
+                UserParameterEditorDialog dialog = new UserParameterEditorDialog("Edit environment user parameter",
+                        form.getParametersPanel()) {
                     @Override
                     protected void onOK() {
-                        DefaultTableModel model = (DefaultTableModel) table.getModel();
-                        model.addRow(new String[] { getKeyTextField().getText(), getValueTextField().getText() });
+                        result[0] = ImmutableUtils
+                                .makeImmutableMapEntry(getKeyTextField().getText(), getValueTextField().getText());
                         super.onOK();
-                        model.fireTableDataChanged();
+                    }
+
+                    @Override
+                    protected void onDelete() {
+                        result[0] = null;
+                        super.onDelete();
+                    }
+                };
+                dialog.setEditValues(entry.getKey(), entry.getValue());
+                dialog.setVisible(true);
+                return result[0];
+            }
+
+            @Override
+            protected Map.Entry<String, String> addUserParameter() {
+                Map.Entry<String, String>[] result = new Map.Entry[] { null };
+                UserParameterEditorDialog dialog = new UserParameterEditorDialog("Add environment user parameter",
+                        form.getParametersPanel()) {
+                    @Override
+                    protected void onOK() {
+                        result[0] = ImmutableUtils
+                                .makeImmutableMapEntry(getKeyTextField().getText(), getValueTextField().getText());
+                        super.onOK();
+                    }
+
+                    @Override
+                    protected void onDelete() {
+                        super.onDelete();
                     }
                 };
                 dialog.setVisible(true);
+                return result[0];
             }
-        });
+        };
 
     }
 
@@ -111,33 +90,11 @@ public class EnvironmentUserParametersConfigurable implements Configurable {
         if (this.userParameters == null) {
             this.userParameters = Collections.emptySet();
         }
-        JTable table = form.getUserParametersTable();
-
-        DefaultTableModel model = new DefaultTableModel() {
-            @Override
-            public boolean isCellEditable(int row, int column) {
-                return false;
-            }
-        };
-        model.addColumn("Key");
-        model.addColumn("Value");
-        for (Map.Entry<String, String> entry : this.userParameters) {
-            model.addRow(new String[] { entry.getKey(), entry.getValue() });
-        }
-        table.setModel(model);
-
+        form.setUserParameters(this.userParameters);
     }
 
     private Set<Map.Entry<String, String>> getCurrentValues() {
-        JTable table = form.getUserParametersTable();
-        TableModel model = table.getModel();
-        int rc = model.getRowCount();
-        LinkedHashSet<Map.Entry<String, String>> result = new LinkedHashSet<>();
-        for (int i = 0; i < rc; ++i) {
-            String key = (String) model.getValueAt(i, 0);
-            String value = (String) model.getValueAt(i, 1);
-            result.add(ImmutableUtils.makeImmutableMapEntry(key, value));
-        }
+        LinkedHashSet<Map.Entry<String, String>> result = new LinkedHashSet<>(form.getParametersEditPanel().getData());
         return result;
     }
 
