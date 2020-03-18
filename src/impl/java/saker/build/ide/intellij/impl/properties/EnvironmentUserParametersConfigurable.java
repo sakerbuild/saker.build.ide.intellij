@@ -21,7 +21,7 @@ public class EnvironmentUserParametersConfigurable implements Configurable {
 
     public EnvironmentUserParametersConfigurable() {
         plugin = IntellijSakerIDEPlugin.getInstance();
-        form = new UserParametersForm(ApplicationManager.getApplication());
+        form = new UserParametersForm();
         form.setUserParameterKind("environment");
     }
 
@@ -39,6 +39,8 @@ public class EnvironmentUserParametersConfigurable implements Configurable {
 
     @Override
     public void reset() {
+        this.userParameters = null;
+
         IDEPluginProperties props = plugin.getIDEPluginProperties();
         if (props != null) {
             this.userParameters = props.getUserParameters();

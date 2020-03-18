@@ -26,10 +26,8 @@ public class UserParametersForm {
 
     private AddEditRemovePanel<Map.Entry<String, String>> parametersEditPanel;
     private String userParameterKind = "";
-    private Disposable disposable;
 
-    public UserParametersForm(Disposable disposable) {
-        this.disposable = disposable;
+    public UserParametersForm() {
         $$$setupUI$$$();
 
         parametersEditPanel = new AddEditRemovePanel<Map.Entry<String, String>>(new UserParametersTableModel(),
@@ -88,7 +86,7 @@ public class UserParametersForm {
 
     protected Map.Entry<String, String> editUserParameter(Map.Entry<String, String> entry) {
         Map.Entry<String, String>[] result = new Map.Entry[] { entry };
-        UserParameterEditorDialog dialog = new UserParameterEditorDialog(disposable,
+        UserParameterEditorDialog dialog = new UserParameterEditorDialog(
                 "Edit " + userParameterKind + " user parameter", getParametersPanel()) {
             @Override
             protected void onOK() {
@@ -108,7 +106,7 @@ public class UserParametersForm {
 
     protected Map.Entry<String, String> addUserParameter() {
         Map.Entry<String, String>[] result = new Map.Entry[] { null };
-        UserParameterEditorDialog dialog = new UserParameterEditorDialog(disposable,
+        UserParameterEditorDialog dialog = new UserParameterEditorDialog(
                 "Add " + userParameterKind + " user " + "parameter", getParametersPanel()) {
             @Override
             protected void onOK() {

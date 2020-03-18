@@ -4,9 +4,11 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.ComponentValidator;
 import com.intellij.openapi.ui.ValidationInfo;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import kotlin.reflect.jvm.internal.ReflectProperties;
 import org.jetbrains.annotations.Nullable;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
@@ -29,7 +31,13 @@ public class UserParameterEditorDialog extends JDialog {
 
     private Set<String> existingKeys = Collections.emptySet();
 
-    public UserParameterEditorDialog(Disposable disposable, String title, JComponent relative) {
+    private Disposable myDisposable = new Disposable() {
+        @Override
+        public void dispose() {
+        }
+    };
+
+    public UserParameterEditorDialog(String title, JComponent relative) {
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
@@ -69,61 +77,36 @@ public class UserParameterEditorDialog extends JDialog {
             }
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
-        ComponentValidator validator = new ComponentValidator(disposable) {
+        ComponentValidator validator = new ComponentValidator(myDisposable) {
             @Override
             public void updateInfo(@Nullable ValidationInfo info) {
                 super.updateInfo(info);
-                if (info == null || info.okEnabled) {
-                    buttonOK.setEnabled(true);
-                } else {
-                    buttonOK.setEnabled(false);
-                }
+                buttonOK.setEnabled(info == null || info.okEnabled);
             }
         };
 
-        keyTextField.getDocument().addDocumentListener(new DocumentListener() {
-            @Override
-            public void insertUpdate(DocumentEvent e) {
-                validator.revalidate();
-            }
-
-            @Override
-            public void removeUpdate(DocumentEvent e) {
-                validator.revalidate();
-            }
-
-            @Override
-            public void changedUpdate(DocumentEvent e) {
-                validator.revalidate();
-            }
-
-        });
-
-        keyTextField.addFocusListener(new FocusListener() {
-            @Override
-            public void focusGained(FocusEvent e) {
-
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                validator.revalidate();
-            }
-        });
-
-        validator.withValidator(() -> {
-            String key = keyTextField.getText();
-            if (existingKeys.contains(key)) {
-                return new ValidationInfo("User parameter already exists with key.", keyTextField);
-            }
-            if (key.isEmpty()) {
-                return new ValidationInfo("User parameter name must not be empty.", keyTextField);
-            }
-            return null;
-        }).installOn(keyTextField);
+        validator.withValidator(this::validateKey).withFocusValidator(this::validateKey)
+                .andRegisterOnDocumentListener(keyTextField).installOn(keyTextField);
 
         pack();
         setMinimumSize(getSize());
+    }
+
+    @Override
+    public void dispose() {
+        Disposer.dispose(myDisposable);
+        super.dispose();
+    }
+
+    private ValidationInfo validateKey() {
+        String key = keyTextField.getText();
+        if (existingKeys.contains(key)) {
+            return new ValidationInfo("User parameter already exists with key.", keyTextField);
+        }
+        if (key.isEmpty()) {
+            return new ValidationInfo("User parameter name should not be empty.", keyTextField);
+        }
+        return null;
     }
 
     public void setExistingKeys(Set<String> existingKeys) {

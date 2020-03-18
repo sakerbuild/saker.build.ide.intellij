@@ -42,6 +42,10 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
     @NotNull
     @Override
     public Configurable[] getConfigurables() {
-        return new Configurable[] { new ExecutionUserParametersConfigureable(project) };
+        return new Configurable[] { new DaemonConnectionsConfigurable(project),
+                new PathConfigurationConfigurable(project),
+                new ScriptConfigurationConfigurable(project),
+                new TaskRepositoriesConfigurable(project),
+                new ExecutionUserParametersConfigureable(project), };
     }
 }

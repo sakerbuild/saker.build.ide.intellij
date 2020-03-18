@@ -22,7 +22,7 @@ public class ExecutionUserParametersConfigureable implements Configurable {
     public ExecutionUserParametersConfigureable(IntellijSakerIDEProject project) {
         this.project = project;
 
-        form = new UserParametersForm(project.getProject());
+        form = new UserParametersForm();
         form.setUserParameterKind("execution");
     }
 
@@ -40,6 +40,7 @@ public class ExecutionUserParametersConfigureable implements Configurable {
 
     @Override
     public void reset() {
+        this.userParameters = null;
         IDEProjectProperties props = project.getIDEProjectProperties();
         if (props != null) {
             this.userParameters = props.getUserParameters();
