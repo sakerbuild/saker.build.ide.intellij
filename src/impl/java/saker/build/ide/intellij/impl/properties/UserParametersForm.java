@@ -182,7 +182,7 @@ public class UserParametersForm {
 
         @Override
         public int getColumnCount() {
-            return 2;
+            return COLUMN_NAMES.length;
         }
 
         @Nullable

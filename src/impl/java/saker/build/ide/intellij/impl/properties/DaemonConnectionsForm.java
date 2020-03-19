@@ -3,6 +3,7 @@ package saker.build.ide.intellij.impl.properties;
 import com.intellij.openapi.actionSystem.ActionToolbarPosition;
 import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
+import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.ToolbarDecorator;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -10,6 +11,7 @@ import com.intellij.uiDesigner.core.Spacer;
 import saker.build.ide.intellij.impl.ui.PropertyAttributeTreeNode;
 import saker.build.ide.intellij.impl.ui.PropertyTreeNode;
 import saker.build.ide.intellij.impl.ui.RootTreeNode;
+import saker.build.ide.intellij.impl.ui.UIUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.ui.ExecutionDaemonSelector;
@@ -21,6 +23,7 @@ import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import java.awt.*;
+import java.awt.event.MouseEvent;
 import java.util.*;
 
 public class DaemonConnectionsForm {
@@ -55,6 +58,18 @@ public class DaemonConnectionsForm {
             decorator.getActionsPanel()
                     .setEnabled(CommonActionsPanel.Buttons.EDIT, configTree.getSelectionPath() != null);
         });
+        new DoubleClickListener() {
+            @Override
+            protected boolean onDoubleClick(MouseEvent event) {
+                Object selection = configTree.getLastSelectedPathComponent();
+                if (selection instanceof PropertyAttributeTreeNode) {
+                    performEditAction();
+                    return true;
+                }
+                //don't edit on root daemon connection node, as it opens and closes
+                return false;
+            }
+        }.installOn(configTree);
 
         decorator.getActionsPanel().setEnabled(CommonActionsPanel.Buttons.EDIT, configTree.getSelectionPath() != null);
 
@@ -138,14 +153,27 @@ public class DaemonConnectionsForm {
     }
 
     private void editAction(AnActionButton button) {
+        performEditAction();
+    }
+
+    private void performEditAction() {
         Object selection = configTree.getLastSelectedPathComponent();
-        if (!(selection instanceof DaemonPropertyTreeNode)) {
+        DaemonPropertyTreeNode propertynode;
+        DaemonEditorDialogFieldFocuser focuser = d -> {
+        };
+        if (selection instanceof DaemonPropertyTreeNode) {
+            propertynode = ((DaemonPropertyTreeNode) selection);
+        } else if (selection instanceof PropertyAttributeTreeNode) {
+            propertynode = (DaemonPropertyTreeNode) ((PropertyAttributeTreeNode) selection).getParent();
+            focuser = (DaemonEditorDialogFieldFocuser) ((PropertyAttributeTreeNode) selection).getUserData();
+        } else {
             return;
         }
-        DaemonConnectionEditorDialog dialog = new DaemonConnectionEditorDialog("Edit Daemon Connection", configTree);
-        DaemonPropertyTreeNode propertynode = (DaemonPropertyTreeNode) selection;
         DaemonConnectionIDEProperty editedproperty = propertynode.getProperty();
+
+        DaemonConnectionEditorDialog dialog = new DaemonConnectionEditorDialog("Edit Daemon Connection", configTree);
         dialog.setEditProperty(editedproperty);
+        focuser.focus(dialog);
         dialog.setVisible(true);
         DaemonConnectionIDEProperty property = dialog.getDaemonConnectionIDEProperty();
         String execdaemonname = getExecutionDaemonName();
@@ -176,6 +204,10 @@ public class DaemonConnectionsForm {
         return rootPanel;
     }
 
+    private interface DaemonEditorDialogFieldFocuser {
+        public void focus(DaemonConnectionEditorDialog dialog);
+    }
+
     private static final class DaemonPropertyTreeNode extends PropertyTreeNode<DaemonConnectionIDEProperty> {
         public DaemonPropertyTreeNode(TreeNode parent) {
             super(parent);
@@ -184,11 +216,19 @@ public class DaemonConnectionsForm {
         @Override
         public void setProperty(DaemonConnectionIDEProperty property) {
             super.setProperty(property);
-            this.children = Arrays
-                    .asList(new PropertyAttributeTreeNode(this, "Connection name", property.getConnectionName()),
-                            new PropertyAttributeTreeNode(this, "Address", property.getNetAddress()),
-                            new PropertyAttributeTreeNode(this, "Use as cluster",
-                                    Boolean.toString(property.isUseAsCluster())));
+            PropertyAttributeTreeNode connname = new PropertyAttributeTreeNode(this, "Connection name",
+                    property.getConnectionName());
+            PropertyAttributeTreeNode netaddr = new PropertyAttributeTreeNode(this, "Address",
+                    property.getNetAddress());
+            PropertyAttributeTreeNode userascluster = new PropertyAttributeTreeNode(this, "Use as cluster",
+                    Boolean.toString(property.isUseAsCluster()));
+
+            connname.setUserData(
+                    (DaemonEditorDialogFieldFocuser) d -> UIUtils.selectAndFocusAll(d.getConnectionNameTextField()));
+            netaddr.setUserData(
+                    (DaemonEditorDialogFieldFocuser) d -> UIUtils.selectAndFocusAll(d.getAddressTextField()));
+            userascluster.setUserData((DaemonEditorDialogFieldFocuser) d -> d.getUseAsClusterCheckBox().requestFocus());
+            this.children = Arrays.asList(connname, netaddr, userascluster);
         }
 
         @Override

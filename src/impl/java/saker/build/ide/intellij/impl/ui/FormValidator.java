@@ -16,7 +16,14 @@ public class FormValidator implements Disposable {
     private JButton okButton;
     private List<UpdateCallerComponentValidator> validators = new ArrayList<>();
 
+    public FormValidator() {
+    }
+
     public FormValidator(JButton okButton) {
+        this.okButton = okButton;
+    }
+
+    public void setOkButton(JButton okButton) {
         this.okButton = okButton;
     }
 
@@ -46,9 +53,7 @@ public class FormValidator implements Disposable {
     }
 
     public void revalidateFocusFirstErroneous() {
-        for (UpdateCallerComponentValidator validator : validators) {
-            validator.revalidate();
-        }
+        revalidate();
         for (UpdateCallerComponentValidator validator : validators) {
             ValidationInfo info = validator.getValidationInfo();
             if (info == null) {
@@ -66,11 +71,20 @@ public class FormValidator implements Disposable {
         }
     }
 
+    public void revalidate() {
+        for (UpdateCallerComponentValidator validator : validators) {
+            validator.revalidate();
+        }
+    }
+
     @Override
     public void dispose() {
     }
 
     private void updateOkButton() {
+        if (okButton == null) {
+            return;
+        }
         for (UpdateCallerComponentValidator validator : validators) {
             ValidationInfo info = validator.getValidationInfo();
             if (info != null && !info.okEnabled) {

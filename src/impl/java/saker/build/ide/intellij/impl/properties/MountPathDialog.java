@@ -1,47 +1,37 @@
 package saker.build.ide.intellij.impl.properties;
 
-import com.intellij.openapi.ui.ValidationInfo;
-import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.fileChooser.FileChooserDescriptor;
+import com.intellij.openapi.ui.TextBrowseFolderListener;
+import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
-import saker.build.ide.intellij.impl.ui.FormValidator;
-import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
+import saker.build.ide.support.properties.MountPathIDEProperty;
+import saker.build.ide.support.properties.ProviderMountIDEProperty;
 
 import javax.swing.*;
-import java.awt.*;
+import java.awt.Dimension;
+import java.awt.Insets;
 import java.awt.event.*;
 
-public class DaemonConnectionEditorDialog extends JDialog {
+public class MountPathDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
-    private JTextField addressTextField;
-    private JTextField connectionNameTextField;
-    private JCheckBox useAsClusterCheckBox;
+    private JTextField executionRootTextField;
+    private JComboBox fileSystemEndpointComboBox;
+    private TextFieldWithBrowseButton mountedPathTextField;
 
-    private FormValidator formValidator;
+    private ProviderMountIDEProperty property;
 
-    private DaemonConnectionIDEProperty property;
-
-    public DaemonConnectionEditorDialog(String title, JComponent relative) {
-        formValidator = new FormValidator(buttonOK);
-
+    public MountPathDialog(String title, JComponent relative) {
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
         setTitle(title);
         setLocationRelativeTo(relative);
 
-        buttonOK.setEnabled(false);
-
-        buttonOK.addActionListener(e -> {
-            if (!formValidator.canOk()) {
-                formValidator.revalidateFocusFirstErroneous();
-                return;
-            }
-            onOK();
-        });
+        buttonOK.addActionListener(e -> onOK());
 
         buttonCancel.addActionListener(e -> onCancel());
 
@@ -58,61 +48,24 @@ public class DaemonConnectionEditorDialog extends JDialog {
         contentPane.registerKeyboardAction(e -> onCancel(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
+        mountedPathTextField.addBrowseFolderListener(
+                new TextBrowseFolderListener(new FileChooserDescriptor(false, true, false, false, false, false)));
+
         pack();
         setMinimumSize(getSize());
-
-        formValidator.add(addressTextField, this::validateAddress, FormValidator.REQUIRED);
-        formValidator.add(connectionNameTextField, this::validateConnectionName, FormValidator.REQUIRED);
     }
 
-    public JTextField getAddressTextField() {
-        return addressTextField;
-    }
-
-    public JTextField getConnectionNameTextField() {
-        return connectionNameTextField;
-    }
-
-    public JCheckBox getUseAsClusterCheckBox() {
-        return useAsClusterCheckBox;
-    }
-
-    public void setEditProperty(DaemonConnectionIDEProperty property) {
-        this.addressTextField.setText(property.getNetAddress());
-        this.connectionNameTextField.setText(property.getConnectionName());
-        this.useAsClusterCheckBox.setSelected(property.isUseAsCluster());
-    }
-
-    public DaemonConnectionIDEProperty getDaemonConnectionIDEProperty() {
+    public ProviderMountIDEProperty getProperty() {
         return property;
     }
 
-    private ValidationInfo validateAddress() {
-        String value = addressTextField.getText();
-        if (value.isEmpty()) {
-            return new ValidationInfo("Network address should not be empty.", addressTextField);
-        }
-        return null;
-    }
-
-    private ValidationInfo validateConnectionName() {
-        String value = connectionNameTextField.getText();
-        if (value.isEmpty()) {
-            return new ValidationInfo("Connection name should not be empty.", connectionNameTextField);
-        }
-        if (DaemonConnectionIDEProperty.isReservedConnectionName(value)) {
-            return new ValidationInfo(value + " is a reserved name.", connectionNameTextField);
-        }
-        if (!DaemonConnectionIDEProperty.isValidConnectionNameFormat(value)) {
-            return new ValidationInfo("Connection name should only contain alphabetic characters and '_'.",
-                    connectionNameTextField);
-        }
-        return null;
+    public void setEditProperty(MountPathIDEProperty property) {
     }
 
     private void onOK() {
-        property = new DaemonConnectionIDEProperty(addressTextField.getText(), connectionNameTextField.getText(),
-                useAsClusterCheckBox.isSelected());
+        //TODO set property end point
+        property = new ProviderMountIDEProperty(executionRootTextField.getText(),
+                new MountPathIDEProperty("ENDPOINT", mountedPathTextField.getText()));
         dispose();
     }
 
@@ -122,7 +75,6 @@ public class DaemonConnectionEditorDialog extends JDialog {
 
     @Override
     public void dispose() {
-        Disposer.dispose(formValidator);
         super.dispose();
     }
 
@@ -147,8 +99,8 @@ public class DaemonConnectionEditorDialog extends JDialog {
         panel1.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
         contentPane.add(panel1,
                 new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                        GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null,
+                        null, 0, false));
         final Spacer spacer1 = new Spacer();
         panel1.add(spacer1,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
@@ -176,32 +128,35 @@ public class DaemonConnectionEditorDialog extends JDialog {
         contentPane.add(panel3,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
-                        0, false));
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                        new Dimension(350, -1), null, null, 0, false));
         final JLabel label1 = new JLabel();
-        label1.setText("Address:");
+        label1.setText("Execution root:");
         panel3.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        addressTextField = new JTextField();
-        panel3.add(addressTextField,
-                new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
-                        GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, new Dimension(200, -1),
-                        new Dimension(150, -1), null, 0, false));
         final JLabel label2 = new JLabel();
-        label2.setText("Connection name:");
+        label2.setText("File system endpoint:");
         panel3.add(label2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        connectionNameTextField = new JTextField();
-        panel3.add(connectionNameTextField,
-                new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
+        final JLabel label3 = new JLabel();
+        label3.setText("Mounted path:");
+        panel3.add(label3, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        executionRootTextField = new JTextField();
+        panel3.add(executionRootTextField,
+                new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,
                         new Dimension(150, -1), null, 0, false));
-        useAsClusterCheckBox = new JCheckBox();
-        useAsClusterCheckBox.setText("User as cluster");
-        panel3.add(useAsClusterCheckBox,
-                new GridConstraints(2, 0, 1, 2, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
-                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                        GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        mountedPathTextField = new TextFieldWithBrowseButton();
+        panel3.add(mountedPathTextField,
+                new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null,
+                        null, 0, false));
+        fileSystemEndpointComboBox = new JComboBox();
+        panel3.add(fileSystemEndpointComboBox,
+                new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                        GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
+                        false));
     }
 
     /**

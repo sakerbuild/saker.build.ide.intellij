@@ -10,11 +10,20 @@ public class PropertyAttributeTreeNode implements TreeNode {
     private TreeNode parent;
     private String property;
     private String value;
+    private Object userData;
 
     public PropertyAttributeTreeNode(TreeNode parent, String property, String value) {
         this.parent = parent;
         this.property = property;
         this.value = value;
+    }
+
+    public void setUserData(Object userData) {
+        this.userData = userData;
+    }
+
+    public Object getUserData() {
+        return userData;
     }
 
     @Override
