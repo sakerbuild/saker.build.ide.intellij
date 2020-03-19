@@ -1,20 +1,13 @@
 package saker.build.ide.intellij.impl.properties;
 
-import com.intellij.openapi.Disposable;
-import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.ComponentValidator;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
-import kotlin.reflect.jvm.internal.ReflectProperties;
-import org.jetbrains.annotations.Nullable;
-import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.ide.intellij.impl.ui.FormValidator;
 
 import javax.swing.*;
-import javax.swing.event.DocumentEvent;
-import javax.swing.event.DocumentListener;
 import java.awt.*;
 import java.awt.event.*;
 import java.util.Collections;
@@ -31,11 +24,7 @@ public class UserParameterEditorDialog extends JDialog {
 
     private Set<String> existingKeys = Collections.emptySet();
 
-    private Disposable myDisposable = new Disposable() {
-        @Override
-        public void dispose() {
-        }
-    };
+    private FormValidator formValidator;
 
     public UserParameterEditorDialog(String title, JComponent relative) {
         setContentPane(contentPane);
@@ -44,21 +33,19 @@ public class UserParameterEditorDialog extends JDialog {
         setTitle(title);
         setLocationRelativeTo(relative);
 
+        formValidator = new FormValidator(buttonOK);
+
         buttonOK.setEnabled(false);
 
-        buttonOK.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onOK();
+        buttonOK.addActionListener(e -> {
+            if (!formValidator.canOk()) {
+                formValidator.revalidateFocusFirstErroneous();
+                return;
             }
+            onOK();
         });
 
-        buttonCancel.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onCancel();
-            }
-        });
+        buttonCancel.addActionListener(e -> onCancel());
 
         // call onCancel() when cross is clicked
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
@@ -70,23 +57,10 @@ public class UserParameterEditorDialog extends JDialog {
         });
 
         // call onCancel() on ESCAPE
-        contentPane.registerKeyboardAction(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onCancel();
-            }
-        }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        contentPane.registerKeyboardAction(e -> onCancel(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
+                JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
-        ComponentValidator validator = new ComponentValidator(myDisposable) {
-            @Override
-            public void updateInfo(@Nullable ValidationInfo info) {
-                super.updateInfo(info);
-                buttonOK.setEnabled(info == null || info.okEnabled);
-            }
-        };
-
-        validator.withValidator(this::validateKey).withFocusValidator(this::validateKey)
-                .andRegisterOnDocumentListener(keyTextField).installOn(keyTextField);
+        formValidator.add(keyTextField, this::validateKey, FormValidator.REQUIRED);
 
         pack();
         setMinimumSize(getSize());
@@ -94,7 +68,7 @@ public class UserParameterEditorDialog extends JDialog {
 
     @Override
     public void dispose() {
-        Disposer.dispose(myDisposable);
+        Disposer.dispose(formValidator);
         super.dispose();
     }
 

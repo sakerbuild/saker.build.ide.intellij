@@ -1,13 +1,8 @@
 package saker.build.ide.intellij.impl.properties;
 
-import com.intellij.openapi.Disposable;
-import com.intellij.openapi.project.Project;
 import com.intellij.ui.AddEditRemovePanel;
-import com.intellij.ui.table.JBTable;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
-import com.intellij.util.ui.StatusText;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;

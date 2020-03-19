@@ -12,6 +12,7 @@ import saker.build.ide.intellij.SakerBuildPlugin;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.io.IOUtils;
@@ -144,14 +145,4 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
         IOUtils.throwExc(exc);
     }
 
-    public static SakerPath tryParsePath(String path) {
-        if (path == null) {
-            return null;
-        }
-        try {
-            return SakerPath.valueOf(path);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
 }

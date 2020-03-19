@@ -2,13 +2,11 @@ package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
-import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
-import saker.build.thirdparty.saker.util.ImmutableUtils;
 
 import javax.swing.*;
 import java.util.*;

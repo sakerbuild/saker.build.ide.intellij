@@ -31,6 +31,7 @@ import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.configuration.ProjectIDEConfigurationCollection;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationException;
@@ -127,51 +128,8 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     public SakerPath projectPathToExecutionPath(SakerPath path) {
-        IDEProjectProperties ideprops = getIDEProjectProperties();
-        SakerPath projectsakerpath = SakerPath.valueOf(getProjectPath());
-        if (path.isRelative()) {
-            try {
-                path = projectsakerpath.resolve(path);
-            } catch (IllegalArgumentException e) {
-                //if somewhy we fail to resolve the path. E.g. the path contains too many ".." at start
-                return null;
-            }
-        }
-        Set<? extends ProviderMountIDEProperty> mounts = ideprops.getMounts();
-        if (ObjectUtils.isNullOrEmpty(mounts)) {
-            return null;
-        }
-        for (ProviderMountIDEProperty mountprop : mounts) {
-            String rootstr = mountprop.getRoot();
-            String mountpathstr = mountprop.getMountPath();
-            String clientname = mountprop.getMountClientName();
-            if (ObjectUtils.isNullOrEmpty(rootstr) || ObjectUtils.isNullOrEmpty(mountpathstr) || ObjectUtils
-                    .isNullOrEmpty(clientname)) {
-                continue;
-            }
-            String root;
-            SakerPath mountpath;
-            try {
-                root = SakerPath.normalizeRoot(rootstr);
-                mountpath = SakerPath.valueOf(mountpathstr);
-            } catch (IllegalArgumentException e) {
-                //invalid configuration, failed to parse
-                continue;
-            }
-            if (SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(clientname)) {
-                //the mount path is resolved against the project directory
-                clientname = SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM;
-                mountpath = projectsakerpath.resolve(mountpath.replaceRoot(null));
-                //continue with testing local
-            }
-            if (SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM.equals(clientname)) {
-                int commonnamecount = path.getCommonNameCount(mountpath);
-                if (commonnamecount >= 0) {
-                    return path.subPath(commonnamecount).replaceRoot(root);
-                }
-            }
-        }
-        return null;
+        return SakerIDESupportUtils
+                .projectPathToExecutionPath(getIDEProjectProperties(), SakerPath.valueOf(getProjectPath()), path);
     }
 
     public void build(ProgressIndicator monitor) {
@@ -196,70 +154,13 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     public SakerPath executionPathToProjectRelativePath(SakerPath executionsakerpath) {
-        IDEProjectProperties properties = getIDEProjectProperties();
-        if (executionsakerpath == null) {
-            return null;
-        }
-        if (executionsakerpath.isRelative()) {
-            SakerPath propworkdir = IntellijSakerIDEPlugin.tryParsePath(properties.getWorkingDirectory());
-            if (propworkdir == null || propworkdir.isRelative()) {
-                return null;
-            }
-            executionsakerpath = propworkdir.resolve(executionsakerpath);
-        }
-        //the path to resolve is an absolute execution path
-
-        SakerPath projectsakerpath = SakerPath.valueOf(getProjectPath());
-        ProviderMountIDEProperty mountprop = getMountPropertyForPath(executionsakerpath, properties);
-        if (mountprop == null) {
-            return null;
-        }
-        String mountclientname = mountprop.getMountClientName();
-        //if mountclientname == null then we fail with null
-        if (SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(mountclientname)) {
-            //the mounting is project relative
-            SakerPath mountedpath = IntellijSakerIDEPlugin.tryParsePath(mountprop.getMountPath());
-            if (mountedpath == null) {
-                return null;
-            }
-            SakerPath mountedfullpath = projectsakerpath.resolve(mountedpath.replaceRoot(null));
-            executionsakerpath = mountedfullpath.resolve(executionsakerpath.replaceRoot(null));
-            if (executionsakerpath.startsWith(projectsakerpath)) {
-                return projectsakerpath.relativize(executionsakerpath);
-            }
-            return null;
-        }
-        if (SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM.equals(mountclientname)) {
-            //the mount is on the local filesystem which is where the project resides
-            SakerPath mountedpath = IntellijSakerIDEPlugin.tryParsePath(mountprop.getMountPath());
-            if (mountedpath == null) {
-                return null;
-            }
-            executionsakerpath = mountedpath.resolve(executionsakerpath.replaceRoot(null));
-            if (executionsakerpath.startsWith(projectsakerpath)) {
-                return projectsakerpath.relativize(executionsakerpath);
-            }
-            return null;
-        }
-        //the mount is made through a daemon connection, cannot determine the file system association
-        return null;
+        return SakerIDESupportUtils
+                .executionPathToProjectRelativePath(getIDEProjectProperties(), SakerPath.valueOf(getProjectPath()),
+                        executionsakerpath);
     }
 
     private static ProviderMountIDEProperty getMountPropertyForPath(SakerPath path, IDEProjectProperties properties) {
-        Set<? extends ProviderMountIDEProperty> mounts = properties.getMounts();
-        if (ObjectUtils.isNullOrEmpty(mounts)) {
-            return null;
-        }
-        String pathroot = path.getRoot();
-        if (pathroot == null) {
-            return null;
-        }
-        for (ProviderMountIDEProperty prop : mounts) {
-            if (pathroot.equals(prop.getRoot())) {
-                return prop;
-            }
-        }
-        return null;
+        return SakerIDESupportUtils.getMountPropertyForPath(path, properties);
     }
 
     public VirtualFile getVirtualFileAtExecutionPath(SakerPath path) {
