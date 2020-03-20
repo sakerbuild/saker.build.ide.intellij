@@ -10,7 +10,7 @@ import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 
-import javax.swing.*;
+import javax.swing.JComponent;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
@@ -22,8 +22,8 @@ public class DaemonConnectionsConfigurable implements Configurable {
     private String executionDaemonName;
     private Set<DaemonConnectionIDEProperty> daemonConnections = Collections.emptySet();
 
-    public DaemonConnectionsConfigurable(IntellijSakerIDEProject project) {
-        this.project = project;
+    public DaemonConnectionsConfigurable(SakerBuildProjectConfigurable parent) {
+        this.project = parent.getProject();
         form = new DaemonConnectionsForm();
     }
 

@@ -6,13 +6,14 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 
-import javax.swing.*;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
 
 public class ScriptConfigurationConfigurable implements Configurable {
     private final IntellijSakerIDEProject project;
 
-    public ScriptConfigurationConfigurable(IntellijSakerIDEProject project) {
-        this.project = project;
+    public ScriptConfigurationConfigurable(SakerBuildProjectConfigurable parent) {
+        this.project = parent.getProject();
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)

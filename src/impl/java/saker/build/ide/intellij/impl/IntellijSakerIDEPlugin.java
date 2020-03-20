@@ -5,16 +5,13 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
-import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.ISakerBuildPluginImpl;
 import saker.build.ide.intellij.ImplementationStartArguments;
 import saker.build.ide.intellij.SakerBuildPlugin;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
-import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.IDEPluginProperties;
-import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.io.IOUtils;
 
 import java.io.Closeable;

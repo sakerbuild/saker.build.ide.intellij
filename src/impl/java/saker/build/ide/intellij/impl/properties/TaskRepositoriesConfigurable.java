@@ -6,13 +6,14 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 
-import javax.swing.*;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
 
 public class TaskRepositoriesConfigurable implements Configurable {
     private final IntellijSakerIDEProject project;
 
-    public TaskRepositoriesConfigurable(IntellijSakerIDEProject project) {
-        this.project = project;
+    public TaskRepositoriesConfigurable(SakerBuildProjectConfigurable parent) {
+        this.project = parent.getProject();
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)

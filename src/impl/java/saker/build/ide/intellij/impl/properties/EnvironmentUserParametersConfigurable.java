@@ -1,6 +1,5 @@
 package saker.build.ide.intellij.impl.properties;
 
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
@@ -8,9 +7,8 @@ import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
-import saker.build.thirdparty.saker.util.ImmutableUtils;
 
-import javax.swing.*;
+import javax.swing.JComponent;
 import java.util.*;
 
 public class EnvironmentUserParametersConfigurable implements Configurable {

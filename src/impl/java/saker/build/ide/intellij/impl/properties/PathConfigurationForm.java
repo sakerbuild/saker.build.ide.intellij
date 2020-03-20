@@ -4,6 +4,7 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.AddEditRemovePanel;
+import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.Nullable;
@@ -17,16 +18,19 @@ import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.ui.FileSystemEndpointSelector;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
-import javax.swing.*;
+import javax.swing.BorderFactory;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.util.*;
 
 public class PathConfigurationForm {
     private JPanel rootPanel;
-    private JTextField workingDirectoryTextField;
-    private JTextField buildDirectoryTextField;
-    private JTextField mirrorDirectoryTextField;
+    private JBTextField workingDirectoryTextField;
+    private JBTextField buildDirectoryTextField;
+    private JBTextField mirrorDirectoryTextField;
     private JPanel tablePanel;
 
     private Disposable myDisposable = new DummyDisposable();
@@ -37,7 +41,13 @@ public class PathConfigurationForm {
 
     public PathConfigurationForm(Project project) {
         this.project = project;
-        mountsEditPanel = new AddEditRemovePanel<ProviderMountIDEProperty>(new MountsTableModel(), new ArrayList<>()) {
+
+        workingDirectoryTextField.getEmptyText().clear().appendText("Execution path");
+        buildDirectoryTextField.getEmptyText().clear().appendText("Execution path");
+        mirrorDirectoryTextField.getEmptyText().clear().appendText("Execution daemon local path (empty for default)");
+
+        MountsTableModel tablemodel = new MountsTableModel();
+        mountsEditPanel = new AddEditRemovePanel<ProviderMountIDEProperty>(tablemodel, new ArrayList<>()) {
             {
                 getTable().setShowColumns(true);
                 getTable().getTableHeader().setReorderingAllowed(false);
@@ -66,6 +76,7 @@ public class PathConfigurationForm {
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW | GridConstraints.SIZEPOLICY_WANT_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null,
                         new Dimension(200, 200), null, 0, false));
+        mountsEditPanel.getEmptyText().clear().appendText("No mounted paths.");
     }
 
     private Set<String> getRoots() {
@@ -236,17 +247,17 @@ public class PathConfigurationForm {
         label3.setText("Mirror directory:");
         panel1.add(label3, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        workingDirectoryTextField = new JTextField();
+        workingDirectoryTextField = new JBTextField();
         panel1.add(workingDirectoryTextField,
                 new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,
                         new Dimension(150, -1), null, 0, false));
-        buildDirectoryTextField = new JTextField();
+        buildDirectoryTextField = new JBTextField();
         panel1.add(buildDirectoryTextField,
                 new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,
                         new Dimension(150, -1), null, 0, false));
-        mirrorDirectoryTextField = new JTextField();
+        mirrorDirectoryTextField = new JBTextField();
         panel1.add(mirrorDirectoryTextField,
                 new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,

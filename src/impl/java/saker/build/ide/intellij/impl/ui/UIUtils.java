@@ -1,6 +1,6 @@
 package saker.build.ide.intellij.impl.ui;
 
-import javax.swing.*;
+import javax.swing.JTextField;
 
 public class UIUtils {
     public static void selectAndFocusAll(JTextField tf) {

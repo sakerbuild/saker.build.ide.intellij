@@ -6,10 +6,11 @@ import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.Nls;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.swing.*;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 
 public class SakerBuildApplicationConfigurableProvider extends ConfigurableProvider {
     @Nullable

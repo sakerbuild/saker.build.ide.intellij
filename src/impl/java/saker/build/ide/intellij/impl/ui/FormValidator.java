@@ -6,11 +6,13 @@ import com.intellij.openapi.ui.ValidationInfo;
 import org.jetbrains.annotations.Nullable;
 import saker.build.thirdparty.saker.util.function.Functionals;
 
-import javax.swing.*;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JTextField;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 public class FormValidator implements Disposable {
@@ -53,6 +55,7 @@ public class FormValidator implements Disposable {
         if (setup != null) {
             setup.accept(componentvalidator, component);
         }
+        componentvalidator.installOn(component);
 
         validators.add(componentvalidator);
         return this;

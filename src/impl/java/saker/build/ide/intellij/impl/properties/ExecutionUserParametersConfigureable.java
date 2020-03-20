@@ -8,7 +8,7 @@ import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 
-import javax.swing.*;
+import javax.swing.JComponent;
 import java.util.*;
 
 public class ExecutionUserParametersConfigureable implements Configurable {
@@ -17,8 +17,8 @@ public class ExecutionUserParametersConfigureable implements Configurable {
 
     private final UserParametersForm form;
 
-    public ExecutionUserParametersConfigureable(IntellijSakerIDEProject project) {
-        this.project = project;
+    public ExecutionUserParametersConfigureable(SakerBuildProjectConfigurable parent) {
+        this.project = parent.getProject();
 
         form = new UserParametersForm();
         form.setUserParameterKind("execution");

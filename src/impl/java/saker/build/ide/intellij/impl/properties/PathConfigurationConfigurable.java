@@ -10,8 +10,10 @@ import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 
-import javax.swing.*;
-import java.util.*;
+import javax.swing.JComponent;
+import java.util.Collections;
+import java.util.Objects;
+import java.util.Set;
 
 public class PathConfigurationConfigurable implements Configurable {
     private final IntellijSakerIDEProject project;
@@ -22,8 +24,8 @@ public class PathConfigurationConfigurable implements Configurable {
     private String buildDirectoryProperty;
     private String mirrorDirectoryProperty;
 
-    public PathConfigurationConfigurable(IntellijSakerIDEProject project) {
-        this.project = project;
+    public PathConfigurationConfigurable(SakerBuildProjectConfigurable parent) {
+        this.project = parent.getProject();
         this.form = new PathConfigurationForm(project.getProject());
     }
 

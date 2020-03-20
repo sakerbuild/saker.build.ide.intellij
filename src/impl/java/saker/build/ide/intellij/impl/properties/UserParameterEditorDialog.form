@@ -69,7 +69,7 @@
                   <text value="Value"/>
                 </properties>
               </component>
-              <component id="35f95" class="javax.swing.JTextField" binding="keyTextField">
+              <component id="91c51" class="com.intellij.ui.components.JBTextField" binding="keyTextField">
                 <constraints>
                   <grid row="0" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>
@@ -77,7 +77,7 @@
                 </constraints>
                 <properties/>
               </component>
-              <component id="125a4" class="javax.swing.JTextField" binding="valueTextField">
+              <component id="8e2ca" class="com.intellij.ui.components.JBTextField" binding="valueTextField">
                 <constraints>
                   <grid row="1" column="1" row-span="1" col-span="1" vsize-policy="0" hsize-policy="6" anchor="8" fill="1" indent="0" use-parent-layout="false">
                     <preferred-size width="150" height="-1"/>

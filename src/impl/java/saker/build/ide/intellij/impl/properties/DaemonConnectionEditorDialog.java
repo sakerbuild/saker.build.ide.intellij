@@ -2,6 +2,7 @@ package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -9,15 +10,18 @@ import saker.build.ide.intellij.impl.ui.FormValidator;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.Dimension;
+import java.awt.Insets;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 
 public class DaemonConnectionEditorDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
-    private JTextField addressTextField;
-    private JTextField connectionNameTextField;
+    private JBTextField addressTextField;
+    private JBTextField connectionNameTextField;
     private JCheckBox useAsClusterCheckBox;
 
     private FormValidator formValidator;
@@ -26,6 +30,9 @@ public class DaemonConnectionEditorDialog extends JDialog {
 
     public DaemonConnectionEditorDialog(String title, JComponent relative) {
         formValidator = new FormValidator(buttonOK);
+
+        addressTextField.getEmptyText().clear().appendText("Network address");
+        connectionNameTextField.getEmptyText().clear().appendText("Name");
 
         setContentPane(contentPane);
         setModal(true);
@@ -181,7 +188,7 @@ public class DaemonConnectionEditorDialog extends JDialog {
         label1.setText("Address:");
         panel3.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        addressTextField = new JTextField();
+        addressTextField = new JBTextField();
         panel3.add(addressTextField,
                 new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, new Dimension(200, -1),
@@ -190,7 +197,7 @@ public class DaemonConnectionEditorDialog extends JDialog {
         label2.setText("Connection name:");
         panel3.add(label2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        connectionNameTextField = new JTextField();
+        connectionNameTextField = new JBTextField();
         panel3.add(connectionNameTextField,
                 new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,

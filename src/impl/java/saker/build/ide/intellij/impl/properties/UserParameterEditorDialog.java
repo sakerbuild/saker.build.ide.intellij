@@ -2,14 +2,19 @@ package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import saker.build.ide.intellij.impl.ui.FormValidator;
 
 import javax.swing.*;
-import java.awt.*;
-import java.awt.event.*;
+import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.Insets;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.Collections;
 import java.util.Set;
 
@@ -17,8 +22,8 @@ public class UserParameterEditorDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
-    private JTextField keyTextField;
-    private JTextField valueTextField;
+    private JBTextField keyTextField;
+    private JBTextField valueTextField;
     private JLabel titleLabel;
     private JLabel infoLabel;
 
@@ -27,6 +32,9 @@ public class UserParameterEditorDialog extends JDialog {
     private FormValidator formValidator;
 
     public UserParameterEditorDialog(String title, JComponent relative) {
+        keyTextField.getEmptyText().clear().appendText("Key");
+        valueTextField.getEmptyText().clear().appendText("Value");
+
         setContentPane(contentPane);
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
@@ -175,12 +183,12 @@ public class UserParameterEditorDialog extends JDialog {
         label2.setText("Value");
         panel3.add(label2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        keyTextField = new JTextField();
+        keyTextField = new JBTextField();
         panel3.add(keyTextField,
                 new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,
                         new Dimension(150, -1), null, 0, false));
-        valueTextField = new JTextField();
+        valueTextField = new JBTextField();
         panel3.add(valueTextField,
                 new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,

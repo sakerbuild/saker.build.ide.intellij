@@ -7,8 +7,11 @@ import org.jetbrains.annotations.Nullable;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
-import javax.swing.*;
-import java.awt.*;
+import javax.swing.JComponent;
+import javax.swing.JPanel;
+import javax.swing.JTabbedPane;
+import java.awt.Dimension;
+import java.awt.Insets;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
@@ -64,7 +67,7 @@ public class UserParametersForm {
         } else {
             userParameterKind = kind;
         }
-        getParametersEditPanel().getEmptyText().setText("No " + userParameterKind + " user parameters defined");
+        getParametersEditPanel().getEmptyText().setText("No " + userParameterKind + " user parameters defined.");
     }
 
     public AddEditRemovePanel<Map.Entry<String, String>> getParametersEditPanel() {

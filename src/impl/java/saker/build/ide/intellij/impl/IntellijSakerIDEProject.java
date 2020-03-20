@@ -53,7 +53,7 @@ import saker.build.thirdparty.saker.util.io.ByteSource;
 import saker.build.thirdparty.saker.util.io.IOUtils;
 import saker.build.thirdparty.saker.util.io.StreamUtils;
 
-import javax.swing.*;
+import javax.swing.SwingUtilities;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.InvalidPathException;

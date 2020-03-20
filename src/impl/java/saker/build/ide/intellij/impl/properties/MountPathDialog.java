@@ -1,17 +1,16 @@
 package saker.build.ide.intellij.impl.properties;
 
-import com.intellij.ide.ui.EditorOptionsTopHitProvider;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.TextBrowseFolderListener;
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
+import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -29,7 +28,9 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import javax.swing.*;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.awt.event.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
 import java.util.Collections;
 import java.util.Set;
 import java.util.TreeSet;
@@ -38,7 +39,7 @@ public class MountPathDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
-    private JTextField executionRootTextField;
+    private JBTextField executionRootTextField;
     private JComboBox<String> fileSystemEndpointComboBox;
     private TextFieldWithBrowseButton mountedPathTextField;
 
@@ -80,6 +81,8 @@ public class MountPathDialog extends JDialog {
                 onCancel();
             }
         });
+
+        executionRootTextField.getEmptyText().clear().appendText("Execution root");
 
         // call onCancel() on ESCAPE
         contentPane.registerKeyboardAction(e -> onCancel(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
@@ -363,7 +366,7 @@ public class MountPathDialog extends JDialog {
         label3.setText("Mounted path:");
         panel3.add(label3, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        executionRootTextField = new JTextField();
+        executionRootTextField = new JBTextField();
         panel3.add(executionRootTextField,
                 new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,

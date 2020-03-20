@@ -5,6 +5,7 @@ import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.ToolbarDecorator;
+import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -22,9 +23,13 @@ import javax.swing.tree.DefaultTreeCellRenderer;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
-import java.awt.*;
+import java.awt.CardLayout;
+import java.awt.Insets;
 import java.awt.event.MouseEvent;
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 public class DaemonConnectionsForm {
     private JPanel panel1;
@@ -32,22 +37,16 @@ public class DaemonConnectionsForm {
     private JPanel treeContainer;
     private JPanel rootPanel;
 
-    private JTree configTree;
+    private Tree configTree;
     private ExecutionDaemonSelector daemonSelector = new ExecutionDaemonSelector(null);
     private RootTreeNode<DaemonPropertyTreeNode> rootTreeNode = new RootTreeNode<>();
     private ToolbarDecorator decorator;
 
     public DaemonConnectionsForm() {
         DefaultTreeModel treemodel = new DefaultTreeModel(rootTreeNode, false);
-        configTree = new JTree(treemodel);
+        configTree = new Tree(treemodel);
         configTree.setRootVisible(false);
-
-        DefaultTreeCellRenderer renderer = (DefaultTreeCellRenderer) configTree.getCellRenderer();
-        renderer.setClosedIcon(null);
-        renderer.setIcon(null);
-        renderer.setLeafIcon(null);
-        renderer.setOpenIcon(null);
-        renderer.setDisabledIcon(null);
+        configTree.getEmptyText().clear().appendText("No daemon connections defined.");
 
         decorator = ToolbarDecorator.createDecorator(configTree);
         treeContainer.add(decorator.disableUpDownActions().setToolbarPosition(ActionToolbarPosition.RIGHT)
