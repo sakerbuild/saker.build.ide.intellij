@@ -38,8 +38,7 @@ public class UserParameterEditorDialog extends JDialog {
         buttonOK.setEnabled(false);
 
         buttonOK.addActionListener(e -> {
-            if (!formValidator.canOk()) {
-                formValidator.revalidateFocusFirstErroneous();
+            if (!formValidator.canPerformOkRevalidateRefocus()) {
                 return;
             }
             onOK();

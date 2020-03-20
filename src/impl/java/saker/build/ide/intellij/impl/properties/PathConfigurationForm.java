@@ -1,11 +1,20 @@
 package saker.build.ide.intellij.impl.properties;
 
+import com.intellij.openapi.Disposable;
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.AddEditRemovePanel;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.Nullable;
+import saker.build.file.path.SakerPath;
+import saker.build.ide.intellij.impl.ui.DummyDisposable;
+import saker.build.ide.support.SakerIDEProject;
+import saker.build.ide.support.SakerIDESupportUtils;
+import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
+import saker.build.ide.support.ui.FileSystemEndpointSelector;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.*;
@@ -20,9 +29,14 @@ public class PathConfigurationForm {
     private JTextField mirrorDirectoryTextField;
     private JPanel tablePanel;
 
-    private AddEditRemovePanel<ProviderMountIDEProperty> mountsEditPanel;
+    private Disposable myDisposable = new DummyDisposable();
 
-    public PathConfigurationForm() {
+    private Project project;
+    private AddEditRemovePanel<ProviderMountIDEProperty> mountsEditPanel;
+    private Iterable<? extends DaemonConnectionIDEProperty> daemonConnections = Collections.emptySet();
+
+    public PathConfigurationForm(Project project) {
+        this.project = project;
         mountsEditPanel = new AddEditRemovePanel<ProviderMountIDEProperty>(new MountsTableModel(), new ArrayList<>()) {
             {
                 getTable().setShowColumns(true);
@@ -54,16 +68,34 @@ public class PathConfigurationForm {
                         new Dimension(200, 200), null, 0, false));
     }
 
+    private Set<String> getRoots() {
+        LinkedHashSet<String> result = new LinkedHashSet<>();
+        for (ProviderMountIDEProperty m : getMounts()) {
+            String r = SakerIDESupportUtils.tryNormalizePathRoot(m.getRoot());
+            if (ObjectUtils.isNullOrEmpty(r)) {
+                continue;
+            }
+            result.add(r);
+        }
+
+        return result;
+    }
+
     private ProviderMountIDEProperty addItem() {
-        MountPathDialog dialog = new MountPathDialog("Mount path", tablePanel);
+        MountPathDialog dialog = new MountPathDialog("Mount Path", tablePanel, project, daemonConnections);
+        dialog.setExistingRoots(getRoots());
         dialog.setVisible(true);
-        //TODO
         return dialog.getProperty();
     }
 
     private ProviderMountIDEProperty editItem(ProviderMountIDEProperty o) {
-        //TODO
-        return null;
+        MountPathDialog dialog = new MountPathDialog("Edit Mount Path", tablePanel, project, daemonConnections);
+        Set<String> existingroots = getRoots();
+        existingroots.remove(SakerIDESupportUtils.tryNormalizePathRoot(o.getRoot()));
+        dialog.setExistingRoots(existingroots);
+        dialog.setEditProperty(o);
+        dialog.setVisible(true);
+        return ObjectUtils.nullDefault(dialog.getProperty(), o);
     }
 
     public void setMounts(List<? extends ProviderMountIDEProperty> properties) {
@@ -73,39 +105,43 @@ public class PathConfigurationForm {
     public void reset(IDEProjectProperties props) {
         if (props != null) {
             mountsEditPanel.setData(ObjectUtils.newArrayList(props.getMounts()));
-            workingDirectoryTextField.setText(ObjectUtils.nullDefault(props.getWorkingDirectory(), ""));
-            buildDirectoryTextField.setText(ObjectUtils.nullDefault(props.getBuildDirectory(), ""));
-            mirrorDirectoryTextField.setText(ObjectUtils.nullDefault(props.getMirrorDirectory(), ""));
+            workingDirectoryTextField.setText(
+                    ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getWorkingDirectory()), ""));
+            buildDirectoryTextField.setText(
+                    ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getBuildDirectory()), ""));
+            mirrorDirectoryTextField.setText(
+                    ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getMirrorDirectory()), ""));
+            daemonConnections = props.getConnections();
         }
     }
 
     public void dispose() {
+        Disposer.dispose(myDisposable);
     }
 
     public Set<ProviderMountIDEProperty> getMounts() {
-        LinkedHashSet<ProviderMountIDEProperty> result = new LinkedHashSet<>();
-        //TODO
-        return result;
+        return new LinkedHashSet<>(mountsEditPanel.getData());
     }
 
     public String getWorkingDirectory() {
-        return null;
+        return SakerIDESupportUtils.normalizePath(workingDirectoryTextField.getText());
     }
 
     public String getBuildDirectory() {
-        return null;
+        return SakerIDESupportUtils.normalizePath(buildDirectoryTextField.getText());
     }
 
     public String getMirrorDirectory() {
-        return null;
+        return SakerIDESupportUtils.normalizePath(mirrorDirectoryTextField.getText());
     }
 
     public JPanel getRootPanel() {
         return rootPanel;
     }
 
-    private static class MountsTableModel extends AddEditRemovePanel.TableModel<ProviderMountIDEProperty> {
-        private static final String[] COLUMN_NAMES = { "Mount root", "File system endpoint", "Mounted path" };
+    private static final String[] COLUMN_NAMES = { "Mount root", "File system endpoint", "Mounted path" };
+
+    private class MountsTableModel extends AddEditRemovePanel.TableModel<ProviderMountIDEProperty> {
 
         @Override
         public int getColumnCount() {
@@ -122,13 +158,40 @@ public class PathConfigurationForm {
         public Object getField(ProviderMountIDEProperty o, int columnIndex) {
             switch (columnIndex) {
                 case 0: {
-                    return o.getRoot();
+                    return SakerIDESupportUtils.tryNormalizePathRoot(o.getRoot());
                 }
                 case 1: {
-                    return o.getMountPathProperty();
+                    String mountnamestr = o.getMountClientName();
+                    DaemonConnectionIDEProperty connprop = SakerIDESupportUtils
+                            .getConnectionPropertyWithName(daemonConnections, mountnamestr);
+                    if (connprop != null) {
+                        if (ObjectUtils.isNullOrEmpty(connprop.getNetAddress())) {
+                            return connprop.getConnectionName();
+                        }
+                        return ObjectUtils.nullDefault(connprop.getConnectionName(), "") + " @" + connprop
+                                .getNetAddress();
+                    }
+                    if (SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(mountnamestr)) {
+                        return FileSystemEndpointSelector.LABEL_PROJECT_RELATIVE;
+                    }
+                    if (SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM.equals(mountnamestr)) {
+                        return FileSystemEndpointSelector.LABEL_LOCAL_FILE_SYSTEM;
+                    }
+                    return mountnamestr;
                 }
                 case 2: {
-                    return o.getMountPath();
+                    String mountpathstr = SakerIDESupportUtils.normalizePath(o.getMountPath());
+                    try {
+                        SakerPath path = SakerPath.valueOf(mountpathstr);
+                        String mountnamestr = o.getMountClientName();
+                        if (SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(mountnamestr) && path
+                                .isForwardRelative()) {
+                            path = path.replaceRoot(SakerPath.ROOT_SLASH);
+                        }
+                        return path.toString();
+                    } catch (Exception e) {
+                        return mountpathstr;
+                    }
                 }
                 default: {
                     throw new UnsupportedOperationException(columnIndex + "");

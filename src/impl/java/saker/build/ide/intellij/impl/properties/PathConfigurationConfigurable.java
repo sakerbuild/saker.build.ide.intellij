@@ -24,7 +24,7 @@ public class PathConfigurationConfigurable implements Configurable {
 
     public PathConfigurationConfigurable(IntellijSakerIDEProject project) {
         this.project = project;
-        this.form = new PathConfigurationForm();
+        this.form = new PathConfigurationForm(project.getProject());
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)
