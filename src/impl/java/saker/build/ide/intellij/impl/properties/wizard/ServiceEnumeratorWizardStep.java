@@ -1,8 +1,10 @@
 package saker.build.ide.intellij.impl.properties.wizard;
 
+import org.jetbrains.annotations.Nullable;
 import saker.build.ide.support.ui.wizard.ClassPathServiceEnumeratorSakerWizardPage;
 
 import javax.swing.JComponent;
+import javax.swing.JRadioButton;
 
 public class ServiceEnumeratorWizardStep extends SakerWizardPageWizardStep<ClassPathServiceEnumeratorSakerWizardPage> {
     private String defaultServiceClassName;
@@ -22,5 +24,15 @@ public class ServiceEnumeratorWizardStep extends SakerWizardPageWizardStep<Class
     @Override
     protected JComponent getComponent() {
         return form.getRootPanel();
+    }
+
+    @Nullable
+    @Override
+    public JComponent getPreferredFocusedComponent() {
+        JRadioButton rb = form.getSelectRadioButton();
+        if (rb != null) {
+            return rb;
+        }
+        return super.getPreferredFocusedComponent();
     }
 }

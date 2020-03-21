@@ -107,9 +107,14 @@ public abstract class SakerWizardPageWizardStep<WPType extends SakerWizardPage> 
         }
         JButton currentdefbutton = rootpane.getDefaultButton();
         if (currentdefbutton != null) {
-            if (currentdefbutton.getAction() == defaction) {
+            Action currentaction = currentdefbutton.getAction();
+            if (currentaction == defaction) {
                 //the action is already default
                 return;
+            }
+            if (currentaction == navigationState.CANCEL || currentaction == navigationState.PREVIOUS) {
+                //just disallow the cancel and previous actions as default. they make no sense.
+                rootpane.setDefaultButton(null);
             }
         }
         JButton b = findButtonWithAction(rootpane, defaction);

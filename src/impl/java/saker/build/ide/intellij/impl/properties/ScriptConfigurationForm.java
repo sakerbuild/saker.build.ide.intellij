@@ -126,7 +126,7 @@ public class ScriptConfigurationForm {
     }
 
     private void addAction(AnActionButton button) {
-        SakerWizardModel model = new SakerWizardModel("Script configuration",
+        SakerWizardModel model = new SakerWizardModel("New Script Configuration",
                 configurable.getParent().getCurrentProjectProperties(),
                 configurable.getParent().getProject().getProject());
         ClassPathTypeChooserSakerWizardPage cppage = model.getWizardPage(ClassPathTypeChooserSakerWizardPage.class);
@@ -140,7 +140,7 @@ public class ScriptConfigurationForm {
 
         model.add(cpwizardstep);
 
-        SakerWizardDialog dialog = new SakerWizardDialog(configurationsPanel, true, model);
+        SakerWizardDialog dialog = new SakerWizardDialog(rootPanel, true, model);
         model.setDialog(dialog);
         dialog.setModal(true);
 
@@ -323,7 +323,6 @@ public class ScriptConfigurationForm {
     }
 
     private static final class ScriptPropertyTreeNode extends PropertyTreeNode<ScriptConfigurationIDEProperty> {
-
         public ScriptPropertyTreeNode(TreeNode parent) {
             super(parent);
         }
@@ -331,12 +330,15 @@ public class ScriptConfigurationForm {
         @Override
         public void setProperty(ScriptConfigurationIDEProperty property) {
             this.children = new ArrayList<>();
+
             PropertyAttributeTreeNode affected = new PropertyAttributeTreeNode(this, "Affected scripts",
                     property.getScriptsWildcard());
             children.add(affected);
+
             PropertyAttributeTreeNode classpath = new PropertyAttributeTreeNode(this, "Classpath",
                     SakerIDESupportUtils.classPathLocationToLabel(property.getClassPathLocation()));
             children.add(classpath);
+
             ClassPathServiceEnumeratorIDEProperty serviceenumeratorproperty = property.getServiceEnumerator();
             if (serviceenumeratorproperty != null) {
                 PropertyAttributeTreeNode serviceenumerator = new PropertyAttributeTreeNode(this,
@@ -344,6 +346,7 @@ public class ScriptConfigurationForm {
                         SakerIDESupportUtils.serviceEnumeratorToLabel(serviceenumeratorproperty));
                 children.add(serviceenumerator);
             }
+
             PropertyAttributeTreeNode optionsnode = new PropertyAttributeTreeNode(this, "Script options",
                     getScriptOptionsNodeLabel(property));
             children.add(optionsnode);

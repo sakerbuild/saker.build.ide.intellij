@@ -88,6 +88,10 @@ public class ScriptConfigurationWizardForm {
         updateWizardStep();
     }
 
+    public JBTextField getScriptFilesWildcardTextField() {
+        return scriptFilesWildcardTextField;
+    }
+
     private Set<String> getKeys() {
         LinkedHashSet<String> result = new LinkedHashSet<>();
         for (Map.Entry<String, String> entry : optionsEditPanel.getData()) {

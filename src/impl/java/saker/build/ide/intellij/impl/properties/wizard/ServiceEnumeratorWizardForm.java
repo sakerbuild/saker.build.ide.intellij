@@ -30,9 +30,14 @@ public class ServiceEnumeratorWizardForm {
         buttongroup.add(serviceLoaderRadioButton);
         buttongroup.add(classNameRadioButton);
 
-        serviceLoaderRadioButton
-                .addChangeListener(e -> serviceLoaderTextField.setEnabled(serviceLoaderRadioButton.isSelected()));
-        classNameRadioButton.addChangeListener(e -> classNameTextField.setEnabled(classNameRadioButton.isSelected()));
+        serviceLoaderRadioButton.addChangeListener(e -> {
+            serviceLoaderTextField.setEnabled(serviceLoaderRadioButton.isSelected());
+            updateWizardStep();
+        });
+        classNameRadioButton.addChangeListener(e -> {
+            classNameTextField.setEnabled(classNameRadioButton.isSelected());
+            updateWizardStep();
+        });
 
         serviceLoaderTextField.setText(wizardstep.getDefaultServiceClassName());
 
@@ -46,6 +51,16 @@ public class ServiceEnumeratorWizardForm {
         classNameTextField.getDocument().addDocumentListener(documentadapter);
 
         updateWizardStep();
+    }
+
+    public JRadioButton getSelectRadioButton() {
+        if (serviceLoaderRadioButton.isSelected()) {
+            return serviceLoaderRadioButton;
+        }
+        if (classNameRadioButton.isSelected()) {
+            return classNameRadioButton;
+        }
+        return null;
     }
 
     private void updateWizardStep() {
@@ -68,7 +83,7 @@ public class ServiceEnumeratorWizardForm {
             return true;
         }
         if (classNameRadioButton.isSelected()) {
-            if (classNameRadioButton.getText().isEmpty()) {
+            if (classNameTextField.getText().isEmpty()) {
                 return false;
             }
             return true;

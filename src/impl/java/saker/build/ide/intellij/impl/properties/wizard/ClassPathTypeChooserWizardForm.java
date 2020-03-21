@@ -62,6 +62,10 @@ public class ClassPathTypeChooserWizardForm {
         }.installOn(typeList);
     }
 
+    public JList<String> getTypeList() {
+        return typeList;
+    }
+
     public void setClassPathTypes(boolean repositorycp, boolean scriptcp) {
         typeList.setModel(createItems(repositorycp, scriptcp));
     }
