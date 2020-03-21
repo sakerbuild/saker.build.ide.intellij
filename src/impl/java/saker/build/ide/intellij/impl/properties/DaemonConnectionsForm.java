@@ -18,8 +18,11 @@ import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.ui.ExecutionDaemonSelector;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
-import javax.swing.*;
-import javax.swing.tree.DefaultTreeCellRenderer;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;

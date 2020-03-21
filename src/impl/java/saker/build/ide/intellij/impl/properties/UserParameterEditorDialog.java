@@ -7,8 +7,14 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import saker.build.ide.intellij.impl.ui.FormValidator;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 
-import javax.swing.*;
+import javax.swing.JButton;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.KeyStroke;
 import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.Insets;
@@ -16,6 +22,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.Collections;
+import java.util.Map;
 import java.util.Set;
 
 public class UserParameterEditorDialog extends JDialog {
@@ -30,6 +37,11 @@ public class UserParameterEditorDialog extends JDialog {
     private Set<String> existingKeys = Collections.emptySet();
 
     private FormValidator formValidator;
+
+    private Map.Entry<String, String> entry;
+
+    private String existingKeyMessage = "User parameter already exists with key.";
+    private String emptyKeyMessage = "User parameter name should not be empty.";
 
     public UserParameterEditorDialog(String title, JComponent relative) {
         keyTextField.getEmptyText().clear().appendText("Key");
@@ -73,6 +85,18 @@ public class UserParameterEditorDialog extends JDialog {
         setMinimumSize(getSize());
     }
 
+    public void setExistingKeyMessage(String existingKeyMessage) {
+        this.existingKeyMessage = existingKeyMessage;
+    }
+
+    public void setEmptyKeyMessage(String emptyKeyMessage) {
+        this.emptyKeyMessage = emptyKeyMessage;
+    }
+
+    public Map.Entry<String, String> getEntry() {
+        return entry;
+    }
+
     @Override
     public void dispose() {
         Disposer.dispose(formValidator);
@@ -82,10 +106,10 @@ public class UserParameterEditorDialog extends JDialog {
     private ValidationInfo validateKey() {
         String key = keyTextField.getText();
         if (existingKeys.contains(key)) {
-            return new ValidationInfo("User parameter already exists with key.", keyTextField);
+            return new ValidationInfo(existingKeyMessage, keyTextField);
         }
         if (key.isEmpty()) {
-            return new ValidationInfo("User parameter name should not be empty.", keyTextField);
+            return new ValidationInfo(emptyKeyMessage, keyTextField);
         }
         return null;
     }
@@ -94,15 +118,17 @@ public class UserParameterEditorDialog extends JDialog {
         this.existingKeys = existingKeys;
     }
 
-    public void setEditValues(String key, String value) {
-        keyTextField.setText(key);
-        valueTextField.setText(value);
-        if (!key.isEmpty()) {
+    public void setEntry(Map.Entry<String, String> entry) {
+        this.entry = entry;
+        keyTextField.setText(entry.getKey());
+        valueTextField.setText(entry.getValue());
+        if (!entry.getKey().isEmpty()) {
             buttonOK.setEnabled(true);
         }
     }
 
     protected void onOK() {
+        entry = ImmutableUtils.makeImmutableMapEntry(keyTextField.getText(), valueTextField.getText());
         // add your code here
         dispose();
     }
@@ -118,14 +144,6 @@ public class UserParameterEditorDialog extends JDialog {
 
     public JLabel getInfoLabel() {
         return infoLabel;
-    }
-
-    public JTextField getKeyTextField() {
-        return keyTextField;
-    }
-
-    public JTextField getValueTextField() {
-        return valueTextField;
     }
 
     {
@@ -176,11 +194,11 @@ public class UserParameterEditorDialog extends JDialog {
                 GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0,
                 false));
         final JLabel label1 = new JLabel();
-        label1.setText("Name:");
+        label1.setText("Key:");
         panel3.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JLabel label2 = new JLabel();
-        label2.setText("Value");
+        label2.setText("Value:");
         panel3.add(label2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         keyTextField = new JBTextField();

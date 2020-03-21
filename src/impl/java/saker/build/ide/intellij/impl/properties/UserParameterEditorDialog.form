@@ -58,7 +58,7 @@
                   <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties>
-                  <text value="Name:"/>
+                  <text value="Key:"/>
                 </properties>
               </component>
               <component id="4f763" class="javax.swing.JLabel">
@@ -66,7 +66,7 @@
                   <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
                 <properties>
-                  <text value="Value"/>
+                  <text value="Value:"/>
                 </properties>
               </component>
               <component id="91c51" class="com.intellij.ui.components.JBTextField" binding="keyTextField">

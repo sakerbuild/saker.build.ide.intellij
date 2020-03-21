@@ -4,7 +4,7 @@ import com.intellij.ui.AddEditRemovePanel;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.Nullable;
-import saker.build.thirdparty.saker.util.ImmutableUtils;
+import saker.build.ide.intellij.impl.ui.SakerPropertyPageAddEditRemovePanel;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
@@ -12,7 +12,6 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -28,22 +27,12 @@ public class UserParametersForm {
     public UserParametersForm() {
         $$$setupUI$$$();
 
-        parametersEditPanel = new AddEditRemovePanel<Map.Entry<String, String>>(new UserParametersTableModel(),
-                Collections.emptyList()) {
-            {
-                getTable().setShowColumns(true);
-                getTable().getTableHeader().setReorderingAllowed(false);
-            }
-
+        parametersEditPanel = new SakerPropertyPageAddEditRemovePanel<Map.Entry<String, String>>(
+                new KeyValueTableModel()) {
             @Nullable
             @Override
             protected Map.Entry<String, String> addItem() {
                 return addUserParameter();
-            }
-
-            @Override
-            protected boolean removeItem(Map.Entry<String, String> o) {
-                return true;
             }
 
             @Nullable
@@ -51,7 +40,6 @@ public class UserParametersForm {
             protected Map.Entry<String, String> editItem(Map.Entry<String, String> o) {
                 return editUserParameter(o);
             }
-
         };
 
         parametersPanel.add(parametersEditPanel,
@@ -83,40 +71,24 @@ public class UserParametersForm {
     }
 
     protected Map.Entry<String, String> editUserParameter(Map.Entry<String, String> entry) {
-        Map.Entry<String, String>[] result = new Map.Entry[] { entry };
         UserParameterEditorDialog dialog = new UserParameterEditorDialog(
-                "Edit " + userParameterKind + " user parameter", getParametersPanel()) {
-            @Override
-            protected void onOK() {
-                result[0] = ImmutableUtils
-                        .makeImmutableMapEntry(getKeyTextField().getText(), getValueTextField().getText());
-                super.onOK();
-            }
-        };
+                "Edit " + userParameterKind + " user parameter", getParametersPanel());
         Set<String> existingkeys = getKeys();
         existingkeys.remove(entry.getKey());
         dialog.setExistingKeys(existingkeys);
         initDialogMessages(dialog);
-        dialog.setEditValues(entry.getKey(), entry.getValue());
+        dialog.setEntry(entry);
         dialog.setVisible(true);
-        return result[0];
+        return dialog.getEntry();
     }
 
     protected Map.Entry<String, String> addUserParameter() {
-        Map.Entry<String, String>[] result = new Map.Entry[] { null };
         UserParameterEditorDialog dialog = new UserParameterEditorDialog(
-                "Add " + userParameterKind + " user " + "parameter", getParametersPanel()) {
-            @Override
-            protected void onOK() {
-                result[0] = ImmutableUtils
-                        .makeImmutableMapEntry(getKeyTextField().getText(), getValueTextField().getText());
-                super.onOK();
-            }
-        };
+                "Add " + userParameterKind + " user " + "parameter", getParametersPanel());
         dialog.setExistingKeys(getKeys());
         initDialogMessages(dialog);
         dialog.setVisible(true);
-        return result[0];
+        return dialog.getEntry();
     }
 
     private Set<String> getKeys() {
@@ -180,8 +152,9 @@ public class UserParametersForm {
         return rootPanel;
     }
 
-    private static class UserParametersTableModel extends AddEditRemovePanel.TableModel<Map.Entry<String, String>> {
-        private static final String[] COLUMN_NAMES = { "Key", "Value" };
+    private static final String[] COLUMN_NAMES = { "Key", "Value" };
+
+    public static class KeyValueTableModel extends AddEditRemovePanel.TableModel<Map.Entry<String, String>> {
 
         @Override
         public int getColumnCount() {

@@ -9,7 +9,11 @@ import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 
 import javax.swing.JComponent;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public class ExecutionUserParametersConfigureable implements Configurable {
     private final IntellijSakerIDEProject project;

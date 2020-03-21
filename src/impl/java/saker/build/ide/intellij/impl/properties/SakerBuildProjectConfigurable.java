@@ -6,6 +6,7 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
+import saker.build.ide.support.properties.IDEProjectProperties;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -21,6 +22,10 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
                 new ScriptConfigurationConfigurable(this),
                 new TaskRepositoriesConfigurable(this),
                 new ExecutionUserParametersConfigureable(this), };
+    }
+
+    public IDEProjectProperties getCurrentProjectProperties() {
+        return project.getIDEProjectProperties();
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)

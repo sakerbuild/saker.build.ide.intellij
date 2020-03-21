@@ -9,7 +9,11 @@ import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
 
 import javax.swing.JComponent;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 
 public class EnvironmentUserParametersConfigurable implements Configurable {
     private final IntellijSakerIDEPlugin plugin;

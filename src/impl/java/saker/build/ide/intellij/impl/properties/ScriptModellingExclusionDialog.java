@@ -1,45 +1,40 @@
 package saker.build.ide.intellij.impl.properties;
 
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import saker.build.file.path.WildcardPath;
+import saker.build.ide.intellij.impl.ui.DummyDisposable;
 import saker.build.ide.intellij.impl.ui.FormValidator;
-import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 
 import javax.swing.JButton;
-import javax.swing.JCheckBox;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.JTextField;
 import javax.swing.KeyStroke;
-import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 
-public class DaemonConnectionEditorDialog extends JDialog {
+public class ScriptModellingExclusionDialog extends JDialog {
     private JPanel contentPane;
     private JButton buttonOK;
     private JButton buttonCancel;
-    private JBTextField addressTextField;
-    private JBTextField connectionNameTextField;
-    private JCheckBox useAsClusterCheckBox;
+    private JLabel infoLabel;
+    private JBTextField exclusionTextField;
 
-    private FormValidator formValidator;
+    private String exclusionWildcard;
 
-    private DaemonConnectionIDEProperty property;
+    private Disposable myDisposable = new DummyDisposable();
 
-    public DaemonConnectionEditorDialog(String title, JComponent relative) {
-        formValidator = new FormValidator(buttonOK);
-
-        addressTextField.getEmptyText().clear().appendText("Network address");
-        connectionNameTextField.getEmptyText().clear().appendText("Name");
+    public ScriptModellingExclusionDialog(String title, JComponent relative) {
+        exclusionTextField.getEmptyText().clear().appendText("Wildcard pattern");
 
         setContentPane(contentPane);
         setModal(true);
@@ -47,10 +42,9 @@ public class DaemonConnectionEditorDialog extends JDialog {
         setTitle(title);
         setLocationRelativeTo(relative);
 
-        buttonOK.setEnabled(false);
-
+        FormValidator validator = new FormValidator(buttonOK);
         buttonOK.addActionListener(e -> {
-            if (!formValidator.canPerformOkRevalidateRefocus()) {
+            if (!validator.canPerformOkRevalidateRefocus()) {
                 return;
             }
             onOK();
@@ -71,71 +65,49 @@ public class DaemonConnectionEditorDialog extends JDialog {
         contentPane.registerKeyboardAction(e -> onCancel(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
+        validator.add(exclusionTextField, () -> {
+            String str = exclusionTextField.getText();
+            if (str.isEmpty()) {
+                return new ValidationInfo("Please specify a wildcard for the excluded scripts.", exclusionTextField);
+            }
+            try {
+                WildcardPath.valueOf(str);
+            } catch (Exception e) {
+                return new ValidationInfo("The specified wildcard has an invalid format.", exclusionTextField);
+            }
+            return null;
+        }, FormValidator.REQUIRED | FormValidator.START_ON_FOCUS_LOST);
+
         pack();
         setMinimumSize(getSize());
-
-        formValidator.add(addressTextField, this::validateAddress, FormValidator.REQUIRED);
-        formValidator.add(connectionNameTextField, this::validateConnectionName, FormValidator.REQUIRED);
     }
 
-    public JTextField getAddressTextField() {
-        return addressTextField;
+    public void setEdit(String o) {
+        this.exclusionTextField.setText(o);
     }
 
-    public JTextField getConnectionNameTextField() {
-        return connectionNameTextField;
-    }
-
-    public JCheckBox getUseAsClusterCheckBox() {
-        return useAsClusterCheckBox;
-    }
-
-    public void setEditProperty(DaemonConnectionIDEProperty property) {
-        this.addressTextField.setText(property.getNetAddress());
-        this.connectionNameTextField.setText(property.getConnectionName());
-        this.useAsClusterCheckBox.setSelected(property.isUseAsCluster());
-    }
-
-    public DaemonConnectionIDEProperty getDaemonConnectionIDEProperty() {
-        return property;
-    }
-
-    private ValidationInfo validateAddress() {
-        String value = addressTextField.getText();
-        if (value.isEmpty()) {
-            return new ValidationInfo("Network address should not be empty.", addressTextField);
-        }
-        return null;
-    }
-
-    private ValidationInfo validateConnectionName() {
-        String value = connectionNameTextField.getText();
-        if (value.isEmpty()) {
-            return new ValidationInfo("Connection name should not be empty.", connectionNameTextField);
-        }
-        if (DaemonConnectionIDEProperty.isReservedConnectionName(value)) {
-            return new ValidationInfo(value + " is a reserved name.", connectionNameTextField);
-        }
-        if (!DaemonConnectionIDEProperty.isValidConnectionNameFormat(value)) {
-            return new ValidationInfo("Connection name should only contain alphabetic characters and '_'.",
-                    connectionNameTextField);
-        }
-        return null;
+    public String getExclusionWildcard() {
+        return exclusionWildcard;
     }
 
     private void onOK() {
-        property = new DaemonConnectionIDEProperty(addressTextField.getText(), connectionNameTextField.getText(),
-                useAsClusterCheckBox.isSelected());
+        String exclstr = exclusionTextField.getText();
+        try {
+            exclusionWildcard = WildcardPath.valueOf(exclstr).toString();
+        } catch (Exception e) {
+            exclusionWildcard = exclstr;
+        }
         dispose();
     }
 
     private void onCancel() {
+        // add your code here if necessary
         dispose();
     }
 
     @Override
     public void dispose() {
-        Disposer.dispose(formValidator);
+        Disposer.dispose(myDisposable);
         super.dispose();
     }
 
@@ -160,8 +132,8 @@ public class DaemonConnectionEditorDialog extends JDialog {
         panel1.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
         contentPane.add(panel1,
                 new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                        GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null,
+                        null, 0, false));
         final Spacer spacer1 = new Spacer();
         panel1.add(spacer1,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
@@ -185,36 +157,31 @@ public class DaemonConnectionEditorDialog extends JDialog {
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JPanel panel3 = new JPanel();
-        panel3.setLayout(new GridLayoutManager(3, 2, new Insets(0, 0, 0, 0), -1, -1));
+        panel3.setLayout(new GridLayoutManager(2, 2, new Insets(0, 0, 0, 0), -1, -1));
         contentPane.add(panel3,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
                         0, false));
+        final JPanel panel4 = new JPanel();
+        panel4.setLayout(new GridLayoutManager(1, 1, new Insets(5, 10, 5, 10), -1, -1));
+        panel3.add(panel4, new GridConstraints(0, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
+                GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        infoLabel = new JLabel();
+        infoLabel.setText("Specify a wildcard pattern to match excluded build scripts.");
+        panel4.add(infoLabel, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JLabel label1 = new JLabel();
-        label1.setText("Address:");
-        panel3.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        label1.setText("Exclusion wildcard:");
+        panel3.add(label1, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        addressTextField = new JBTextField();
-        panel3.add(addressTextField,
-                new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
-                        GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, new Dimension(200, -1),
-                        new Dimension(150, -1), null, 0, false));
-        final JLabel label2 = new JLabel();
-        label2.setText("Connection name:");
-        panel3.add(label2, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        connectionNameTextField = new JBTextField();
-        panel3.add(connectionNameTextField,
-                new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
-                        GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,
-                        new Dimension(150, -1), null, 0, false));
-        useAsClusterCheckBox = new JCheckBox();
-        useAsClusterCheckBox.setText("User as cluster");
-        panel3.add(useAsClusterCheckBox,
-                new GridConstraints(2, 0, 1, 2, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
-                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                        GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        exclusionTextField = new JBTextField();
+        panel3.add(exclusionTextField,
+                new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
+                        0, false));
     }
 
     /**

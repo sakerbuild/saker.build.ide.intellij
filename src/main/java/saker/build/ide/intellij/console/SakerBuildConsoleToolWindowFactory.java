@@ -1,24 +1,14 @@
 package saker.build.ide.intellij.console;
 
-import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.filters.TextConsoleBuilderFactory;
-import com.intellij.execution.impl.ConsoleViewImpl;
-import com.intellij.execution.impl.EditorHyperlinkSupport;
 import com.intellij.execution.ui.ConsoleView;
-import com.intellij.execution.ui.ConsoleViewContentType;
-import com.intellij.openapi.editor.ex.EditorEx;
-import com.intellij.openapi.editor.markup.RangeHighlighter;
-import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Key;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentManager;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.SakerBuildPlugin;
-import saker.build.ide.intellij.StyledHyperlinkConsoleView;
 
 public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory {
     @Override

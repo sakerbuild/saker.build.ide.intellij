@@ -10,6 +10,7 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.impl.ui.DummyDisposable;
+import saker.build.ide.intellij.impl.ui.SakerPropertyPageAddEditRemovePanel;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
@@ -24,7 +25,10 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.util.*;
+import java.util.Collections;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
 
 public class PathConfigurationForm {
     private JPanel rootPanel;
@@ -47,21 +51,11 @@ public class PathConfigurationForm {
         mirrorDirectoryTextField.getEmptyText().clear().appendText("Execution daemon local path (empty for default)");
 
         MountsTableModel tablemodel = new MountsTableModel();
-        mountsEditPanel = new AddEditRemovePanel<ProviderMountIDEProperty>(tablemodel, new ArrayList<>()) {
-            {
-                getTable().setShowColumns(true);
-                getTable().getTableHeader().setReorderingAllowed(false);
-            }
-
+        mountsEditPanel = new SakerPropertyPageAddEditRemovePanel<ProviderMountIDEProperty>(tablemodel) {
             @Nullable
             @Override
             protected ProviderMountIDEProperty addItem() {
                 return PathConfigurationForm.this.addItem();
-            }
-
-            @Override
-            protected boolean removeItem(ProviderMountIDEProperty o) {
-                return true;
             }
 
             @Nullable

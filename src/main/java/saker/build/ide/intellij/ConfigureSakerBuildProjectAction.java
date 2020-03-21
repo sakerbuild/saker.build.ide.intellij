@@ -29,6 +29,11 @@ public class ConfigureSakerBuildProjectAction extends AnAction {
             e.getPresentation().setVisible(false);
             return;
         }
+        if (project.getBasePath() == null) {
+            //we need the base path to be availabe for the project
+            e.getPresentation().setVisible(false);
+            return;
+        }
         e.getPresentation().setEnabledAndVisible(true);
     }
 }

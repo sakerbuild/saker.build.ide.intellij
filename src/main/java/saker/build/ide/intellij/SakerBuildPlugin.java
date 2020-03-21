@@ -4,22 +4,22 @@ import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManager;
 import com.intellij.ide.plugins.cl.PluginClassLoader;
 import com.intellij.ide.util.PropertiesComponent;
-import com.intellij.openapi.actionSystem.*;
+import com.intellij.openapi.actionSystem.ActionManager;
+import com.intellij.openapi.actionSystem.ActionPlaces;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.extensions.Extensions;
 import com.intellij.openapi.extensions.ExtensionsArea;
-import com.intellij.openapi.options.ConfigurableEP;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.VirtualFileManager;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.util.messages.MessageBusConnection;
-import javafx.scene.input.KeyCode;
 import org.jdom.Element;
 import org.jetbrains.annotations.NotNull;
 
-import java.awt.event.KeyEvent;
 import java.io.Closeable;
 import java.io.File;
 import java.io.IOException;
@@ -65,6 +65,10 @@ public class SakerBuildPlugin {
 
     public static boolean isSakerBuildProjectNatureEnabled(Project project) {
         if (project == null) {
+            return false;
+        }
+        if (project.getBasePath() == null) {
+            //we require the project to have a base path we can work with
             return false;
         }
         Boolean naturemarker = project.getUserData(SAKER_BUILD_NATURE_KEY);

@@ -25,7 +25,15 @@ import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.ui.FileSystemEndpointSelector;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
-import javax.swing.*;
+import javax.swing.DefaultComboBoxModel;
+import javax.swing.JButton;
+import javax.swing.JComboBox;
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JTextField;
+import javax.swing.KeyStroke;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.awt.event.KeyEvent;
@@ -167,7 +175,6 @@ public class MountPathDialog extends JDialog {
                 //the root may have an illegal format
             }
         }
-
     }
 
     private void resetEndpointSelector(String endpoint) {
@@ -190,7 +197,17 @@ public class MountPathDialog extends JDialog {
     }
 
     private void showFileChooser(Project project) {
-        String endpointname = endpointSelector.getSelectedEndpointName();
+        showFileChooser(project, this.mountedPathTextField);
+    }
+
+    private void showFileChooser(Project project, TextFieldWithBrowseButton resulttextfield) {
+        showFileChooser(project, resulttextfield, this.contentPane, this.endpointSelector,
+                this.fileSystemEndpointComboBox);
+    }
+
+    public static void showFileChooser(Project project, TextFieldWithBrowseButton resulttextfield,
+            JPanel relativecomponent, FileSystemEndpointSelector endpointselector, JComboBox<String> endpointComboBox) {
+        String endpointname = endpointselector.getSelectedEndpointName();
         if (endpointname == null) {
             //TODO info
             return;
@@ -211,7 +228,7 @@ public class MountPathDialog extends JDialog {
                     projectbasepath = SakerPath.valueOf(basedir.getPath());
 
                     try {
-                        SakerPath currentpath = SakerPath.valueOf(mountedPathTextField.getText());
+                        SakerPath currentpath = SakerPath.valueOf(resulttextfield.getText());
                         if (SakerPath.ROOT_SLASH.equals(currentpath.getRoot())) {
                             currentpath = currentpath.replaceRoot(null);
                         }
@@ -228,7 +245,7 @@ public class MountPathDialog extends JDialog {
                 if (toSelect == null) {
                     //try against the local file system
                     try {
-                        toSelect = LocalFileSystem.getInstance().findFileByPath(mountedPathTextField.getText());
+                        toSelect = LocalFileSystem.getInstance().findFileByPath(resulttextfield.getText());
                     } catch (Exception e) {
                         //XXX display exception?
                     }
@@ -249,16 +266,17 @@ public class MountPathDialog extends JDialog {
                 if (root != null) {
                     chooserdescriptor.setRoots(root);
                 }
-                VirtualFile f = FileChooser.chooseFile(chooserdescriptor, contentPane, project, toSelect);
+                VirtualFile f = FileChooser.chooseFile(chooserdescriptor, relativecomponent, project, toSelect);
                 if (f != null) {
                     SakerPath chosenspath = SakerPath.valueOf(f.getPath());
                     if (projectbasepath == null || !chosenspath.startsWith(projectbasepath)) {
-                        int idx = endpointSelector.selectEndpoint(SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM);
-                        fileSystemEndpointComboBox.setSelectedIndex(idx);
-                        mountedPathTextField.setText(chosenspath.toString());
+                        int idx = endpointselector.selectEndpoint(SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM);
+
+                        endpointComboBox.setSelectedIndex(idx);
+                        resulttextfield.setText(chosenspath.toString());
                     } else {
                         SakerPath relpath = projectbasepath.relativize(chosenspath).replaceRoot(SakerPath.ROOT_SLASH);
-                        mountedPathTextField.setText(relpath.toString());
+                        resulttextfield.setText(relpath.toString());
                     }
                 }
                 break;
@@ -269,13 +287,16 @@ public class MountPathDialog extends JDialog {
                 VirtualFile toSelect = null;
 
                 try {
-                    toSelect = LocalFileSystem.getInstance().findFileByPath(mountedPathTextField.getText());
+                    String path = resulttextfield.getText();
+                    if (!ObjectUtils.isNullOrEmpty(path)) {
+                        toSelect = LocalFileSystem.getInstance().findFileByPath(path);
+                    }
                 } catch (Exception e) {
                     //XXX display exception?
                 }
-                VirtualFile f = FileChooser.chooseFile(chooserdescriptor, contentPane, null, toSelect);
+                VirtualFile f = FileChooser.chooseFile(chooserdescriptor, relativecomponent, null, toSelect);
                 if (f != null) {
-                    mountedPathTextField.setText(f.getPath());
+                    resulttextfield.setText(f.getPath());
                 }
                 break;
             }
@@ -287,8 +308,10 @@ public class MountPathDialog extends JDialog {
     }
 
     private void onOK() {
-        property = new ProviderMountIDEProperty(executionRootTextField.getText(),
-                new MountPathIDEProperty(endpointSelector.getSelectedEndpointName(), mountedPathTextField.getText()));
+        property = new ProviderMountIDEProperty(
+                SakerIDESupportUtils.tryNormalizePathRoot(executionRootTextField.getText()),
+                new MountPathIDEProperty(endpointSelector.getSelectedEndpointName(),
+                        SakerIDESupportUtils.normalizePath(mountedPathTextField.getText())));
         dispose();
     }
 
