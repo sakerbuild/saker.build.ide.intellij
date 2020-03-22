@@ -9,11 +9,16 @@ import com.intellij.openapi.actionSystem.ActionPlaces;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.application.PathManager;
+import com.intellij.openapi.editor.colors.EditorColorsScheme;
+import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.extensions.Extensions;
 import com.intellij.openapi.extensions.ExtensionsArea;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
+import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.vfs.VirtualFileManager;
+import com.intellij.openapi.vfs.VirtualFileSystem;
 import com.intellij.openapi.vfs.newvfs.BulkFileListener;
 import com.intellij.openapi.vfs.newvfs.events.VFileEvent;
 import com.intellij.util.messages.MessageBusConnection;
@@ -47,6 +52,9 @@ public class SakerBuildPlugin {
     private static volatile ISakerBuildPluginImpl pluginImpl;
 
     public static synchronized void setSakerBuildProjectNatureEnabled(Project project, boolean enabled) {
+        if (project.isDisposed()) {
+            return;
+        }
         project.putUserData(SAKER_BUILD_NATURE_KEY, enabled);
         PropertiesComponent propertiescomponent = PropertiesComponent.getInstance(project);
         propertiescomponent.setValue(NATURE_KEY_NAME, Boolean.toString(enabled));
@@ -64,7 +72,7 @@ public class SakerBuildPlugin {
     }
 
     public static boolean isSakerBuildProjectNatureEnabled(Project project) {
-        if (project == null) {
+        if (project == null || project.isDisposed()) {
             return false;
         }
         if (project.getBasePath() == null) {
@@ -158,6 +166,19 @@ public class SakerBuildPlugin {
         }
     }
 
+    public static EditorHighlighter getEditorHighlighter(Project project, VirtualFile file, EditorColorsScheme colors) {
+        System.out.println("BuildScriptEditorHighlighter.getEditorHighlighter " + file);
+        VirtualFileSystem fs = file.getFileSystem();
+        if (!(fs instanceof LocalFileSystem)) {
+            return null;
+        }
+        ISakerBuildProjectImpl sakerproject = getPluginImpl().getOrCreateProject(project);
+        if (!sakerproject.isScriptModellingConfigurationAppliesTo(file.getPath())) {
+            return null;
+        }
+        return sakerproject.getEditorHighlighter(file, colors);
+    }
+
     private static void registerPluginComponents(ClassLoader jarcl) throws Exception {
         ActionManager actionmanager = ActionManager.getInstance();
 
@@ -181,6 +202,11 @@ public class SakerBuildPlugin {
 
         rootarea.registerExtension(implementationPluginDescriptor, applicationConfigurable, "com.intellij");
 
+        Element completioncontributor = new Element("completion.contributor");
+        completioncontributor.setAttribute("implementationClass",
+                "saker.build.ide.intellij.impl.editor.BuildScriptCompletionContributor");
+        completioncontributor.setAttribute("language", BuildScriptLanguage.INSTANCE.getID());
+        rootarea.registerExtension(implementationPluginDescriptor, completioncontributor, "com.intellij");
     }
 
     public static IdeaPluginDescriptor getImplementationPluginDescriptor() {

@@ -105,6 +105,14 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
         });
     }
 
+    public final void addPluginResourceListener(SakerIDEPlugin.PluginResourceListener listener) {
+        sakerPlugin.addPluginResourceListener(listener);
+    }
+
+    public final void removePluginResourceListener(SakerIDEPlugin.PluginResourceListener listener) {
+        sakerPlugin.removePluginResourceListener(listener);
+    }
+
     @Override
     public void close() throws IOException {
         closed = true;

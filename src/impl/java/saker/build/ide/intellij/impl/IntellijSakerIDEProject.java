@@ -8,6 +8,8 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.SelectionModel;
+import com.intellij.openapi.editor.colors.EditorColorsScheme;
+import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.options.Configurable;
@@ -27,6 +29,7 @@ import saker.build.exception.ScriptPositionedExceptionView;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.ide.configuration.IDEConfiguration;
+import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.support.ExceptionDisplayer;
@@ -78,6 +81,7 @@ import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
@@ -188,6 +192,36 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         }
         return LocalFileSystem.getInstance()
                 .findFileByPath(SakerPath.valueOf(project.getBasePath()).resolve(relpath).toString());
+    }
+
+    @Override
+    public boolean isScriptModellingConfigurationAppliesTo(String localfilepath) {
+        SakerPath projectsakerpath = SakerPath.valueOf(getProjectPath());
+        SakerPath scriptsakerpath = SakerPath.valueOf(localfilepath);
+        if (!scriptsakerpath.startsWith(projectsakerpath)) {
+            return false;
+        }
+        SakerPath projectrelativepath = projectsakerpath.relativize(scriptsakerpath);
+        SakerPath execpath = projectPathToExecutionPath(projectrelativepath);
+
+        return isScriptModellingConfigurationAppliesTo(execpath);
+    }
+
+    private boolean isScriptModellingConfigurationAppliesTo(SakerPath execpath) {
+        return SakerIDESupportUtils.isScriptModellingConfigurationAppliesTo(execpath, getIDEProjectProperties());
+    }
+
+    private ConcurrentHashMap<SakerPath, BuildScriptEditorHighlighter> highlighters = new ConcurrentHashMap<>();
+
+    @Override
+    public EditorHighlighter getEditorHighlighter(VirtualFile file, EditorColorsScheme colors) {
+        SakerPath execpath = projectPathToExecutionPath(SakerPath.valueOf(file.getPath()));
+        return highlighters.computeIfAbsent(execpath, ep -> new BuildScriptEditorHighlighter(this, ep, colors));
+//        return new BuildScriptEditorHighlighter(this, execpath, colors);
+    }
+
+    public void disposeHighlighter(SakerPath scriptPath, BuildScriptEditorHighlighter highlighter) {
+        highlighters.remove(scriptPath, highlighter);
     }
 
     private static final String CONSOLE_MARKER_STR_PATTERN = "[ \t]*(\\[(?:.*?)\\])?[ \t]*(((.*?)(:(-?[0-9]+)(:([0-9]*)(-([0-9]+))?)?)?):)?[ ]*([wW]arning|[eE]rror|[iI]nfo|[sS]uccess|[fF]atal [eE]rror):[ ]*(.*)";
@@ -694,6 +728,18 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             displayException(e);
         }
         //TODO ask which one to call and run
+    }
+
+    public final void addProjectResourceListener(SakerIDEProject.ProjectResourceListener listener) {
+        sakerProject.addProjectResourceListener(listener);
+    }
+
+    public final void removeProjectResourceListener(SakerIDEProject.ProjectResourceListener listener) {
+        sakerProject.removeProjectResourceListener(listener);
+    }
+
+    public IntellijSakerIDEPlugin getPlugin() {
+        return plugin;
     }
 
     protected void close() throws IOException {

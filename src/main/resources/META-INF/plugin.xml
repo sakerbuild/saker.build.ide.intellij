@@ -40,6 +40,16 @@
             settings tree.
             -->
         </projectConfigurable>
+        <fileType name="Saker.build script file"
+                  implementationClass="saker.build.ide.intellij.BuildScriptFileType"
+                  fieldName="INSTANCE"
+                  language="SAKER_BUILD_SCRIPT_LANGUAGE"
+                  id="SAKER_BUILD_SCRIPT_FILE_TYPE"/>
+        <fileTypeFactory implementation="saker.build.ide.intellij.BuildScriptFileTypeFactory"/>
+        <lang.parserDefinition implementationClass="saker.build.ide.intellij.BuildScriptParserDefinition"
+                               language="SAKER_BUILD_SCRIPT_LANGUAGE"/>
+        <editorHighlighterProvider filetype="Saker.build script file"
+                                   implementationClass="saker.build.ide.intellij.BuildScriptEditorHighlighterProvider"/>
     </extensions>
 
     <actions>
