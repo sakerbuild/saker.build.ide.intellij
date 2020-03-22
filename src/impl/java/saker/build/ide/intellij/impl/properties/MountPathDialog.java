@@ -14,6 +14,7 @@ import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.impl.ui.DummyDisposable;
 import saker.build.ide.intellij.impl.ui.FormValidator;
@@ -100,8 +101,6 @@ public class MountPathDialog extends JDialog {
             showFileChooser(project);
         });
         //TODO enable button if local
-        mountedPathTextField.setButtonEnabled(false);
-        mountedPathTextField.getButton().setEnabled(false);
 
         pack();
         setMinimumSize(getSize());
@@ -115,54 +114,70 @@ public class MountPathDialog extends JDialog {
         });
 
         validator.add(executionRootTextField, () -> {
-            String text = executionRootTextField.getText();
-            if (text.isEmpty()) {
-                return new ValidationInfo("Please specify an execution root for the mounted path.",
-                        executionRootTextField);
-            }
-            String normalizedroot;
-            try {
-                normalizedroot = SakerPath.normalizeRoot(text);
-            } catch (Exception e) {
-                return new ValidationInfo("Root should have the format: [a-z]+: or be the / root.",
-                        executionRootTextField);
-            }
-            if (existingRoots.contains(text) || existingRoots.contains(normalizedroot)) {
-                return new ValidationInfo("The specified root is already mounted: " + normalizedroot,
-                        executionRootTextField);
-            }
-            return null;
-        }, FormValidator.REQUIRED | FormValidator.START_ON_FOCUS_LOST).add(mountpathtextfield, () -> {
-            String text = mountpathtextfield.getText();
-            SakerPath path;
-            try {
-                path = SakerPath.valueOf(text);
-            } catch (Exception e) {
-                return new ValidationInfo("Invalid path format. (" + e.getMessage() + ")", mountpathtextfield);
-            }
+            return validateExecutionRoot();
+        }, FormValidator.REQUIRED | FormValidator.START_ON_FOCUS_LOST);
+        validator.add(mountpathtextfield, () -> {
+            return validateMountPath(mountpathtextfield);
+        }, FormValidator.REQUIRED | FormValidator.START_ON_FOCUS_LOST);
+    }
 
-            if (SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(endpointSelector.getSelectedEndpointName())) {
-                if (path.isRelative()) {
-                    //ok.
-                    if (!path.isForwardRelative()) {
-                        return new ValidationInfo(
-                                "Project relative mount path should be forward relative. (Shouldn't start with ../)",
-                                mountpathtextfield);
-                    }
-                } else {
-                    if (!SakerPath.ROOT_SLASH.equals(path.getRoot())) {
-                        return new ValidationInfo(
-                                "Project relative mount path should be forward relative or have the /" + " root.",
-                                mountpathtextfield);
-                    }
+    @Nullable
+    private ValidationInfo validateExecutionRoot() {
+        String text = executionRootTextField.getText();
+        if (text.isEmpty()) {
+            return new ValidationInfo("Please specify an execution root for the mounted path.", executionRootTextField);
+        }
+        String normalizedroot;
+        try {
+            normalizedroot = SakerPath.normalizeRoot(text);
+        } catch (Exception e) {
+            return new ValidationInfo("Root should have the format: [a-z]+: or be the / root.", executionRootTextField);
+        }
+        if (existingRoots.contains(text) || existingRoots.contains(normalizedroot)) {
+            return new ValidationInfo("The specified root is already mounted: " + normalizedroot,
+                    executionRootTextField);
+        }
+        return null;
+    }
+
+    @Nullable
+    private ValidationInfo validateMountPath(JTextField mountpathtextfield) {
+        FileSystemEndpointSelector endpointselector = endpointSelector;
+        return validateMountPath(mountpathtextfield, endpointselector);
+    }
+
+    @Nullable
+    private static ValidationInfo validateMountPath(JTextField mountpathtextfield,
+            FileSystemEndpointSelector endpointselector) {
+        String text = mountpathtextfield.getText();
+        SakerPath path;
+        try {
+            path = SakerPath.valueOf(text);
+        } catch (Exception e) {
+            return new ValidationInfo("Invalid path format. (" + e.getMessage() + ")", mountpathtextfield);
+        }
+
+        if (SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE.equals(endpointselector.getSelectedEndpointName())) {
+            if (path.isRelative()) {
+                //ok.
+                if (!path.isForwardRelative()) {
+                    return new ValidationInfo(
+                            "Project relative mount path should be forward relative. (Shouldn't start with ../)",
+                            mountpathtextfield);
                 }
             } else {
-                if (!path.isAbsolute()) {
-                    return new ValidationInfo("Mounted path should be absolute.", mountpathtextfield);
+                if (!SakerPath.ROOT_SLASH.equals(path.getRoot())) {
+                    return new ValidationInfo(
+                            "Project relative mount path should be forward relative or have the / root.",
+                            mountpathtextfield);
                 }
             }
-            return null;
-        }, FormValidator.REQUIRED | FormValidator.START_ON_FOCUS_LOST);
+        } else {
+            if (!path.isAbsolute()) {
+                return new ValidationInfo("Mounted path should be absolute.", mountpathtextfield);
+            }
+        }
+        return null;
     }
 
     public void setExistingRoots(Set<String> existingRoots) {

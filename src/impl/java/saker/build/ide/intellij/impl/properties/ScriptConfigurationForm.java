@@ -5,6 +5,7 @@ import com.intellij.ui.AddEditRemovePanel;
 import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
+import com.intellij.ui.IdeBorderFactory;
 import com.intellij.ui.ToolbarDecorator;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
@@ -41,6 +42,7 @@ import javax.swing.JTabbedPane;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
+import java.awt.BorderLayout;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
@@ -72,6 +74,8 @@ public class ScriptConfigurationForm {
         configTree.setRootVisible(false);
         //TODO add reset default link
         configTree.getEmptyText().clear().appendText("No script configurations defined.");
+
+        ideModellingPanel.setBorder(IdeBorderFactory.createTitledBorder("Modelling exclusions", false));
 
         decorator = ToolbarDecorator.createDecorator(configTree);
         configurationsPanel.add(decorator.disableUpDownActions().setToolbarPosition(ActionToolbarPosition.RIGHT)
@@ -118,11 +122,7 @@ public class ScriptConfigurationForm {
         };
         exclusionsEditPanel.getEmptyText().clear().appendText("No script modelling exclusions defined.");
 
-        modellingExclusionsPanel.add(exclusionsEditPanel,
-                new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
-                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
-                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null,
-                        new Dimension(200, 200), null, 0, false));
+        modellingExclusionsPanel.add(exclusionsEditPanel);
     }
 
     private void addAction(AnActionButton button) {
@@ -249,22 +249,31 @@ public class ScriptConfigurationForm {
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null,
                         new Dimension(200, 200), null, 0, false));
+        final JPanel panel1 = new JPanel();
+        panel1.setLayout(new GridLayoutManager(2, 1, new Insets(5, 5, 5, 5), -1, -1));
+        tabbedPane1.addTab("Configurations", panel1);
+        final JLabel label1 = new JLabel();
+        label1.setText("The following language definitions are applied to the build scripts.");
+        panel1.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         configurationsPanel = new JPanel();
         configurationsPanel.setLayout(new CardLayout(0, 0));
-        tabbedPane1.addTab("Configurations", configurationsPanel);
+        panel1.add(configurationsPanel,
+                new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
+                        0, false));
         ideModellingPanel = new JPanel();
         ideModellingPanel.setLayout(new GridLayoutManager(2, 1, new Insets(5, 5, 5, 5), -1, -1));
         tabbedPane1.addTab("IDE modelling", ideModellingPanel);
-        ideModellingPanel.setBorder(
-                BorderFactory.createTitledBorder(BorderFactory.createEtchedBorder(), "Modelling exclusions"));
-        final JLabel label1 = new JLabel();
-        label1.setText("The build scripts matching the specified wildcards won't be part of the script modelling.");
-        ideModellingPanel.add(label1,
+        final JLabel label2 = new JLabel();
+        label2.setText("The build scripts matching the specified wildcards won't be part of the script modelling.");
+        ideModellingPanel.add(label2,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                         GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
                         false));
         modellingExclusionsPanel = new JPanel();
-        modellingExclusionsPanel.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
+        modellingExclusionsPanel.setLayout(new CardLayout(0, 0));
         ideModellingPanel.add(modellingExclusionsPanel,
                 new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,

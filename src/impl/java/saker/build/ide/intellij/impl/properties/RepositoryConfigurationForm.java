@@ -6,6 +6,7 @@ import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.ToolbarDecorator;
 import com.intellij.ui.treeStructure.Tree;
+import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import saker.build.ide.intellij.impl.properties.wizard.ClassPathTypeChooserWizardStep;
 import saker.build.ide.intellij.impl.properties.wizard.RepositoryServiceEnumeratorSakerWizardPage;
@@ -30,6 +31,7 @@ import saker.build.ide.support.ui.wizard.ServiceEnumeratorRedirectingSakerWizard
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
+import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
@@ -44,6 +46,7 @@ import java.util.Set;
 
 public class RepositoryConfigurationForm {
     private JPanel rootPanel;
+    private JPanel configurationsPanel;
 
     private final TaskRepositoriesConfigurable configurable;
 
@@ -60,7 +63,7 @@ public class RepositoryConfigurationForm {
         configTree.getEmptyText().clear().appendText("No repositories defined.");
 
         decorator = ToolbarDecorator.createDecorator(configTree);
-        rootPanel.add(decorator.disableUpDownActions().setToolbarPosition(ActionToolbarPosition.RIGHT)
+        configurationsPanel.add(decorator.disableUpDownActions().setToolbarPosition(ActionToolbarPosition.RIGHT)
                 .setAddAction(this::addAction).setRemoveAction(this::removeAction).setEditAction(this::editAction)
                 .createPanel());
 
@@ -194,7 +197,18 @@ public class RepositoryConfigurationForm {
      */
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
-        rootPanel.setLayout(new CardLayout(0, 0));
+        rootPanel.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
+        final JLabel label1 = new JLabel();
+        label1.setText("The following repositories are used during the build execution to look up build tasks.");
+        rootPanel.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        configurationsPanel = new JPanel();
+        configurationsPanel.setLayout(new CardLayout(0, 0));
+        rootPanel.add(configurationsPanel,
+                new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
+                        0, false));
     }
 
     /**

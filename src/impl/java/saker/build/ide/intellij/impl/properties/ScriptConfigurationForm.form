@@ -17,13 +17,31 @@
         <properties/>
         <border type="none"/>
         <children>
-          <grid id="fce6d" binding="configurationsPanel" layout-manager="CardLayout" hgap="0" vgap="0">
+          <grid id="8b5c1" layout-manager="GridLayoutManager" row-count="2" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
+            <margin top="5" left="5" bottom="5" right="5"/>
             <constraints>
               <tabbedpane title="Configurations"/>
             </constraints>
             <properties/>
             <border type="none"/>
-            <children/>
+            <children>
+              <component id="ec4a7" class="javax.swing.JLabel">
+                <constraints>
+                  <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties>
+                  <text value="The following language definitions are applied to the build scripts."/>
+                </properties>
+              </component>
+              <grid id="fce6d" binding="configurationsPanel" layout-manager="CardLayout" hgap="0" vgap="0">
+                <constraints>
+                  <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
+                </constraints>
+                <properties/>
+                <border type="none"/>
+                <children/>
+              </grid>
+            </children>
           </grid>
           <grid id="3e27" binding="ideModellingPanel" layout-manager="GridLayoutManager" row-count="2" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
             <margin top="5" left="5" bottom="5" right="5"/>
@@ -31,7 +49,7 @@
               <tabbedpane title="IDE modelling"/>
             </constraints>
             <properties/>
-            <border type="etched" title="Modelling exclusions"/>
+            <border type="none"/>
             <children>
               <component id="fc6e1" class="javax.swing.JLabel">
                 <constraints>
@@ -41,8 +59,7 @@
                   <text value="The build scripts matching the specified wildcards won't be part of the script modelling."/>
                 </properties>
               </component>
-              <grid id="dc5c5" binding="modellingExclusionsPanel" layout-manager="GridLayoutManager" row-count="1" column-count="1" same-size-horizontally="false" same-size-vertically="false" hgap="-1" vgap="-1">
-                <margin top="0" left="0" bottom="0" right="0"/>
+              <grid id="dc5c5" binding="modellingExclusionsPanel" layout-manager="CardLayout" hgap="0" vgap="0">
                 <constraints>
                   <grid row="1" column="0" row-span="1" col-span="1" vsize-policy="3" hsize-policy="3" anchor="0" fill="3" indent="0" use-parent-layout="false"/>
                 </constraints>

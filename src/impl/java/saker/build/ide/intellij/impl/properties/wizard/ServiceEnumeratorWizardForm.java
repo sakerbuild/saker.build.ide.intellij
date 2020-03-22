@@ -67,7 +67,7 @@ public class ServiceEnumeratorWizardForm {
         if (serviceLoaderRadioButton.isSelected()) {
             wizardStep.getWizardPage().setServiceLoader(serviceLoaderTextField.getText());
         } else if (classNameRadioButton.isSelected()) {
-            wizardStep.getWizardPage().setNamedClass(classNameRadioButton.getText());
+            wizardStep.getWizardPage().setNamedClass(classNameTextField.getText());
         } else {
             wizardStep.getWizardPage().unselect();
         }

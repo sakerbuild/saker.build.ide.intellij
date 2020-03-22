@@ -26,6 +26,8 @@ public class ExecutionUserParametersConfigureable implements Configurable {
 
         form = new UserParametersForm();
         form.setUserParameterKind("execution");
+        form.getParametersInfoLabel()
+                .setText("The following user parameters are defined for the build execution.");
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)
