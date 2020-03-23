@@ -13,17 +13,24 @@ import com.intellij.openapi.editor.markup.EffectType;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.ui.JBColor;
+import com.intellij.util.ui.UIUtil;
 import org.apache.commons.io.input.CharSequenceInputStream;
 import org.jetbrains.annotations.NotNull;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.BuildScriptLanguage;
+import saker.build.ide.intellij.IBuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
+import saker.build.ide.intellij.impl.ui.UIUtils;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.runtime.environment.SakerEnvironmentImpl;
+import saker.build.scripting.model.FormattedTextContent;
+import saker.build.scripting.model.PartitionedTextContent;
 import saker.build.scripting.model.ScriptModellingEnvironment;
 import saker.build.scripting.model.ScriptSyntaxModel;
 import saker.build.scripting.model.ScriptToken;
+import saker.build.scripting.model.ScriptTokenInformation;
+import saker.build.scripting.model.TextPartition;
 import saker.build.scripting.model.TextRegionChange;
 import saker.build.scripting.model.TokenStyle;
 import saker.build.thirdparty.saker.util.ObjectUtils;
@@ -43,7 +50,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-public class BuildScriptEditorHighlighter implements EditorHighlighter {
+public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildScriptEditorHighlighter {
     private static final AtomicReferenceFieldUpdater<BuildScriptEditorHighlighter, ModelReference> ARFU_model = AtomicReferenceFieldUpdater
             .newUpdater(BuildScriptEditorHighlighter.class, ModelReference.class, "model");
 
@@ -83,6 +90,144 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter {
             return null;
         }
         return modelref.model;
+    }
+
+    @Override
+    public String getDocumentationAtOffset(int offset) {
+        //TODO use up to date model
+        ScriptSyntaxModel model = getModel();
+        if (model == null) {
+            return null;
+        }
+        ScriptToken token = model.getTokenAtOffset(offset);
+        if (token == null) {
+            return null;
+        }
+        ScriptTokenInformation tokeninfo = model.getTokenInformation(token);
+        if (tokeninfo == null) {
+            return null;
+        }
+        PartitionedTextContent description = tokeninfo.getDescription();
+        return generateDocumentation(description);
+    }
+
+    private static void appendHtmlHeader(StringBuilder contentsb, Color bgcol) {
+        contentsb.append("<!DOCTYPE html><html><head><style>\r\n");
+        contentsb.append("html { font-family: 'Segoe UI',sans-serif; font-style: normal; font-weight: normal; }\r\n");
+        contentsb
+                .append("body, h1, h2, h3, h4, h5, h6, p, table, td, caption, th, ul, ol, dl, li, dd, dt { font-size: 1em; }\r\n");
+        contentsb.append(".ptitle { font-weight: bold; }\r\n");
+        contentsb
+                .append(".ptitle>img { display: inline-block; height: 1.3em; width: auto; margin-right: 0.2em; vertical-align: text-bottom; }\r\n");
+        contentsb.append(".psubtitle { font-weight: normal; font-style: italic; margin-left: 6px; }\r\n");
+        contentsb.append(".pcontent { margin-top: 5px; margin-left: 6px; }\r\n");
+        contentsb.append("hr { opacity: 0.5; }\r\n");
+        contentsb.append("pre { font-family: monospace; }</style></head><body");
+        if (bgcol != null) {
+            contentsb.append(" style=\"background-color: #");
+            contentsb.append(Integer.toHexString(bgcol.getRed() << 16 | bgcol.getGreen() << 8 | bgcol.getBlue()));
+            contentsb.append(";\"");
+        }
+        contentsb.append(">");
+    }
+
+    private static void appendHtmlFooter(StringBuilder contentsb) {
+        contentsb.append("</body></html>");
+    }
+
+    private static String escapeHtml(String text) {
+        return text.replace("<", "&lt;").replace(">", "&gt;");
+    }
+
+    private static void appendFormatted(StringBuilder sectionsb, FormattedTextContent formattedinput) {
+        if (formattedinput == null) {
+            return;
+        }
+        //white-space: pre-line doesn't work in intellij, so we replace \n with <br> in cas of plaintext formats
+        Set<String> formats = formattedinput.getAvailableFormats();
+        if (formats.contains(FormattedTextContent.FORMAT_HTML)) {
+            String formattedtext = formattedinput.getFormattedText(FormattedTextContent.FORMAT_HTML);
+            if (!ObjectUtils.isNullOrEmpty(formattedtext)) {
+                //should not be null, but just in case of client error
+                sectionsb.append("<div class=\"pcontent\">");
+                sectionsb.append(formattedtext);
+                sectionsb.append("</div>");
+                return;
+            }
+        }
+        if (formats.contains(FormattedTextContent.FORMAT_PLAINTEXT)) {
+            String formattedtext = formattedinput.getFormattedText(FormattedTextContent.FORMAT_PLAINTEXT);
+            if (formattedtext != null) {
+                //should not be null, but just in case of client error
+                sectionsb.append("<div class=\"pcontent\">");
+                sectionsb.append(escapeHtml(formattedtext).replace("\n", "<br>"));
+                sectionsb.append("</div>");
+                return;
+            }
+        }
+        for (String f : formats) {
+            String formattedtext = formattedinput.getFormattedText(f);
+            if (ObjectUtils.isNullOrEmpty(formattedtext)) {
+                continue;
+            }
+            //should not be null, but just in case of client error
+            sectionsb.append("<div class=\"pcontent\" style=\"white-space: pre-line;\">");
+            sectionsb.append(escapeHtml(formattedtext).replace("\n", "<br>"));
+            sectionsb.append("</div>");
+            return;
+        }
+    }
+
+    private static void appendSectionHeader(StringBuilder sectionsb, String title, String subtitle, String iconimgsrc) {
+        if (ObjectUtils.isNullOrEmpty(title)) {
+            return;
+        }
+        sectionsb.append("<div class=\"ptitle\">");
+        if (!ObjectUtils.isNullOrEmpty(iconimgsrc)) {
+            sectionsb.append("<img src=\"");
+            sectionsb.append(iconimgsrc);
+            sectionsb.append("\">");
+        }
+        sectionsb.append(escapeHtml(title));
+        sectionsb.append("</div>");
+        if (!ObjectUtils.isNullOrEmpty(subtitle)) {
+            sectionsb.append("<div class=\"psubtitle\">");
+            sectionsb.append(escapeHtml(subtitle));
+            sectionsb.append("</div>");
+        }
+    }
+
+    public static String generateDocumentation(PartitionedTextContent description) {
+        if (description == null) {
+            return null;
+        }
+        Iterable<? extends TextPartition> partitions = description.getPartitions();
+        if (partitions == null) {
+            return null;
+        }
+        StringBuilder sb = new StringBuilder();
+        appendHtmlHeader(sb, null);
+        boolean first = true;
+        for (TextPartition partition : partitions) {
+            if (partition == null) {
+                continue;
+            }
+            String title = partition.getTitle();
+            String subtitle = partition.getSubTitle();
+            FormattedTextContent content = partition.getContent();
+            int len = sb.length();
+            appendSectionHeader(sb, title, subtitle, null);
+            appendFormatted(sb, content);
+            if (sb.length() > len) {
+                if (!first && len > 0) {
+                    sb.insert(len, "<hr/>");
+                }
+                first = false;
+            }
+        }
+        appendHtmlFooter(sb);
+        System.out.println(sb);
+        return sb.toString();
     }
 
     @NotNull

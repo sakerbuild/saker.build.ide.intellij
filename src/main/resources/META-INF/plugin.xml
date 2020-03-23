@@ -50,6 +50,8 @@
                                language="SAKER_BUILD_SCRIPT_LANGUAGE"/>
         <editorHighlighterProvider filetype="Saker.build script file"
                                    implementationClass="saker.build.ide.intellij.BuildScriptEditorHighlighterProvider"/>
+        <lang.documentationProvider implementationClass="saker.build.ide.intellij.BuildScriptDocumentationProvider"
+                                    language="SAKER_BUILD_SCRIPT_LANGUAGE"/>
     </extensions>
 
     <actions>
