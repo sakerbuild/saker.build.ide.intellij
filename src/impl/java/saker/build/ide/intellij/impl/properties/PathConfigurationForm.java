@@ -10,7 +10,6 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
-import saker.build.ide.intellij.impl.ui.DummyDisposable;
 import saker.build.ide.intellij.impl.ui.SakerPropertyPageAddEditRemovePanel;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
@@ -20,7 +19,6 @@ import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.ui.FileSystemEndpointSelector;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
-import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -40,7 +38,7 @@ public class PathConfigurationForm {
     private JPanel tablePanel;
     private JPanel pathsPanel;
 
-    private Disposable myDisposable = new DummyDisposable();
+    private Disposable myDisposable = Disposer.newDisposable();
 
     private Project project;
     private AddEditRemovePanel<ProviderMountIDEProperty> mountsEditPanel;

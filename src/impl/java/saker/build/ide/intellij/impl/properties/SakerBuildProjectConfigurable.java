@@ -11,7 +11,6 @@ import saker.build.ide.support.properties.MountPathIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import java.util.Objects;
 
 public class SakerBuildProjectConfigurable implements Configurable, Configurable.Composite {

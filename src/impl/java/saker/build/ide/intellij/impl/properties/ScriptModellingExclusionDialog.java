@@ -8,7 +8,6 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import saker.build.file.path.WildcardPath;
-import saker.build.ide.intellij.impl.ui.DummyDisposable;
 import saker.build.ide.intellij.impl.ui.FormValidator;
 
 import javax.swing.JButton;
@@ -31,7 +30,7 @@ public class ScriptModellingExclusionDialog extends JDialog {
 
     private String exclusionWildcard;
 
-    private Disposable myDisposable = new DummyDisposable();
+    private Disposable myDisposable = Disposer.newDisposable();
 
     public ScriptModellingExclusionDialog(String title, JComponent relative) {
         exclusionTextField.getEmptyText().clear().appendText("Wildcard pattern");

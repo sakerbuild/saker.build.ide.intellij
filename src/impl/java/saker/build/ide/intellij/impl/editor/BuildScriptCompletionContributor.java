@@ -6,7 +6,6 @@ import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.codeInsight.completion.InsertHandler;
 import com.intellij.codeInsight.completion.InsertionContext;
-import com.intellij.codeInsight.lookup.Lookup;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.openapi.editor.Editor;
@@ -116,11 +115,6 @@ public class BuildScriptCompletionContributor extends CompletionContributor {
         super.beforeCompletion(context);
         //https://intellij-support.jetbrains.com/hc/en-us/community/posts/206752355-The-dreaded-IntellijIdeaRulezzz-string
         context.setDummyIdentifier("");
-        Editor editor = context.getEditor();
-        if (editor instanceof EditorEx) {
-            EditorHighlighter highlighter = ((EditorEx) editor).getHighlighter();
-            System.out.println("BuildScriptCompletionContributor.beforeCompletion " + highlighter);
-        }
     }
 
 }

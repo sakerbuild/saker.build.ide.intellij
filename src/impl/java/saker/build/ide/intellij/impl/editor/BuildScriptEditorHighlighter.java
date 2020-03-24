@@ -1,8 +1,26 @@
 package saker.build.ide.intellij.impl.editor;
 
+import com.intellij.ide.projectView.PresentationData;
+import com.intellij.ide.structureView.FileEditorPositionListener;
+import com.intellij.ide.structureView.ModelListener;
+import com.intellij.ide.structureView.StructureView;
+import com.intellij.ide.structureView.StructureViewBuilder;
+import com.intellij.ide.structureView.StructureViewModel;
+import com.intellij.ide.structureView.StructureViewTreeElement;
+import com.intellij.ide.structureView.TreeBasedStructureViewBuilder;
+import com.intellij.ide.util.treeView.smartTree.Filter;
+import com.intellij.ide.util.treeView.smartTree.Grouper;
+import com.intellij.ide.util.treeView.smartTree.Sorter;
+import com.intellij.ide.util.treeView.smartTree.TreeElement;
+import com.intellij.navigation.ItemPresentation;
+import com.intellij.openapi.Disposable;
 import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.EditorFactory;
+import com.intellij.openapi.editor.ScrollType;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
+import com.intellij.openapi.editor.event.CaretEvent;
+import com.intellij.openapi.editor.event.CaretListener;
 import com.intellij.openapi.editor.event.DocumentEvent;
 import com.intellij.openapi.editor.event.EditorFactoryEvent;
 import com.intellij.openapi.editor.event.EditorFactoryListener;
@@ -11,25 +29,30 @@ import com.intellij.openapi.editor.highlighter.HighlighterClient;
 import com.intellij.openapi.editor.highlighter.HighlighterIterator;
 import com.intellij.openapi.editor.markup.EffectType;
 import com.intellij.openapi.editor.markup.TextAttributes;
+import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.util.Disposer;
+import com.intellij.psi.PsiFile;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.ui.JBColor;
-import com.intellij.util.ui.UIUtil;
+import com.intellij.util.containers.ContainerUtil;
 import org.apache.commons.io.input.CharSequenceInputStream;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.BuildScriptLanguage;
 import saker.build.ide.intellij.IBuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
-import saker.build.ide.intellij.impl.ui.UIUtils;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.runtime.environment.SakerEnvironmentImpl;
 import saker.build.scripting.model.FormattedTextContent;
 import saker.build.scripting.model.PartitionedTextContent;
 import saker.build.scripting.model.ScriptModellingEnvironment;
+import saker.build.scripting.model.ScriptStructureOutline;
 import saker.build.scripting.model.ScriptSyntaxModel;
 import saker.build.scripting.model.ScriptToken;
 import saker.build.scripting.model.ScriptTokenInformation;
+import saker.build.scripting.model.StructureOutlineEntry;
 import saker.build.scripting.model.TextPartition;
 import saker.build.scripting.model.TextRegionChange;
 import saker.build.scripting.model.TokenStyle;
@@ -41,6 +64,7 @@ import java.awt.Color;
 import java.awt.Font;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
@@ -77,6 +101,21 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     private ConcurrentHashMap<TokenStyle, TextAttributes> tokenStyleAttributes = new ConcurrentHashMap<>();
 
+    private Collection<ModelUpdateListener> modelUpdateListeners = ContainerUtil.createLockFreeCopyOnWriteList();
+
+    private final StructureViewBuilder structureViewBuilder = new TreeBasedStructureViewBuilder() {
+        @NotNull
+        @Override
+        public StructureViewModel createStructureViewModel(@Nullable Editor editor) {
+            return new BuildScriptStructureViewModel(editor);
+        }
+
+        @Override
+        public boolean isRootNodeShown() {
+            return false;
+        }
+    };
+
     public BuildScriptEditorHighlighter(IntellijSakerIDEProject project, SakerPath scriptpath,
             EditorColorsScheme colors) {
         this.project = project;
@@ -90,6 +129,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             return null;
         }
         return modelref.model;
+    }
+
+    @Override
+    public StructureView createStructureView(PsiFile psiFile, FileEditor fileEditor) {
+        return structureViewBuilder.createStructureView(fileEditor, project.getProject());
     }
 
     @Override
@@ -136,7 +180,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     }
 
     private static String escapeHtml(String text) {
-        return text.replace("<", "&lt;").replace(">", "&gt;");
+        return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;");
     }
 
     private static void appendFormatted(StringBuilder sectionsb, FormattedTextContent formattedinput) {
@@ -171,7 +215,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                 continue;
             }
             //should not be null, but just in case of client error
-            sectionsb.append("<div class=\"pcontent\" style=\"white-space: pre-line;\">");
+            sectionsb.append("<div class=\"pcontent\">");
             sectionsb.append(escapeHtml(formattedtext).replace("\n", "<br>"));
             sectionsb.append("</div>");
             return;
@@ -257,6 +301,8 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                             model.updateModel(modelref.regionChanges, inputsupplier);
                         }
                         modelref.regionChanges.clear();
+
+                        callModelListeners(model);
                     }
                 }
                 Map<String, Set<? extends TokenStyle>> styles = model.getTokenStyles();
@@ -348,6 +394,16 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         TextAttributes textattrs = new TextAttributes();
         int myTextLength = input.length();
         return new EmptyFullTextHighlighterIterator(startOffset, textattrs, myTextLength);
+    }
+
+    private void callModelListeners(ScriptSyntaxModel model) {
+        for (ModelUpdateListener l : modelUpdateListeners) {
+            try {
+                l.modelUpdated(model);
+            } catch (Exception e) {
+                project.displayException(e);
+            }
+        }
     }
 
     private TextAttributes getTokenStyleAttributes(TokenStyle style) {
@@ -507,11 +563,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         if (disposed) {
             return;
         }
-        if (model != null) {
-            //model already inited
-            return;
-        }
         synchronized (this) {
+            if (model != null) {
+                //model already inited
+                return;
+            }
             ScriptModellingEnvironment scriptingenv = project.getScriptingEnvironment();
             uninstallListenerLocked();
 
@@ -519,7 +575,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
             if (scriptingenv != null) {
                 disposeModelLocked();
-                model = new ModelReference(scriptingenv.getModel(scriptFileExecutionPath));
+                ScriptSyntaxModel scriptmodel = scriptingenv.getModel(scriptFileExecutionPath);
+                if (scriptmodel != null) {
+                    this.model = new ModelReference(scriptmodel);
+                    callModelListeners(scriptmodel);
+                }
             }
         }
     }
@@ -535,6 +595,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         ModelReference modelref = ARFU_model.getAndSet(this, null);
         if (modelref != null) {
             modelref.invalidateModel();
+            callModelListeners(null);
         }
     }
 
@@ -672,16 +733,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
     }
 
-    private static class ModelState {
-        private String text;
-        private List<TextRegionChange> events;
-
-        public ModelState(String text, List<TextRegionChange> events) {
-            this.text = text;
-            this.events = events;
-        }
-    }
-
     private static class ModelReference {
         protected final ScriptSyntaxModel model;
         protected String text;
@@ -698,5 +749,280 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             regionChanges.clear();
             text = null;
         }
+    }
+
+    private static final Grouper[] EMPTY_GROUPER_ARRAY = new Grouper[0];
+    private static final Sorter[] EMPTY_SORTER_ARRAY = new Sorter[0];
+    private static final Filter[] EMPTY_FILTER_ARRAY = new Filter[0];
+    private static final OutlineEntryElement[] EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY = new OutlineEntryElement[0];
+
+    private class BuildScriptStructureViewModel implements StructureViewModel, StructureViewModel.ElementInfoProvider, ModelUpdateListener {
+        private final Editor myEditor;
+        private final List<FileEditorPositionListener> myListeners = ContainerUtil.createLockFreeCopyOnWriteList();
+        private final List<ModelListener> myModelListeners = ContainerUtil.createLockFreeCopyOnWriteList();
+        private final Disposable myEditorCaretListenerDisposable = Disposer.newDisposable();
+        private final CaretListener myEditorCaretListener = new CaretListener() {
+            @Override
+            public void caretPositionChanged(@NotNull CaretEvent e) {
+                if (e.getEditor().equals(myEditor)) {
+                    for (FileEditorPositionListener listener : myListeners) {
+                        listener.onCurrentElementChanged();
+                    }
+                }
+            }
+        };
+
+        private OutlineRootElement rootNode;
+
+        public BuildScriptStructureViewModel(Editor editor) {
+            this.myEditor = editor;
+            this.myEditor.getCaretModel().addCaretListener(myEditorCaretListener, myEditorCaretListenerDisposable);
+            modelUpdateListeners.add(this);
+            rootNode = new OutlineRootElement(editor);
+        }
+
+        @Nullable
+        @Override
+        public Object getCurrentEditorElement() {
+            int offset = myEditor.getCaretModel().getOffset();
+            return rootNode.findNodeForOffset(offset);
+        }
+
+        @Override
+        public void addEditorPositionListener(@NotNull FileEditorPositionListener listener) {
+            myListeners.add(listener);
+        }
+
+        @Override
+        public void removeEditorPositionListener(@NotNull FileEditorPositionListener listener) {
+            myListeners.remove(listener);
+        }
+
+        @Override
+        public void addModelListener(@NotNull ModelListener modelListener) {
+            myModelListeners.add(modelListener);
+        }
+
+        @Override
+        public void removeModelListener(@NotNull ModelListener modelListener) {
+            myModelListeners.remove(modelListener);
+        }
+
+        @NotNull
+        @Override
+        public OutlineRootElement getRoot() {
+            return rootNode;
+        }
+
+        @NotNull
+        @Override
+        public Grouper[] getGroupers() {
+            return EMPTY_GROUPER_ARRAY;
+        }
+
+        @NotNull
+        @Override
+        public Sorter[] getSorters() {
+            return EMPTY_SORTER_ARRAY;
+        }
+
+        @NotNull
+        @Override
+        public Filter[] getFilters() {
+            return EMPTY_FILTER_ARRAY;
+        }
+
+        @Override
+        public void dispose() {
+            Disposer.dispose(myEditorCaretListenerDisposable);
+            myListeners.clear();
+            myModelListeners.clear();
+            modelUpdateListeners.remove(this);
+        }
+
+        public void fireModelUpdate() {
+            for (ModelListener listener : myModelListeners) {
+                listener.onModelChanged();
+            }
+        }
+
+        @Override
+        public boolean shouldEnterElement(Object element) {
+            return false;
+        }
+
+        @Override
+        public boolean isAlwaysShowsPlus(StructureViewTreeElement element) {
+            return false;
+        }
+
+        @Override
+        public boolean isAlwaysLeaf(StructureViewTreeElement element) {
+            return false;
+        }
+
+        @Override
+        public void modelUpdated(ScriptSyntaxModel model) {
+            rootNode.modelUpdated(model);
+            fireModelUpdate();
+        }
+    }
+
+    private static OutlineEntryElement[] createOutlineEntries(List<? extends StructureOutlineEntry> roots,
+            Editor editor) {
+        if (roots == null) {
+            return EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY;
+        }
+        List<OutlineEntryElement> entries = new ArrayList<>();
+        for (StructureOutlineEntry entry : roots) {
+            if (entry == null) {
+                continue;
+            }
+            entries.add(new OutlineEntryElement(entry, editor));
+        }
+
+        return entries.toArray(EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY);
+    }
+
+    private static class OutlineEntryElement implements StructureViewTreeElement {
+        private StructureOutlineEntry entry;
+        private final Editor editor;
+        private OutlineEntryElement[] children;
+
+        public OutlineEntryElement(StructureOutlineEntry entry, Editor editor) {
+            this.entry = entry;
+            this.editor = editor;
+            this.children = createOutlineEntries(entry.getChildren(), editor);
+        }
+
+        @Override
+        public Object getValue() {
+            return entry;
+        }
+
+        @NotNull
+        @Override
+        public ItemPresentation getPresentation() {
+            PresentationData presentation = new PresentationData(entry.getLabel(), entry.getType(), null, null);
+            return presentation;
+        }
+
+        @NotNull
+        @Override
+        public TreeElement[] getChildren() {
+            return children;
+        }
+
+        @Override
+        public void navigate(boolean requestFocus) {
+            int offset = entry.getSelectionOffset();
+            int selectionlen = entry.getSelectionLength();
+            editor.getSelectionModel().setSelection(offset, offset + selectionlen);
+            editor.getCaretModel().moveToOffset(offset + selectionlen);
+            editor.getScrollingModel().scrollToCaret(ScrollType.MAKE_VISIBLE);
+
+            if (requestFocus) {
+                editor.getContentComponent().requestFocus();
+            }
+        }
+
+        @Override
+        public boolean canNavigate() {
+            return false;
+        }
+
+        @Override
+        public boolean canNavigateToSource() {
+            return true;
+        }
+
+        public boolean isInside(int offset) {
+            int entryoffset = entry.getOffset();
+            return offset >= entryoffset && offset < entryoffset + entry.getLength();
+        }
+
+        public Object findNodeForOffset(int offset) {
+            if (!isInside(offset)) {
+                return null;
+            }
+            for (OutlineEntryElement node : children) {
+                Object child = node.findNodeForOffset(offset);
+                if (child != null) {
+                    return child;
+                }
+            }
+            return this;
+        }
+    }
+
+    private class OutlineRootElement implements StructureViewTreeElement {
+        private OutlineEntryElement[] children = EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY;
+        private Editor editor;
+
+        public OutlineRootElement(Editor editor) {
+            this.editor = editor;
+            ScriptSyntaxModel model = getModel();
+            if (model != null) {
+                setOutline(model.getStructureOutline());
+            }
+        }
+
+        public void setOutline(ScriptStructureOutline outline) {
+            if (outline == null) {
+                this.children = EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY;
+            } else {
+                this.children = createOutlineEntries(outline.getRootEntries(), editor);
+            }
+        }
+
+        @Override
+        public Object getValue() {
+            return "root";
+        }
+
+        @NotNull
+        @Override
+        public ItemPresentation getPresentation() {
+            //is not shown
+            return new PresentationData("root", null, null, null);
+        }
+
+        @NotNull
+        @Override
+        public TreeElement[] getChildren() {
+            return children;
+        }
+
+        @Override
+        public void navigate(boolean requestFocus) {
+        }
+
+        @Override
+        public boolean canNavigate() {
+            return false;
+        }
+
+        @Override
+        public boolean canNavigateToSource() {
+            return false;
+        }
+
+        public void modelUpdated(ScriptSyntaxModel model) {
+            setOutline(model == null ? null : model.getStructureOutline());
+        }
+
+        public Object findNodeForOffset(int offset) {
+            for (OutlineEntryElement node : children) {
+                Object child = node.findNodeForOffset(offset);
+                if (child != null) {
+                    return child;
+                }
+            }
+            return null;
+        }
+    }
+
+    private interface ModelUpdateListener {
+        public void modelUpdated(ScriptSyntaxModel model);
     }
 }

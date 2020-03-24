@@ -9,7 +9,6 @@ import saker.build.ide.support.properties.RepositoryIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import java.util.Objects;
 import java.util.Set;
 

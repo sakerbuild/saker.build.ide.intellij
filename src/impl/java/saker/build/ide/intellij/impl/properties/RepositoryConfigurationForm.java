@@ -12,16 +12,13 @@ import saker.build.ide.intellij.impl.properties.wizard.ClassPathTypeChooserWizar
 import saker.build.ide.intellij.impl.properties.wizard.RepositoryServiceEnumeratorSakerWizardPage;
 import saker.build.ide.intellij.impl.properties.wizard.SakerWizardDialog;
 import saker.build.ide.intellij.impl.properties.wizard.SakerWizardModel;
-import saker.build.ide.intellij.impl.properties.wizard.ScriptServiceEnumeratorSakerWizardPage;
 import saker.build.ide.intellij.impl.ui.PropertyAttributeTreeNode;
 import saker.build.ide.intellij.impl.ui.PropertyTreeNode;
 import saker.build.ide.intellij.impl.ui.RootTreeNode;
 import saker.build.ide.support.SakerIDESupportUtils;
-import saker.build.ide.support.properties.ClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.RepositoryIDEProperty;
-import saker.build.ide.support.properties.ScriptConfigurationIDEProperty;
 import saker.build.ide.support.ui.wizard.AbstractSakerWizardPage;
 import saker.build.ide.support.ui.wizard.ClassPathTypeChooserSakerWizardPage;
 import saker.build.ide.support.ui.wizard.RepositoryIdentifierSakerWizardPage;

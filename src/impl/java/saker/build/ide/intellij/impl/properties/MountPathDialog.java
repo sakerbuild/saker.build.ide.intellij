@@ -16,7 +16,6 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
-import saker.build.ide.intellij.impl.ui.DummyDisposable;
 import saker.build.ide.intellij.impl.ui.FormValidator;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
@@ -57,7 +56,7 @@ public class MountPathDialog extends JDialog {
     private FileSystemEndpointSelector endpointSelector;
     private Iterable<? extends DaemonConnectionIDEProperty> connections;
 
-    private Disposable myDisposable = new DummyDisposable();
+    private Disposable myDisposable = Disposer.newDisposable();
 
     private Set<String> existingRoots = Collections.emptySet();
 

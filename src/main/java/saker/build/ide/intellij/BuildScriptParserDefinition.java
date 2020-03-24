@@ -1,6 +1,5 @@
 package saker.build.ide.intellij;
 
-import com.intellij.extapi.psi.ASTDelegatePsiElement;
 import com.intellij.extapi.psi.ASTWrapperPsiElement;
 import com.intellij.extapi.psi.PsiFileBase;
 import com.intellij.lang.ASTNode;
@@ -21,7 +20,6 @@ import com.intellij.psi.impl.PsiElementBase;
 import com.intellij.psi.tree.IElementType;
 import com.intellij.psi.tree.IFileElementType;
 import com.intellij.psi.tree.TokenSet;
-import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -82,11 +80,11 @@ public class BuildScriptParserDefinition implements ParserDefinition {
 
     @Override
     public PsiFile createFile(FileViewProvider viewProvider) {
-        return new SimpleFile(viewProvider);
+        return new BuildScriptPsiFile(viewProvider);
     }
 
-    private static class SimpleFile extends PsiFileBase {
-        public SimpleFile(@NotNull FileViewProvider viewProvider) {
+    public static class BuildScriptPsiFile extends PsiFileBase {
+        public BuildScriptPsiFile(@NotNull FileViewProvider viewProvider) {
             super(viewProvider, BuildScriptLanguage.INSTANCE);
         }
 

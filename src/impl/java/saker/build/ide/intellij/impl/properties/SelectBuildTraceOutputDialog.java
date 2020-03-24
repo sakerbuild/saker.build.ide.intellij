@@ -9,13 +9,11 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import saker.build.file.path.SakerPath;
-import saker.build.ide.intellij.impl.ui.DummyDisposable;
 import saker.build.ide.intellij.impl.ui.FormValidator;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.MountPathIDEProperty;
-import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.ui.FileSystemEndpointSelector;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
@@ -47,7 +45,7 @@ public class SelectBuildTraceOutputDialog extends JDialog {
     private FileSystemEndpointSelector endpointSelector;
     private Iterable<? extends DaemonConnectionIDEProperty> connections;
 
-    private Disposable myDisposable = new DummyDisposable();
+    private Disposable myDisposable = Disposer.newDisposable();
     private MountPathIDEProperty property;
 
     public SelectBuildTraceOutputDialog(String title, JComponent relative, Project project,

@@ -1,6 +1,5 @@
 package saker.build.ide.intellij;
 
-import com.intellij.lang.documentation.DocumentationProvider;
 import com.intellij.lang.documentation.DocumentationProviderEx;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.EditorEx;
