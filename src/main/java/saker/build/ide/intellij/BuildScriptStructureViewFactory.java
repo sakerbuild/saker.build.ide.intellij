@@ -1,5 +1,6 @@
 package saker.build.ide.intellij;
 
+import com.intellij.ide.projectView.PresentationData;
 import com.intellij.ide.structureView.StructureView;
 import com.intellij.ide.structureView.StructureViewBuilder;
 import com.intellij.ide.structureView.StructureViewModel;
@@ -20,7 +21,6 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -55,6 +55,41 @@ public class BuildScriptStructureViewFactory implements PsiStructureViewFactory 
     }
 
     private static class EmptyStructureViewModel extends TextEditorBasedStructureViewModel {
+        private static final PresentationData EMPTY_PRESENTATION_DATA = new PresentationData("Empty", null, null, null);
+
+        private final StructureViewTreeElement rootElement = new StructureViewTreeElement() {
+            @Override
+            public Object getValue() {
+                return getPsiFile();
+            }
+
+            @NotNull
+            @Override
+            public ItemPresentation getPresentation() {
+                return EMPTY_PRESENTATION_DATA;
+            }
+
+            @NotNull
+            @Override
+            public TreeElement[] getChildren() {
+                return new TreeElement[0];
+            }
+
+            @Override
+            public void navigate(boolean requestFocus) {
+            }
+
+            @Override
+            public boolean canNavigate() {
+                return false;
+            }
+
+            @Override
+            public boolean canNavigateToSource() {
+                return false;
+            }
+        };
+
         public EmptyStructureViewModel(@NotNull PsiFile psiFile) {
             super(psiFile);
         }
@@ -70,56 +105,7 @@ public class BuildScriptStructureViewFactory implements PsiStructureViewFactory 
         @NotNull
         @Override
         public StructureViewTreeElement getRoot() {
-            return new StructureViewTreeElement() {
-                @Override
-                public Object getValue() {
-                    return getPsiFile();
-                }
-
-                @NotNull
-                @Override
-                public ItemPresentation getPresentation() {
-                    return new ItemPresentation() {
-                        @Nullable
-                        @Override
-                        public String getPresentableText() {
-                            return "Empty";
-                        }
-
-                        @Nullable
-                        @Override
-                        public String getLocationString() {
-                            return null;
-                        }
-
-                        @Nullable
-                        @Override
-                        public Icon getIcon(boolean unused) {
-                            return null;
-                        }
-                    };
-                }
-
-                @NotNull
-                @Override
-                public TreeElement[] getChildren() {
-                    return new TreeElement[0];
-                }
-
-                @Override
-                public void navigate(boolean requestFocus) {
-                }
-
-                @Override
-                public boolean canNavigate() {
-                    return false;
-                }
-
-                @Override
-                public boolean canNavigateToSource() {
-                    return false;
-                }
-            };
+            return rootElement;
         }
     }
 

@@ -7,12 +7,15 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import org.jetbrains.annotations.NotNull;
 import saker.build.ide.support.properties.NestRepositoryClassPathLocationIDEProperty;
+import saker.build.ide.support.ui.wizard.NestRepositoryVersionSakerWizardPage;
 import saker.build.runtime.params.NestRepositoryClassPathLocation;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.DocumentEvent;
+import java.awt.Dimension;
 import java.awt.Insets;
 
 public class NestRepositoryVersionWizardForm {
@@ -24,6 +27,8 @@ public class NestRepositoryVersionWizardForm {
 
     public NestRepositoryVersionWizardForm(NestRepositoryVersionWizardStep wizardstep) {
         wizardStep = wizardstep;
+        NestRepositoryVersionSakerWizardPage wizardpage = wizardstep.getWizardPage();
+        String version = ObjectUtils.nullDefault(wizardpage.getVersion(), "");
         versionTextField.getEmptyText().clear().appendText("Version number");
 
         infoLabel.setText(
@@ -35,6 +40,7 @@ public class NestRepositoryVersionWizardForm {
                 updateWizardStep();
             }
         });
+        versionTextField.setText(version);
         updateWizardStep();
     }
 
@@ -77,6 +83,7 @@ public class NestRepositoryVersionWizardForm {
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(3, 2, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setMinimumSize(new Dimension(400, 400));
         final JLabel label1 = new JLabel();
         label1.setText("Nest repository version:");
         rootPanel.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
@@ -103,4 +110,5 @@ public class NestRepositoryVersionWizardForm {
     public JComponent $$$getRootComponent$$$() {
         return rootPanel;
     }
+
 }

@@ -6,11 +6,14 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import org.jetbrains.annotations.NotNull;
+import saker.build.ide.support.ui.wizard.RepositoryIdentifierSakerWizardPage;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.DocumentEvent;
+import java.awt.Dimension;
 import java.awt.Insets;
 
 public class RepositoryIdentifierWizardForm {
@@ -21,6 +24,9 @@ public class RepositoryIdentifierWizardForm {
 
     public RepositoryIdentifierWizardForm(RepositoryIdentifierWizardStep wizardstep) {
         wizardStep = wizardstep;
+        RepositoryIdentifierSakerWizardPage wizardpage = wizardstep.getWizardPage();
+        String identifier = ObjectUtils.nullDefault(wizardpage.getIdentifier(), "");
+
         identifierTextField.getEmptyText().clear().appendText("Repository ID");
 
         identifierTextField.getDocument().addDocumentListener(new DocumentAdapter() {
@@ -29,6 +35,7 @@ public class RepositoryIdentifierWizardForm {
                 updateWizardStep();
             }
         });
+        identifierTextField.setText(identifier);
         updateWizardStep();
     }
 
@@ -67,6 +74,7 @@ public class RepositoryIdentifierWizardForm {
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(2, 2, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setMinimumSize(new Dimension(400, 400));
         final JLabel label1 = new JLabel();
         label1.setText("Repository Identifier:");
         rootPanel.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
@@ -89,4 +97,5 @@ public class RepositoryIdentifierWizardForm {
     public JComponent $$$getRootComponent$$$() {
         return rootPanel;
     }
+
 }

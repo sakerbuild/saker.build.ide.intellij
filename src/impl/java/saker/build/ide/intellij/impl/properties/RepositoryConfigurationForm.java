@@ -8,10 +8,12 @@ import com.intellij.ui.ToolbarDecorator;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
-import saker.build.ide.intellij.impl.properties.wizard.ClassPathTypeChooserWizardStep;
-import saker.build.ide.intellij.impl.properties.wizard.RepositoryServiceEnumeratorSakerWizardPage;
+import saker.build.ide.intellij.impl.properties.wizard.ClassPathTypeChooserWizardForm;
 import saker.build.ide.intellij.impl.properties.wizard.SakerWizardDialog;
 import saker.build.ide.intellij.impl.properties.wizard.SakerWizardModel;
+import saker.build.ide.intellij.impl.properties.wizard.SakerWizardPageWizardStep;
+import saker.build.ide.intellij.impl.properties.wizard.ServiceEnumeratorWizardForm;
+import saker.build.ide.intellij.impl.properties.wizard.WizardStepFactory;
 import saker.build.ide.intellij.impl.ui.PropertyAttributeTreeNode;
 import saker.build.ide.intellij.impl.ui.PropertyTreeNode;
 import saker.build.ide.intellij.impl.ui.RootTreeNode;
@@ -19,12 +21,9 @@ import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.RepositoryIDEProperty;
-import saker.build.ide.support.ui.wizard.AbstractSakerWizardPage;
-import saker.build.ide.support.ui.wizard.ClassPathTypeChooserSakerWizardPage;
-import saker.build.ide.support.ui.wizard.RepositoryIdentifierSakerWizardPage;
-import saker.build.ide.support.ui.wizard.SakerWizardManager;
+import saker.build.ide.support.ui.wizard.BaseSakerWizardManager;
 import saker.build.ide.support.ui.wizard.SakerWizardPage;
-import saker.build.ide.support.ui.wizard.ServiceEnumeratorRedirectingSakerWizardPage;
+import saker.build.runtime.repository.SakerRepositoryFactory;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
@@ -100,36 +99,53 @@ public class RepositoryConfigurationForm {
         return result;
     }
 
-    private void addAction(AnActionButton anActionButton) {
-        //TODO add
-        SakerWizardModel model = new SakerWizardModel("New Repository Configuration",
+    private RepositoryIDEProperty showWizard(RepositoryIDEProperty editproperty, String... editinitialconfigids) {
+        SakerWizardModel model = new SakerWizardModel(
+                editproperty == null ? "New Repository Configuration" : "Edit Repository Configuration",
                 configurable.getParent().getCurrentProjectProperties(),
                 configurable.getParent().getProject().getProject());
-        ClassPathTypeChooserSakerWizardPage cppage = model.getWizardPage(ClassPathTypeChooserSakerWizardPage.class);
-        ServiceEnumeratorRedirectingSakerWizardPage serviceenumeratorpage = model
-                .getWizardPage(RepositoryServiceEnumeratorRedirectingSakerWizardPage.class);
-        cppage.setNextPage(serviceenumeratorpage);
-        serviceenumeratorpage.setNextPage(model.getWizardPage(RepositoryIdentifierSakerWizardPage.class));
 
-        ClassPathTypeChooserWizardStep cpwizardstep = new ClassPathTypeChooserWizardStep(model, cppage);
-        cpwizardstep.setClassPathTypes(true, false);
+        BaseSakerWizardManager<SakerWizardPage> wizardmanager = model.getWizardManager();
+        wizardmanager
+                .setConfiguration(ClassPathTypeChooserWizardForm.WIZARD_CONFIGURATION_WITH_REPOSITORY_CLASSPATH, true);
+        wizardmanager
+                .setConfiguration(ServiceEnumeratorWizardForm.WIZARD_CONFIGURATION_DEFAULT_SERVICE_LOADER_CLASS_NAME,
+                        SakerRepositoryFactory.class.getName());
 
-        model.add(cpwizardstep);
+        if (editproperty != null) {
+            SakerIDESupportUtils.editRepositoryConfigurationWithWizardManager(wizardmanager, editproperty);
+        }
+
+        SakerWizardPage startwizardpage = SakerIDESupportUtils.createRepositoryConfigurationWizardSteps(wizardmanager);
+        SakerWizardPage initialpage = null;
+        if (editinitialconfigids != null) {
+            initialpage = SakerIDESupportUtils
+                    .findEditorInitialPageWithPriorities(startwizardpage, editinitialconfigids);
+        }
+
+        SakerWizardPageWizardStep<?> startstep = WizardStepFactory.create(model, startwizardpage, null);
+        model.add(startstep);
+        model.navigateToWizardPageOrEnd(initialpage);
 
         SakerWizardDialog dialog = new SakerWizardDialog(rootPanel, true, model);
-        model.setDialog(dialog);
-        dialog.setModal(true);
 
         if (dialog.showAndGet()) {
             try {
-                RepositoryIDEProperty property = (RepositoryIDEProperty) ObjectUtils.getOptional(cppage.finishWizard());
-                RepositoryPropertyTreeNode node = new RepositoryPropertyTreeNode(rootTreeNode);
-                node.setProperty(property);
-                int idx = rootTreeNode.add(node);
-                ((DefaultTreeModel) configTree.getModel()).nodesWereInserted(rootTreeNode, new int[] { idx });
+                return (RepositoryIDEProperty) ObjectUtils.getOptional(startwizardpage.finishWizard(null));
             } catch (Exception e) {
-                e.printStackTrace();
+                configurable.getParent().getProject().displayException(e);
             }
+        }
+        return null;
+    }
+
+    private void addAction(AnActionButton anActionButton) {
+        RepositoryIDEProperty property = showWizard(null);
+        if (property != null) {
+            RepositoryPropertyTreeNode node = new RepositoryPropertyTreeNode(rootTreeNode);
+            node.setProperty(property);
+            int idx = rootTreeNode.add(node);
+            ((DefaultTreeModel) configTree.getModel()).nodesWereInserted(rootTreeNode, new int[] { idx });
         }
     }
 
@@ -165,13 +181,27 @@ public class RepositoryConfigurationForm {
     private void performEditAction() {
         Object selection = configTree.getLastSelectedPathComponent();
         RepositoryPropertyTreeNode propertynode;
+        String[] editinitialconfigid = null;
         if (selection instanceof RepositoryPropertyTreeNode) {
             propertynode = (RepositoryPropertyTreeNode) selection;
+        } else if (selection instanceof PropertyAttributeTreeNode) {
+            propertynode = (RepositoryPropertyTreeNode) ((PropertyAttributeTreeNode) selection).getParent();
+            Object userdata = ((PropertyAttributeTreeNode) selection).getUserData();
+            if (userdata instanceof String[]) {
+                editinitialconfigid = (String[]) userdata;
+            } else if (userdata instanceof String) {
+                editinitialconfigid = new String[] { (String) userdata };
+            }
         } else {
             return;
         }
         RepositoryIDEProperty editedproperty = propertynode.getProperty();
-        //TODO edit
+        RepositoryIDEProperty property = showWizard(editedproperty, editinitialconfigid);
+        if (property != null) {
+            propertynode.setProperty(property);
+            DefaultTreeModel model = (DefaultTreeModel) configTree.getModel();
+            model.nodeStructureChanged(propertynode);
+        }
     }
 
     public JPanel getRootPanel() {
@@ -227,6 +257,7 @@ public class RepositoryConfigurationForm {
             PropertyAttributeTreeNode classpath = new PropertyAttributeTreeNode(this, "Classpath",
                     SakerIDESupportUtils.classPathLocationToLabel(property.getClassPathLocation()));
             children.add(classpath);
+            classpath.setUserData(SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_CLASSPATH);
 
             String repoidstr = property.getRepositoryIdentifier();
             if (ObjectUtils.isNullOrEmpty(repoidstr)) {
@@ -234,6 +265,7 @@ public class RepositoryConfigurationForm {
             }
             PropertyAttributeTreeNode identifiernode = new PropertyAttributeTreeNode(this, "Identifier", repoidstr);
             children.add(identifiernode);
+            identifiernode.setUserData(SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_REPOSITORYID);
 
             ClassPathServiceEnumeratorIDEProperty serviceenumeratorproperty = property.getServiceEnumerator();
             if (serviceenumeratorproperty != null) {
@@ -241,6 +273,9 @@ public class RepositoryConfigurationForm {
                         SakerIDESupportUtils.serviceEnumeratorToTitleLabel(serviceenumeratorproperty),
                         SakerIDESupportUtils.serviceEnumeratorToLabel(serviceenumeratorproperty));
                 children.add(serviceenumerator);
+                serviceenumerator.setUserData(
+                        new String[] { SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_SERVICE,
+                                SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_CLASSPATH });
             }
 
             super.setProperty(property);
@@ -260,15 +295,4 @@ public class RepositoryConfigurationForm {
         }
     }
 
-    public static class RepositoryServiceEnumeratorRedirectingSakerWizardPage extends ServiceEnumeratorRedirectingSakerWizardPage {
-        public RepositoryServiceEnumeratorRedirectingSakerWizardPage(
-                SakerWizardManager<SakerWizardPage> wizardManager) {
-            super(wizardManager);
-        }
-
-        @Override
-        protected AbstractSakerWizardPage redirect() {
-            return wizardManager.getWizardPage(RepositoryServiceEnumeratorSakerWizardPage.class);
-        }
-    }
 }

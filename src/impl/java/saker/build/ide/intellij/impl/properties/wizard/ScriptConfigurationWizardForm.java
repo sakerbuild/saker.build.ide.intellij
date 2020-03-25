@@ -11,11 +11,15 @@ import saker.build.file.path.WildcardPath;
 import saker.build.ide.intellij.impl.properties.UserParameterEditorDialog;
 import saker.build.ide.intellij.impl.properties.UserParametersForm;
 import saker.build.ide.intellij.impl.ui.SakerPropertyPageAddEditRemovePanel;
+import saker.build.ide.support.ui.wizard.ScriptConfigurationSakerWizardPage;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.DocumentEvent;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import java.awt.Dimension;
 import java.awt.Insets;
 import java.util.LinkedHashSet;
@@ -32,9 +36,12 @@ public class ScriptConfigurationWizardForm {
 
     public ScriptConfigurationWizardForm(ScriptConfigurationWizardStep wizardstep) {
         wizardStep = wizardstep;
+        ScriptConfigurationSakerWizardPage wizardpage = wizardstep.getWizardPage();
+        Set<? extends Map.Entry<String, String>> options = wizardpage.getScriptOptions();
+        String wildcard = ObjectUtils.nullDefault(wizardpage.getScriptsWildcard(), "");
 
         optionsEditPanel = new SakerPropertyPageAddEditRemovePanel<Map.Entry<String, String>>(
-                new UserParametersForm.KeyValueTableModel()) {
+                new UserParametersForm.KeyValueTableModel(), ObjectUtils.newArrayList(options)) {
             @Nullable
             @Override
             protected Map.Entry<String, String> addItem() {
@@ -68,6 +75,12 @@ public class ScriptConfigurationWizardForm {
                 return dialog;
             }
         };
+        optionsEditPanel.getTable().getModel().addTableModelListener(new TableModelListener() {
+            @Override
+            public void tableChanged(TableModelEvent e) {
+                updateWizardStep();
+            }
+        });
 
         optionsPanel.add(optionsEditPanel,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
@@ -84,6 +97,8 @@ public class ScriptConfigurationWizardForm {
                 updateWizardStep();
             }
         });
+
+        scriptFilesWildcardTextField.setText(wildcard);
 
         updateWizardStep();
     }
@@ -144,6 +159,7 @@ public class ScriptConfigurationWizardForm {
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setMinimumSize(new Dimension(400, 400));
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
         rootPanel.add(panel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,

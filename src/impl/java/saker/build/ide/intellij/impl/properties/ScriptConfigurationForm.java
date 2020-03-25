@@ -12,10 +12,12 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import saker.build.ide.intellij.impl.properties.wizard.ClassPathTypeChooserWizardStep;
+import saker.build.ide.intellij.impl.properties.wizard.ClassPathTypeChooserWizardForm;
 import saker.build.ide.intellij.impl.properties.wizard.SakerWizardDialog;
 import saker.build.ide.intellij.impl.properties.wizard.SakerWizardModel;
-import saker.build.ide.intellij.impl.properties.wizard.ScriptServiceEnumeratorSakerWizardPage;
+import saker.build.ide.intellij.impl.properties.wizard.SakerWizardPageWizardStep;
+import saker.build.ide.intellij.impl.properties.wizard.ServiceEnumeratorWizardForm;
+import saker.build.ide.intellij.impl.properties.wizard.WizardStepFactory;
 import saker.build.ide.intellij.impl.ui.PropertyAttributeTreeNode;
 import saker.build.ide.intellij.impl.ui.PropertyTreeNode;
 import saker.build.ide.intellij.impl.ui.RootTreeNode;
@@ -25,12 +27,9 @@ import saker.build.ide.support.properties.ClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.ScriptConfigurationIDEProperty;
-import saker.build.ide.support.ui.wizard.AbstractSakerWizardPage;
-import saker.build.ide.support.ui.wizard.ClassPathTypeChooserSakerWizardPage;
-import saker.build.ide.support.ui.wizard.SakerWizardManager;
+import saker.build.ide.support.ui.wizard.BaseSakerWizardManager;
 import saker.build.ide.support.ui.wizard.SakerWizardPage;
-import saker.build.ide.support.ui.wizard.ScriptConfigurationSakerWizardPage;
-import saker.build.ide.support.ui.wizard.ServiceEnumeratorRedirectingSakerWizardPage;
+import saker.build.scripting.ScriptAccessProvider;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
@@ -123,36 +122,52 @@ public class ScriptConfigurationForm {
         modellingExclusionsPanel.add(exclusionsEditPanel);
     }
 
-    private void addAction(AnActionButton button) {
-        SakerWizardModel model = new SakerWizardModel("New Script Configuration",
+    private ScriptConfigurationIDEProperty showWizard(ScriptConfigurationIDEProperty editproperty,
+            String... editinitialconfigids) {
+        SakerWizardModel model = new SakerWizardModel(
+                editproperty == null ? "New Script Configuration" : "Edit Script Configuration",
                 configurable.getParent().getCurrentProjectProperties(),
                 configurable.getParent().getProject().getProject());
-        ClassPathTypeChooserSakerWizardPage cppage = model.getWizardPage(ClassPathTypeChooserSakerWizardPage.class);
-        ServiceEnumeratorRedirectingSakerWizardPage serviceenumeratorpage = model
-                .getWizardPage(ScriptServiceEnumeratorRedirectingSakerWizardPage.class);
-        cppage.setNextPage(serviceenumeratorpage);
-        serviceenumeratorpage.setNextPage(model.getWizardPage(ScriptConfigurationSakerWizardPage.class));
 
-        ClassPathTypeChooserWizardStep cpwizardstep = new ClassPathTypeChooserWizardStep(model, cppage);
-        cpwizardstep.setClassPathTypes(false, true);
+        BaseSakerWizardManager<SakerWizardPage> wizardmanager = model.getWizardManager();
+        wizardmanager.setConfiguration(ClassPathTypeChooserWizardForm.WIZARD_CONFIGURATION_WITH_SCRIPT_CLASSPATH, true);
+        wizardmanager
+                .setConfiguration(ServiceEnumeratorWizardForm.WIZARD_CONFIGURATION_DEFAULT_SERVICE_LOADER_CLASS_NAME,
+                        ScriptAccessProvider.class.getName());
 
-        model.add(cpwizardstep);
+        if (editproperty != null) {
+            SakerIDESupportUtils.editScriptConfigurationWithWizardManager(wizardmanager, editproperty);
+        }
+
+        SakerWizardPage startwizardpage = SakerIDESupportUtils.createScriptConfigurationWizardSteps(wizardmanager);
+        SakerWizardPage initialpage = null;
+        if (editinitialconfigids != null) {
+            initialpage = SakerIDESupportUtils
+                    .findEditorInitialPageWithPriorities(startwizardpage, editinitialconfigids);
+        }
+        SakerWizardPageWizardStep<?> startstep = WizardStepFactory.create(model, startwizardpage, null);
+        model.add(startstep);
+        model.navigateToWizardPageOrEnd(initialpage);
 
         SakerWizardDialog dialog = new SakerWizardDialog(rootPanel, true, model);
-        model.setDialog(dialog);
-        dialog.setModal(true);
 
         if (dialog.showAndGet()) {
             try {
-                ScriptConfigurationIDEProperty property = (ScriptConfigurationIDEProperty) ObjectUtils
-                        .getOptional(cppage.finishWizard());
-                ScriptPropertyTreeNode node = new ScriptPropertyTreeNode(rootTreeNode);
-                node.setProperty(property);
-                int idx = rootTreeNode.add(node);
-                ((DefaultTreeModel) configTree.getModel()).nodesWereInserted(rootTreeNode, new int[] { idx });
+                return (ScriptConfigurationIDEProperty) ObjectUtils.getOptional(startwizardpage.finishWizard(null));
             } catch (Exception e) {
-                e.printStackTrace();
+                configurable.getParent().getProject().displayException(e);
             }
+        }
+        return null;
+    }
+
+    private void addAction(AnActionButton button) {
+        ScriptConfigurationIDEProperty property = showWizard(null, (String[]) null);
+        if (property != null) {
+            ScriptPropertyTreeNode node = new ScriptPropertyTreeNode(rootTreeNode);
+            node.setProperty(property);
+            int idx = rootTreeNode.add(node);
+            ((DefaultTreeModel) configTree.getModel()).nodesWereInserted(rootTreeNode, new int[] { idx });
         }
     }
 
@@ -188,13 +203,27 @@ public class ScriptConfigurationForm {
     private void performEditAction() {
         Object selection = configTree.getLastSelectedPathComponent();
         ScriptPropertyTreeNode propertynode;
+        String[] editinitialconfigid = null;
         if (selection instanceof ScriptPropertyTreeNode) {
             propertynode = (ScriptPropertyTreeNode) selection;
+        } else if (selection instanceof PropertyAttributeTreeNode) {
+            propertynode = (ScriptPropertyTreeNode) ((PropertyAttributeTreeNode) selection).getParent();
+            Object userdata = ((PropertyAttributeTreeNode) selection).getUserData();
+            if (userdata instanceof String[]) {
+                editinitialconfigid = (String[]) userdata;
+            } else if (userdata instanceof String) {
+                editinitialconfigid = new String[] { (String) userdata };
+            }
         } else {
             return;
         }
         ScriptConfigurationIDEProperty editedproperty = propertynode.getProperty();
-        //TODO implement
+        ScriptConfigurationIDEProperty property = showWizard(editedproperty, editinitialconfigid);
+        if (property != null) {
+            propertynode.setProperty(property);
+            DefaultTreeModel model = (DefaultTreeModel) configTree.getModel();
+            model.nodeStructureChanged(propertynode);
+        }
     }
 
     public void reset(IDEProjectProperties properties) {
@@ -341,10 +370,12 @@ public class ScriptConfigurationForm {
             PropertyAttributeTreeNode affected = new PropertyAttributeTreeNode(this, "Affected scripts",
                     property.getScriptsWildcard());
             children.add(affected);
+            affected.setUserData(SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_SCRIPTCONFIG);
 
             PropertyAttributeTreeNode classpath = new PropertyAttributeTreeNode(this, "Classpath",
                     SakerIDESupportUtils.classPathLocationToLabel(property.getClassPathLocation()));
             children.add(classpath);
+            classpath.setUserData(SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_CLASSPATH);
 
             ClassPathServiceEnumeratorIDEProperty serviceenumeratorproperty = property.getServiceEnumerator();
             if (serviceenumeratorproperty != null) {
@@ -352,11 +383,15 @@ public class ScriptConfigurationForm {
                         SakerIDESupportUtils.serviceEnumeratorToTitleLabel(serviceenumeratorproperty),
                         SakerIDESupportUtils.serviceEnumeratorToLabel(serviceenumeratorproperty));
                 children.add(serviceenumerator);
+                serviceenumerator.setUserData(
+                        new String[] { SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_SERVICE,
+                                SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_CLASSPATH });
             }
 
             PropertyAttributeTreeNode optionsnode = new PropertyAttributeTreeNode(this, "Script options",
                     getScriptOptionsNodeLabel(property));
             children.add(optionsnode);
+            optionsnode.setUserData(SakerIDESupportUtils.WIZARDPAGE_CONFIGURATION_EDIT_INITIAL_SCRIPTCONFIG);
 
             super.setProperty(property);
         }
@@ -374,14 +409,4 @@ public class ScriptConfigurationForm {
         }
     }
 
-    public static class ScriptServiceEnumeratorRedirectingSakerWizardPage extends ServiceEnumeratorRedirectingSakerWizardPage {
-        public ScriptServiceEnumeratorRedirectingSakerWizardPage(SakerWizardManager<SakerWizardPage> wizardManager) {
-            super(wizardManager);
-        }
-
-        @Override
-        protected AbstractSakerWizardPage redirect() {
-            return wizardManager.getWizardPage(ScriptServiceEnumeratorSakerWizardPage.class);
-        }
-    }
 }

@@ -7,19 +7,13 @@ import javax.swing.JComponent;
 import javax.swing.JRadioButton;
 
 public class ServiceEnumeratorWizardStep extends SakerWizardPageWizardStep<ClassPathServiceEnumeratorSakerWizardPage> {
-    private String defaultServiceClassName;
     private ServiceEnumeratorWizardForm form;
 
-    public ServiceEnumeratorWizardStep(SakerWizardModel model, ClassPathServiceEnumeratorSakerWizardPage wizardPage,
-            String defaultServiceClassName) {
+    public ServiceEnumeratorWizardStep(SakerWizardModel model, ClassPathServiceEnumeratorSakerWizardPage wizardPage) {
         super(model, wizardPage);
-        this.defaultServiceClassName = defaultServiceClassName;
         this.form = new ServiceEnumeratorWizardForm(this);
     }
 
-    public String getDefaultServiceClassName() {
-        return defaultServiceClassName;
-    }
 
     @Override
     protected JComponent getComponent() {

@@ -2,7 +2,9 @@ package saker.build.ide.intellij.impl.properties.wizard;
 
 import com.intellij.ui.wizard.WizardNavigationState;
 import com.intellij.ui.wizard.WizardStep;
+import org.jetbrains.annotations.NotNull;
 import saker.build.ide.support.ui.wizard.SakerWizardPage;
+import saker.build.ide.support.ui.wizard.WizardPageHistoryLink;
 
 import javax.swing.Action;
 import javax.swing.JButton;
@@ -12,27 +14,33 @@ import java.awt.Component;
 
 public abstract class SakerWizardPageWizardStep<WPType extends SakerWizardPage> extends WizardStep<SakerWizardModel> {
     protected final SakerWizardModel model;
-    protected WizardStep<?> previous;
+    protected SakerWizardPageWizardStep<?> previous;
     protected WPType wizardPage;
     protected WizardNavigationState navigationState;
 
     protected boolean formComplete = true;
 
-    public SakerWizardPageWizardStep(SakerWizardModel model, WPType wizardPage) {
+    public SakerWizardPageWizardStep(@NotNull SakerWizardModel model, @NotNull WPType wizardPage) {
         this.model = model;
         this.wizardPage = wizardPage;
     }
 
+    @NotNull
     public SakerWizardModel getModel() {
         return model;
     }
 
+    @NotNull
     public WPType getWizardPage() {
         return wizardPage;
     }
 
-    public void setPrevious(WizardStep<?> previous) {
+    public void setPrevious(SakerWizardPageWizardStep<?> previous) {
         this.previous = previous;
+    }
+
+    public SakerWizardPageWizardStep<?> getPrevious() {
+        return previous;
     }
 
     protected abstract JComponent getComponent();
@@ -53,26 +61,32 @@ public abstract class SakerWizardPageWizardStep<WPType extends SakerWizardPage> 
     }
 
     @Override
-    public WizardStep onNext(SakerWizardModel model) {
+    public SakerWizardPageWizardStep<?> onNext(SakerWizardModel model) {
         SakerWizardPage np = wizardPage.getNextPage();
         if (np == null) {
             return null;
         }
-        np.navigateFrom(wizardPage);
+        WizardPageHistoryLink historylink = WizardPageHistoryLink.next(getParentHistoryLink(), wizardPage);
         while (true) {
-            SakerWizardPage redirected = np.redirectPage();
+            SakerWizardPage redirected = np.redirectPage(historylink);
             if (redirected == null) {
                 break;
             }
             np = redirected;
-            np.navigateFrom(wizardPage);
         }
 
         return WizardStepFactory.create(model, np, this);
     }
 
+    private WizardPageHistoryLink getParentHistoryLink() {
+        if (previous == null) {
+            return null;
+        }
+        return WizardPageHistoryLink.next(previous.getParentHistoryLink(), this.previous.getWizardPage());
+    }
+
     @Override
-    public WizardStep onPrevious(SakerWizardModel model) {
+    public SakerWizardPageWizardStep<?> onPrevious(SakerWizardModel model) {
         return previous;
     }
 
@@ -80,12 +94,13 @@ public abstract class SakerWizardPageWizardStep<WPType extends SakerWizardPage> 
         if (navigationState == null) {
             return;
         }
-        boolean finishenabled = formComplete && wizardPage.canFinishWizard();
+        WizardPageHistoryLink parenthistorylink = getParentHistoryLink();
+        boolean finishenabled = formComplete && wizardPage.canFinishWizard(parenthistorylink);
         boolean nextenabled = formComplete && wizardPage.getNextPage() != null;
 
         navigationState.FINISH.setEnabled(finishenabled);
         navigationState.NEXT.setEnabled(nextenabled);
-        navigationState.PREVIOUS.setEnabled(wizardPage.getPreviousPage() != null);
+        navigationState.PREVIOUS.setEnabled(previous != null);
 
         SakerWizardDialog dialog = model.getDialog();
         if (dialog != null) {

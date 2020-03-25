@@ -12,6 +12,7 @@ import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.ui.FileSystemEndpointSelector;
+import saker.build.ide.support.ui.wizard.ClassPathFileChooserSakerWizardPage;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.DefaultComboBoxModel;
@@ -21,6 +22,7 @@ import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
+import java.awt.Dimension;
 import java.awt.Insets;
 
 public class ClassPathFileChooserWizardForm {
@@ -36,6 +38,11 @@ public class ClassPathFileChooserWizardForm {
         wizardStep = wizardstep;
         this.projectProperties = wizardstep.getModel().getProjectProperties();
 
+        ClassPathFileChooserSakerWizardPage wizardpage = wizardstep.getWizardPage();
+        String jarpath = ObjectUtils.nullDefault(wizardpage.getJarPath(), "");
+        String endpoint = ObjectUtils
+                .nullDefault(wizardpage.getConnectionName(), SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE);
+
         fileSystemEndpointComboBox.addItemListener(e -> {
             //TODO auto-convert between local and project relative
             endpointSelector.setSelectedIndex(fileSystemEndpointComboBox.getSelectedIndex());
@@ -43,7 +50,7 @@ public class ClassPathFileChooserWizardForm {
             updateWizardStep();
         });
 
-        resetEndpointSelector(SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE);
+        resetEndpointSelector(endpoint);
         archivePathTextField.addActionListener(e -> {
             MountPathDialog.showFileChooser(wizardstep.getModel().getProject(), archivePathTextField, rootPanel,
                     endpointSelector, fileSystemEndpointComboBox);
@@ -54,6 +61,7 @@ public class ClassPathFileChooserWizardForm {
                 updateWizardStep();
             }
         });
+        archivePathTextField.setText(jarpath);
         updateWizardStep();
     }
 
@@ -108,6 +116,7 @@ public class ClassPathFileChooserWizardForm {
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(3, 2, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setMinimumSize(new Dimension(400, 400));
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(2, 2, new Insets(0, 0, 0, 0), -1, -1));
         rootPanel.add(panel1, new GridConstraints(0, 0, 2, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,

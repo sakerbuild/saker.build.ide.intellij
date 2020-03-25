@@ -6,15 +6,26 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import org.jetbrains.annotations.NotNull;
+import saker.build.ide.support.properties.BuiltinScriptingLanguageServiceEnumeratorIDEProperty;
+import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
+import saker.build.ide.support.properties.NamedClassClassPathServiceEnumeratorIDEProperty;
+import saker.build.ide.support.properties.NestRepositoryFactoryServiceEnumeratorIDEProperty;
+import saker.build.ide.support.properties.ServiceLoaderClassPathEnumeratorIDEProperty;
+import saker.build.ide.support.ui.wizard.ClassPathServiceEnumeratorSakerWizardPage;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.ButtonGroup;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.event.DocumentEvent;
+import java.awt.Dimension;
 import java.awt.Insets;
+import java.util.Objects;
 
 public class ServiceEnumeratorWizardForm {
+    public static final String WIZARD_CONFIGURATION_DEFAULT_SERVICE_LOADER_CLASS_NAME = "service.enumerator.default.service.loader.class.name";
+
     private JPanel rootPanel;
     private JRadioButton serviceLoaderRadioButton;
     private JRadioButton classNameRadioButton;
@@ -25,6 +36,8 @@ public class ServiceEnumeratorWizardForm {
 
     public ServiceEnumeratorWizardForm(ServiceEnumeratorWizardStep wizardstep) {
         wizardStep = wizardstep;
+        ClassPathServiceEnumeratorSakerWizardPage wizardpage = wizardstep.getWizardPage();
+        ClassPathServiceEnumeratorIDEProperty property = wizardpage.getProperty();
 
         ButtonGroup buttongroup = new ButtonGroup();
         buttongroup.add(serviceLoaderRadioButton);
@@ -39,7 +52,8 @@ public class ServiceEnumeratorWizardForm {
             updateWizardStep();
         });
 
-        serviceLoaderTextField.setText(wizardstep.getDefaultServiceClassName());
+        serviceLoaderTextField.setText(Objects.toString(wizardstep.getModel().getWizardManager()
+                .getConfiguration(WIZARD_CONFIGURATION_DEFAULT_SERVICE_LOADER_CLASS_NAME), ""));
 
         DocumentAdapter documentadapter = new DocumentAdapter() {
             @Override
@@ -49,6 +63,33 @@ public class ServiceEnumeratorWizardForm {
         };
         serviceLoaderTextField.getDocument().addDocumentListener(documentadapter);
         classNameTextField.getDocument().addDocumentListener(documentadapter);
+        if (property != null) {
+            property.accept(new ClassPathServiceEnumeratorIDEProperty.Visitor<Void, Void>() {
+                @Override
+                public Void visit(ServiceLoaderClassPathEnumeratorIDEProperty property, Void param) {
+                    serviceLoaderTextField.setText(ObjectUtils.nullDefault(property.getServiceClass(), ""));
+                    serviceLoaderRadioButton.setSelected(true);
+                    return null;
+                }
+
+                @Override
+                public Void visit(NamedClassClassPathServiceEnumeratorIDEProperty property, Void param) {
+                    classNameTextField.setText(ObjectUtils.nullDefault(property.getClassName(), ""));
+                    classNameRadioButton.setSelected(true);
+                    return null;
+                }
+
+                @Override
+                public Void visit(BuiltinScriptingLanguageServiceEnumeratorIDEProperty property, Void param) {
+                    return null;
+                }
+
+                @Override
+                public Void visit(NestRepositoryFactoryServiceEnumeratorIDEProperty property, Void param) {
+                    return null;
+                }
+            }, null);
+        }
 
         updateWizardStep();
     }
@@ -112,6 +153,7 @@ public class ServiceEnumeratorWizardForm {
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setMinimumSize(new Dimension(400, 400));
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(2, 2, new Insets(0, 0, 0, 0), -1, -1));
         rootPanel.add(panel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,

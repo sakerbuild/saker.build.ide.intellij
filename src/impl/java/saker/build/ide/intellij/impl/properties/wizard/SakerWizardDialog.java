@@ -11,6 +11,8 @@ import java.awt.Component;
 public class SakerWizardDialog extends WizardDialog<SakerWizardModel> {
     public SakerWizardDialog(Component parent, boolean canBeParent, SakerWizardModel model) {
         super(parent, canBeParent, model);
+        this.setModal(true);
+        model.setDialog(this);
     }
 
     @Nullable

@@ -23,6 +23,10 @@ public class SakerWizardModel extends WizardModel {
         return wizardManager.getWizardPage(pageclass);
     }
 
+    public BaseSakerWizardManager<SakerWizardPage> getWizardManager() {
+        return wizardManager;
+    }
+
     public SakerWizardDialog getDialog() {
         return dialog;
     }
@@ -45,5 +49,23 @@ public class SakerWizardModel extends WizardModel {
 
     public Project getProject() {
         return project;
+    }
+
+    public void navigateToWizardPageOrEnd(SakerWizardPage page) {
+        if (page == null) {
+            return;
+        }
+        while (true) {
+            SakerWizardPageWizardStep<?> cs = (SakerWizardPageWizardStep<?>) getCurrentStep();
+            if (cs.getWizardPage() == page) {
+                break;
+            }
+            if (getCurrentNavigationState().NEXT.isEnabled()) {
+                next();
+            } else {
+                //start with the last page
+                break;
+            }
+        }
     }
 }

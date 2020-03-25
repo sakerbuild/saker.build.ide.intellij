@@ -6,12 +6,15 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import org.jetbrains.annotations.NotNull;
+import saker.build.ide.support.ui.wizard.ClassPathNetworkArchiveSakerWizardPage;
 import saker.build.runtime.classpath.HttpUrlJarFileClassPathLocation;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.DocumentEvent;
+import java.awt.Dimension;
 import java.awt.Insets;
 import java.net.URL;
 
@@ -23,6 +26,8 @@ public class ClassPathNetworkArchiveWizardForm {
 
     public ClassPathNetworkArchiveWizardForm(ClassPathNetworkArchiveWizardStep wizardstep) {
         wizardStep = wizardstep;
+        ClassPathNetworkArchiveSakerWizardPage wizardpage = wizardstep.getWizardPage();
+        String url = ObjectUtils.nullDefault(wizardpage.getUrl(), "");
 
         urlTextField.getEmptyText().clear().appendText("https://example.com/classpath.jar");
         urlTextField.getDocument().addDocumentListener(new DocumentAdapter() {
@@ -31,6 +36,7 @@ public class ClassPathNetworkArchiveWizardForm {
                 updateWizardStep();
             }
         });
+        urlTextField.setText(url);
 
         updateWizardStep();
     }
@@ -76,6 +82,7 @@ public class ClassPathNetworkArchiveWizardForm {
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(2, 2, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setMinimumSize(new Dimension(400, 400));
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(1, 2, new Insets(0, 0, 0, 0), -1, -1));
         rootPanel.add(panel1, new GridConstraints(0, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,

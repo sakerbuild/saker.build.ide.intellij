@@ -13,10 +13,6 @@ public class ClassPathTypeChooserWizardStep extends SakerWizardPageWizardStep<Cl
         this.form = new ClassPathTypeChooserWizardForm(this);
     }
 
-    public void setClassPathTypes(boolean repositorycp, boolean scriptcp) {
-        form.setClassPathTypes(repositorycp, scriptcp);
-    }
-
     @Override
     protected JComponent getComponent() {
         return form.getRootPanel();
