@@ -11,5 +11,4 @@ public class SakerBuildApplicationConfigurableProvider extends ConfigurableProvi
     public Configurable createConfigurable() {
         return SakerBuildPlugin.getPluginImpl().createApplicationConfigurable();
     }
-
 }

@@ -9,7 +9,8 @@ public class NestRepositoryVersionWizardStep extends SakerWizardPageWizardStep<N
     private final NestRepositoryVersionWizardForm form;
 
     public NestRepositoryVersionWizardStep(SakerWizardModel model, NestRepositoryVersionSakerWizardPage wizardPage) {
-        super(model, wizardPage);
+        super("Saker.nest Repository Version", "Specify the version of the saker.nest repository you want to load.",
+                model, wizardPage);
         this.form = new NestRepositoryVersionWizardForm(this);
     }
 

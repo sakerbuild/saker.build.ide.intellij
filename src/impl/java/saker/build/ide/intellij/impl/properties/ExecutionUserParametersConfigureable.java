@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class ExecutionUserParametersConfigureable implements Configurable {
+public class ExecutionUserParametersConfigureable implements Configurable, Configurable.NoScroll {
     private final IntellijSakerIDEProject project;
     private Set<? extends Map.Entry<String, String>> userParameters = null;
 
@@ -26,8 +26,7 @@ public class ExecutionUserParametersConfigureable implements Configurable {
 
         form = new UserParametersForm();
         form.setUserParameterKind("execution");
-        form.getParametersInfoLabel()
-                .setText("The following user parameters are defined for the build execution.");
+        form.getParametersInfoLabel().setText("The following user parameters are defined for the build execution.");
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)

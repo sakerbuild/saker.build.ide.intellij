@@ -52,6 +52,7 @@ public class PathConfigurationForm {
         mirrorDirectoryTextField.getEmptyText().clear().appendText("Execution daemon local path (empty for default)");
 
         pathsPanel.setBorder(IdeBorderFactory.createTitledBorder("Special paths", true));
+        tablePanel.setBorder(IdeBorderFactory.createTitledBorder("Execution roots", false));
 
         MountsTableModel tablemodel = new MountsTableModel();
         mountsEditPanel = new SakerPropertyPageAddEditRemovePanel<ProviderMountIDEProperty>(tablemodel) {
@@ -143,7 +144,7 @@ public class PathConfigurationForm {
         return rootPanel;
     }
 
-    private static final String[] COLUMN_NAMES = { "Mount root", "File system endpoint", "Mounted path" };
+    private static final String[] COLUMN_NAMES = { "Execution root", "File system endpoint", "Mounted path" };
 
     private class MountsTableModel extends AddEditRemovePanel.TableModel<ProviderMountIDEProperty> {
 

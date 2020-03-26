@@ -10,10 +10,9 @@ public class ServiceEnumeratorWizardStep extends SakerWizardPageWizardStep<Class
     private ServiceEnumeratorWizardForm form;
 
     public ServiceEnumeratorWizardStep(SakerWizardModel model, ClassPathServiceEnumeratorSakerWizardPage wizardPage) {
-        super(model, wizardPage);
+        super("Service Loading Configuration", "Specify how the service provider should be loaded.", model, wizardPage);
         this.form = new ServiceEnumeratorWizardForm(this);
     }
-
 
     @Override
     protected JComponent getComponent() {

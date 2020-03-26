@@ -12,7 +12,7 @@ import javax.swing.JComponent;
 import java.util.Objects;
 import java.util.Set;
 
-public class TaskRepositoriesConfigurable implements Configurable {
+public class TaskRepositoriesConfigurable implements Configurable, Configurable.NoScroll {
     private final SakerBuildProjectConfigurable parent;
     private RepositoryConfigurationForm form;
 

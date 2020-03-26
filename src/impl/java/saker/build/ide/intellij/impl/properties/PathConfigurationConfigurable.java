@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 
-public class PathConfigurationConfigurable implements Configurable {
+public class PathConfigurationConfigurable implements Configurable, Configurable.NoScroll {
     private final IntellijSakerIDEProject project;
     private final PathConfigurationForm form;
 

@@ -12,7 +12,7 @@ import javax.swing.JComponent;
 import java.util.Objects;
 import java.util.Set;
 
-public class ScriptConfigurationConfigurable implements Configurable {
+public class ScriptConfigurationConfigurable implements Configurable, Configurable.NoScroll {
     private final SakerBuildProjectConfigurable parent;
     private final ScriptConfigurationForm form;
 

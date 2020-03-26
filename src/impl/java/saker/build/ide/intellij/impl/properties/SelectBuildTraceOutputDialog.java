@@ -45,8 +45,9 @@ public class SelectBuildTraceOutputDialog extends JDialog {
     private FileSystemEndpointSelector endpointSelector;
     private Iterable<? extends DaemonConnectionIDEProperty> connections;
 
-    private Disposable myDisposable = Disposer.newDisposable();
     private MountPathIDEProperty property;
+
+    private FormValidator formValidator;
 
     public SelectBuildTraceOutputDialog(String title, JComponent relative, Project project,
             Iterable<? extends DaemonConnectionIDEProperty> connections) {
@@ -56,13 +57,12 @@ public class SelectBuildTraceOutputDialog extends JDialog {
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
         setTitle(title);
-        setLocationRelativeTo(relative);
 
-        FormValidator validator = new FormValidator(buttonOK);
+        formValidator = new FormValidator(buttonOK);
 
         buttonOK.setEnabled(false);
         buttonOK.addActionListener(e -> {
-            if (!validator.canPerformOkRevalidateRefocus()) {
+            if (!formValidator.canPerformOkRevalidateRefocus()) {
                 return;
             }
             onOK();
@@ -88,6 +88,7 @@ public class SelectBuildTraceOutputDialog extends JDialog {
         });
 
         pack();
+        setLocationRelativeTo(relative);
         setMinimumSize(getSize());
 
         resetEndpointSelector(SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE);
@@ -95,7 +96,7 @@ public class SelectBuildTraceOutputDialog extends JDialog {
         fileSystemEndpointComboBox.addItemListener(e -> {
             //TODO auto-convert between local and project relative
             endpointSelector.setSelectedIndex(fileSystemEndpointComboBox.getSelectedIndex());
-            validator.revalidateComponent(outputtextfield);
+            formValidator.revalidateComponent(outputtextfield);
         });
 
         unsetButton.addActionListener(new ActionListener() {
@@ -106,7 +107,7 @@ public class SelectBuildTraceOutputDialog extends JDialog {
             }
         });
 
-        validator.add(outputtextfield, () -> {
+        formValidator.add(outputtextfield, () -> {
             String str = outputtextfield.getText();
             if (ObjectUtils.isNullOrEmpty(str)) {
                 return new ValidationInfo("Please specify an output path.", outputtextfield);
@@ -192,7 +193,7 @@ public class SelectBuildTraceOutputDialog extends JDialog {
 
     @Override
     public void dispose() {
-        Disposer.dispose(myDisposable);
+        Disposer.dispose(formValidator);
         super.dispose();
     }
 

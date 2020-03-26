@@ -10,7 +10,8 @@ public class ClassPathNetworkArchiveWizardStep extends SakerWizardPageWizardStep
 
     public ClassPathNetworkArchiveWizardStep(SakerWizardModel model,
             ClassPathNetworkArchiveSakerWizardPage wizardPage) {
-        super(model, wizardPage);
+        super("Select Network URL", "Specify the URL from where the archive should be loaded for the classpath.", model,
+                wizardPage);
         this.form = new ClassPathNetworkArchiveWizardForm(this);
     }
 

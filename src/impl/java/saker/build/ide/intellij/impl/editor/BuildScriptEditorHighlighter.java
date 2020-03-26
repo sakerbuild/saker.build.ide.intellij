@@ -42,7 +42,6 @@ import com.intellij.psi.tree.IElementType;
 import com.intellij.ui.ColorUtil;
 import com.intellij.ui.JBColor;
 import com.intellij.util.containers.ContainerUtil;
-import groovyjarjarantlr.Token;
 import org.apache.commons.io.input.CharSequenceInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -579,7 +578,10 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     @Override
     public void setEditor(@NotNull HighlighterClient editor) {
+        System.out.println("BuildScriptEditorHighlighter.setEditor " + scriptFileExecutionPath);
         this.editor = editor;
+
+        installListener();
 
         EditorFactory editorfactory = EditorFactory.getInstance();
         editorfactory.addEditorFactoryListener(new EditorFactoryListener() {
@@ -589,9 +591,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                     //TODO dispose the model
                     disposed = true;
                     disposeModel();
-                    System.out.println("BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER");
+                    System.out.println(
+                            "BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER " + scriptFileExecutionPath);
                     project.disposeHighlighter(scriptFileExecutionPath, BuildScriptEditorHighlighter.this);
                     editorfactory.removeEditorFactoryListener(this);
+                    uninstallListener();
                 }
             }
         }, editor.getProject());
@@ -651,9 +655,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                 return;
             }
             ScriptModellingEnvironment scriptingenv = project.getScriptingEnvironment();
-            uninstallListenerLocked();
-
-            installListenerLocked();
 
             if (scriptingenv != null) {
                 disposeModelLocked();
@@ -668,7 +669,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     private void disposeModel() {
         synchronized (this) {
-            uninstallListenerLocked();
             disposeModelLocked();
         }
     }
@@ -681,21 +681,23 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
     }
 
-    private void installListenerLocked() {
+    private void installListener() {
         changeListener = new ScriptingResourcesChangeListener();
         project.addProjectResourceListener(changeListener);
+        project.addProjectPropertiesChangeListener(changeListener);
         project.getPlugin().addPluginResourceListener(changeListener);
     }
 
-    private void uninstallListenerLocked() {
+    private void uninstallListener() {
         if (changeListener != null) {
             project.removeProjectResourceListener(changeListener);
+            project.removeProjectPropertiesChangeListener(changeListener);
             project.getPlugin().removePluginResourceListener(changeListener);
             changeListener = null;
         }
     }
 
-    private class ScriptingResourcesChangeListener implements SakerIDEProject.ProjectResourceListener, SakerIDEPlugin.PluginResourceListener {
+    private class ScriptingResourcesChangeListener implements SakerIDEProject.ProjectResourceListener, SakerIDEPlugin.PluginResourceListener, IntellijSakerIDEProject.ProjectPropertiesChangeListener {
         @Override
         public void environmentClosing(SakerEnvironmentImpl environment) {
             disposeModel();
@@ -713,6 +715,16 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
         @Override
         public void scriptModellingEnvironmentCreated(ScriptModellingEnvironment env) {
+            initModel();
+        }
+
+        @Override
+        public void projectPropertiesChanging() {
+            disposeModel();
+        }
+
+        @Override
+        public void projectPropertiesChanged() {
             initModel();
         }
     }

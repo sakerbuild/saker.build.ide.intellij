@@ -7,6 +7,7 @@ import saker.build.ide.support.ui.wizard.SakerWizardPage;
 import saker.build.ide.support.ui.wizard.WizardPageHistoryLink;
 
 import javax.swing.Action;
+import javax.swing.Icon;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JRootPane;
@@ -21,6 +22,32 @@ public abstract class SakerWizardPageWizardStep<WPType extends SakerWizardPage> 
     protected boolean formComplete = true;
 
     public SakerWizardPageWizardStep(@NotNull SakerWizardModel model, @NotNull WPType wizardPage) {
+        this.model = model;
+        this.wizardPage = wizardPage;
+    }
+
+    public SakerWizardPageWizardStep(String title, SakerWizardModel model, WPType wizardPage) {
+        super(title);
+        this.model = model;
+        this.wizardPage = wizardPage;
+    }
+
+    public SakerWizardPageWizardStep(String title, String explanation, SakerWizardModel model, WPType wizardPage) {
+        super(title, explanation);
+        this.model = model;
+        this.wizardPage = wizardPage;
+    }
+
+    public SakerWizardPageWizardStep(String title, String explanation, Icon icon, SakerWizardModel model,
+            WPType wizardPage) {
+        super(title, explanation, icon);
+        this.model = model;
+        this.wizardPage = wizardPage;
+    }
+
+    public SakerWizardPageWizardStep(String title, String explanation, Icon icon, String helpId, SakerWizardModel model,
+            WPType wizardPage) {
+        super(title, explanation, icon, helpId);
         this.model = model;
         this.wizardPage = wizardPage;
     }

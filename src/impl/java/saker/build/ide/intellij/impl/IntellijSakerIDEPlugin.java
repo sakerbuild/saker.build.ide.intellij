@@ -131,8 +131,7 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
     @Override
     public void displayException(Throwable exc) {
-        //TODO display exception
-        exc.printStackTrace();
+        SakerBuildPlugin.displayException(exc);
     }
 
     @Override

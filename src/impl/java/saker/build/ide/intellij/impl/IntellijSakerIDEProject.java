@@ -8,6 +8,7 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.SelectionModel;
@@ -24,6 +25,7 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
+import javafx.application.Application;
 import org.apache.commons.io.output.WriterOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -36,11 +38,13 @@ import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.SakerBuildActionGroup;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
+import saker.build.ide.intellij.impl.ui.ProjectPropertiesValidationDialog;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.configuration.ProjectIDEConfigurationCollection;
 import saker.build.ide.support.properties.IDEProjectProperties;
+import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.PropertiesValidationException;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.runtime.environment.BuildTaskExecutionResult;
@@ -76,6 +80,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -85,6 +90,7 @@ import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -93,6 +99,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildProjectImpl {
+    public interface ProjectPropertiesChangeListener {
+        public default void projectPropertiesChanging() {
+        }
+
+        public default void projectPropertiesChanged() {
+        }
+    }
+
     private static final String LAST_BUILD_SCRIPT_PATH = "last-build-script-path";
     private static final String LAST_BUILD_TARGET_NAME = "last-build-target-name";
 
@@ -102,6 +116,9 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
 
     private final Lock executionLock = new ReentrantLock();
     private final Object configurationChangeLock = new Object();
+
+    private final Set<ProjectPropertiesChangeListener> propertiesChangeListeners = Collections
+            .newSetFromMap(new WeakHashMap<>());
 
     public IntellijSakerIDEProject(IntellijSakerIDEPlugin plugin, SakerIDEProject sakerProject, Project project) {
         this.plugin = plugin;
@@ -116,6 +133,24 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         if (basepath != null) {
             Path projectpath = Paths.get(basepath);
             sakerProject.initialize(projectpath);
+        }
+    }
+
+    public void addProjectPropertiesChangeListener(ProjectPropertiesChangeListener listener) {
+        if (listener == null) {
+            return;
+        }
+        synchronized (propertiesChangeListeners) {
+            propertiesChangeListeners.add(listener);
+        }
+    }
+
+    public void removeProjectPropertiesChangeListener(ProjectPropertiesChangeListener listener) {
+        if (listener == null) {
+            return;
+        }
+        synchronized (propertiesChangeListeners) {
+            propertiesChangeListeners.remove(listener);
         }
     }
 
@@ -396,7 +431,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         }
     }
 
-    protected BuildTaskExecutionResult build(SakerPath scriptfile, String targetname, ProgressIndicator monitor) {
+    protected void build(SakerPath scriptfile, String targetname, ProgressIndicator monitor) {
         ProgressMonitorWrapper monitorwrapper = new ProgressMonitorWrapper(monitor);
 
         boolean wasinterrupted = false;
@@ -518,9 +553,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 SwingUtilities.invokeLater(() -> tw[0].activate(null));
                 if (monitorwrapper.isCancelled()) {
                     out.write("Build cancelled.\n".getBytes());
-                    //XXX reify exception
-                    return BuildTaskExecutionResultImpl
-                            .createInitializationFailed(new RuntimeException("Build cancelled."));
+                    return;
                 }
                 ExecutionParametersImpl params;
                 IDEProjectProperties projectproperties = getIDEProjectProperties();
@@ -528,9 +561,22 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                     params = sakerProject.createExecutionParameters(projectproperties);
                     //there were no validation errors
                 } catch (PropertiesValidationException e) {
+                    //TODO remove exception display
                     displayException(e);
                     //TODO show some dialog and fixes
-                    return BuildTaskExecutionResultImpl.createInitializationFailed(e);
+                    err.write("Invalid build configuration:\n".getBytes());
+                    for (PropertiesValidationErrorResult error : e.getErrors()) {
+                        //TODO write as hyperlinkgs
+                        err.write(SakerIDESupportUtils.createValidationErrorMessage(error).getBytes());
+                        err.write('\n');
+                    }
+
+                    ApplicationManager.getApplication().invokeLater(() -> {
+                        ProjectPropertiesValidationDialog dialog = new ProjectPropertiesValidationDialog(this,
+                                e.getErrors());
+                        dialog.setVisible(true);
+                    });
+                    return;
                 }
                 DaemonEnvironment daemonenv = sakerProject.getExecutionDaemonEnvironment(projectproperties);
                 ExecutionPathConfiguration pathconfiguration = params.getPathConfiguration();
@@ -655,7 +701,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                     Collection<? extends IDEConfiguration> ideconfigs = resultcollection.getIDEConfigurations();
                     addIDEConfigurations(ideconfigs);
                 }
-                return result;
+                return;
             } catch (Throwable e) {
                 if (result == null) {
                     result = BuildTaskExecutionResultImpl.createInitializationFailed(e);
@@ -665,7 +711,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                         e1.printStackTrace();
                     }
                 }
-                return result;
+                return;
             } finally {
                 if (result != null) {
                     ScriptPositionedExceptionView posexcview = result.getPositionedExceptionView();
@@ -789,11 +835,23 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     private void projectPropertiesChanging() {
-        //TODO
+        List<ProjectPropertiesChangeListener> listenercopy;
+        synchronized (propertiesChangeListeners) {
+            listenercopy = ImmutableUtils.makeImmutableList(propertiesChangeListeners);
+        }
+        for (ProjectPropertiesChangeListener l : listenercopy) {
+            l.projectPropertiesChanging();
+        }
     }
 
     private void projectPropertiesChanged() {
-        //TODO
+        List<ProjectPropertiesChangeListener> listenercopy;
+        synchronized (propertiesChangeListeners) {
+            listenercopy = ImmutableUtils.makeImmutableList(propertiesChangeListeners);
+        }
+        for (ProjectPropertiesChangeListener l : listenercopy) {
+            l.projectPropertiesChanged();
+        }
     }
 
     @Override

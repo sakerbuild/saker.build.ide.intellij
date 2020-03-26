@@ -9,7 +9,8 @@ public class ClassPathFileChooserWizardStep extends SakerWizardPageWizardStep<Cl
     private ClassPathFileChooserWizardForm form;
 
     public ClassPathFileChooserWizardStep(SakerWizardModel model, ClassPathFileChooserSakerWizardPage wizardPage) {
-        super(model, wizardPage);
+        super("Choose Java Archive", "Select the Java archive that should be loaded for the classpath.", model,
+                wizardPage);
         this.form = new ClassPathFileChooserWizardForm(this);
     }
 
@@ -17,6 +18,7 @@ public class ClassPathFileChooserWizardStep extends SakerWizardPageWizardStep<Cl
     protected JComponent getComponent() {
         return form.getRootPanel();
     }
+
     @Nullable
     @Override
     public JComponent getPreferredFocusedComponent() {

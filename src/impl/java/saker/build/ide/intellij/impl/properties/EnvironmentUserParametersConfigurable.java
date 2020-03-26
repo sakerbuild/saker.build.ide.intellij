@@ -15,7 +15,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
-public class EnvironmentUserParametersConfigurable implements Configurable {
+public class EnvironmentUserParametersConfigurable implements Configurable, Configurable.NoScroll {
     private final IntellijSakerIDEPlugin plugin;
     private Set<? extends Map.Entry<String, String>> userParameters = null;
 
@@ -25,8 +25,7 @@ public class EnvironmentUserParametersConfigurable implements Configurable {
         plugin = IntellijSakerIDEPlugin.getInstance();
         form = new UserParametersForm();
         form.setUserParameterKind("environment");
-        form.getParametersInfoLabel()
-                .setText("The following user parameters are defined for the build environment.");
+        form.getParametersInfoLabel().setText("The following user parameters are defined for the build environment.");
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)

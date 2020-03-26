@@ -45,7 +45,6 @@ public class DaemonConnectionEditorDialog extends JDialog {
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
         setTitle(title);
-        setLocationRelativeTo(relative);
 
         buttonOK.setEnabled(false);
 
@@ -72,6 +71,7 @@ public class DaemonConnectionEditorDialog extends JDialog {
                 JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
         pack();
+        setLocationRelativeTo(relative);
         setMinimumSize(getSize());
 
         formValidator.add(addressTextField, this::validateAddress, FormValidator.REQUIRED);
@@ -210,7 +210,7 @@ public class DaemonConnectionEditorDialog extends JDialog {
                         GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null,
                         new Dimension(150, -1), null, 0, false));
         useAsClusterCheckBox = new JCheckBox();
-        useAsClusterCheckBox.setText("User as cluster");
+        useAsClusterCheckBox.setText("Use as cluster");
         panel3.add(useAsClusterCheckBox,
                 new GridConstraints(2, 0, 1, 2, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,

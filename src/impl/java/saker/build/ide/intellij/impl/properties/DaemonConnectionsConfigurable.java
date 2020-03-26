@@ -15,7 +15,7 @@ import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 
-public class DaemonConnectionsConfigurable implements Configurable {
+public class DaemonConnectionsConfigurable implements Configurable, Configurable.NoScroll {
     private final IntellijSakerIDEProject project;
     private final DaemonConnectionsForm form;
 

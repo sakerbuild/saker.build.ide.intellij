@@ -15,6 +15,7 @@ import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.extensions.Extensions;
 import com.intellij.openapi.extensions.ExtensionsArea;
+import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -53,7 +54,7 @@ public class SakerBuildPlugin {
     public static final Key<Boolean> SAKER_BUILD_NATURE_KEY = new Key<>(NATURE_KEY_NAME);
     private static IdeaPluginDescriptor implementationPluginDescriptor;
 
-    private static volatile Optional<ISakerBuildPluginImpl> pluginImpl;
+    private static volatile ISakerBuildPluginImpl pluginImpl;
 
     public static synchronized void setSakerBuildProjectNatureEnabled(Project project, boolean enabled) {
         if (project.isDisposed()) {
@@ -64,15 +65,12 @@ public class SakerBuildPlugin {
         propertiescomponent.setValue(NATURE_KEY_NAME, Boolean.toString(enabled));
 
         if (!enabled) {
-            Optional<ISakerBuildPluginImpl> pluginopt = SakerBuildPlugin.pluginImpl;
-            if (pluginopt != null) {
-                ISakerBuildPluginImpl plugin = pluginopt.orElse(null);
-                if (plugin != null) {
-                    try {
-                        plugin.closeProject(project);
-                    } catch (Exception e) {
-                        plugin.displayException(e);
-                    }
+            ISakerBuildPluginImpl plugin = SakerBuildPlugin.pluginImpl;
+            if (plugin != null) {
+                try {
+                    plugin.closeProject(project);
+                } catch (Exception e) {
+                    plugin.displayException(e);
                 }
             }
         }
@@ -161,10 +159,10 @@ public class SakerBuildPlugin {
                         Paths.get(PathManager.getHomePath()));
                 pluginimplclass.getMethod("initialize", ImplementationStartArguments.class)
                         .invoke(plugininstance, initargs);
-                pluginImpl = Optional.of(plugininstance);
+                pluginImpl = plugininstance;
             } catch (Exception e) {
                 Logger.getInstance(SakerBuildPlugin.class).error("Failed to initialize saker.build plugin", e);
-                pluginImpl = Optional.empty();
+                pluginImpl = new InitFailedPluginImpl();
             }
         }
     }
@@ -184,11 +182,7 @@ public class SakerBuildPlugin {
     public static void close() {
         synchronized (SakerBuildPlugin.class) {
             try {
-                Optional<ISakerBuildPluginImpl> pluginopt = SakerBuildPlugin.pluginImpl;
-                if (pluginopt == null) {
-                    return;
-                }
-                ISakerBuildPluginImpl plugin = pluginopt.orElse(null);
+                ISakerBuildPluginImpl plugin = SakerBuildPlugin.pluginImpl;
                 if (plugin instanceof Closeable) {
                     try {
                         ((Closeable) plugin).close();
@@ -197,17 +191,13 @@ public class SakerBuildPlugin {
                     }
                 }
             } finally {
-                SakerBuildPlugin.pluginImpl = Optional.empty();
+                SakerBuildPlugin.pluginImpl = new InitFailedPluginImpl();
             }
         }
     }
 
     public static ISakerBuildPluginImpl getPluginImpl() {
-        Optional<ISakerBuildPluginImpl> pluginopt = SakerBuildPlugin.pluginImpl;
-        if (pluginopt == null) {
-            return null;
-        }
-        return pluginopt.orElse(null);
+        return SakerBuildPlugin.pluginImpl;
     }
 
     private static void registerExtension(IdeaPluginDescriptor implplugindesc, ExtensionsArea rootarea, String id,
@@ -260,4 +250,29 @@ public class SakerBuildPlugin {
         }
     }
 
+    public static void displayException(Throwable exc) {
+        //TODO some better display
+        exc.printStackTrace();
+    }
+
+    private static class InitFailedPluginImpl implements ISakerBuildPluginImpl {
+        @Override
+        public void closeProject(Project project) throws IOException {
+        }
+
+        @Override
+        public ISakerBuildProjectImpl getOrCreateProject(Project project) {
+            return null;
+        }
+
+        @Override
+        public void displayException(Throwable exc) {
+            SakerBuildPlugin.displayException(exc);
+        }
+
+        @Override
+        public Configurable createApplicationConfigurable() {
+            return null;
+        }
+    }
 }

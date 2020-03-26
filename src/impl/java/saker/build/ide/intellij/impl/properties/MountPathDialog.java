@@ -56,9 +56,8 @@ public class MountPathDialog extends JDialog {
     private FileSystemEndpointSelector endpointSelector;
     private Iterable<? extends DaemonConnectionIDEProperty> connections;
 
-    private Disposable myDisposable = Disposer.newDisposable();
-
     private Set<String> existingRoots = Collections.emptySet();
+    private FormValidator formValidator;
 
     public MountPathDialog(String title, JComponent relative, Project project,
             Iterable<? extends DaemonConnectionIDEProperty> connections) {
@@ -67,13 +66,12 @@ public class MountPathDialog extends JDialog {
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
         setTitle(title);
-        setLocationRelativeTo(relative);
 
-        FormValidator validator = new FormValidator(buttonOK);
+        formValidator = new FormValidator(buttonOK);
 
         buttonOK.setEnabled(false);
         buttonOK.addActionListener(e -> {
-            if (!validator.canPerformOkRevalidateRefocus()) {
+            if (!formValidator.canPerformOkRevalidateRefocus()) {
                 return;
             }
             onOK();
@@ -102,6 +100,7 @@ public class MountPathDialog extends JDialog {
         //TODO enable button if local
 
         pack();
+        setLocationRelativeTo(relative);
         setMinimumSize(getSize());
 
         resetEndpointSelector(SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE);
@@ -109,13 +108,13 @@ public class MountPathDialog extends JDialog {
         fileSystemEndpointComboBox.addItemListener(e -> {
             //TODO auto-convert between local and project relative
             endpointSelector.setSelectedIndex(fileSystemEndpointComboBox.getSelectedIndex());
-            validator.revalidateComponent(mountpathtextfield);
+            formValidator.revalidateComponent(mountpathtextfield);
         });
 
-        validator.add(executionRootTextField, () -> {
+        formValidator.add(executionRootTextField, () -> {
             return validateExecutionRoot();
         }, FormValidator.REQUIRED | FormValidator.START_ON_FOCUS_LOST);
-        validator.add(mountpathtextfield, () -> {
+        formValidator.add(mountpathtextfield, () -> {
             return validateMountPath(mountpathtextfield);
         }, FormValidator.REQUIRED | FormValidator.START_ON_FOCUS_LOST);
     }
@@ -335,7 +334,7 @@ public class MountPathDialog extends JDialog {
 
     @Override
     public void dispose() {
-        Disposer.dispose(myDisposable);
+        Disposer.dispose(formValidator);
         super.dispose();
     }
 

@@ -9,7 +9,7 @@ public class ScriptConfigurationWizardStep extends SakerWizardPageWizardStep<Scr
     private ScriptConfigurationWizardForm form;
 
     public ScriptConfigurationWizardStep(SakerWizardModel model, ScriptConfigurationSakerWizardPage wizardPage) {
-        super(model, wizardPage);
+        super("Script Configuration", "Configure the scripts which the configuration applies to.", model, wizardPage);
         form = new ScriptConfigurationWizardForm(this);
     }
 

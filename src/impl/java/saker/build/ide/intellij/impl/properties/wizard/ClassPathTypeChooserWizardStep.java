@@ -9,7 +9,7 @@ public class ClassPathTypeChooserWizardStep extends SakerWizardPageWizardStep<Cl
     private ClassPathTypeChooserWizardForm form;
 
     public ClassPathTypeChooserWizardStep(SakerWizardModel model, ClassPathTypeChooserSakerWizardPage wizardPage) {
-        super(model, wizardPage);
+        super("Choose Classpath Type", "Select the classpath type you want to configure.", model, wizardPage);
         this.form = new ClassPathTypeChooserWizardForm(this);
     }
 

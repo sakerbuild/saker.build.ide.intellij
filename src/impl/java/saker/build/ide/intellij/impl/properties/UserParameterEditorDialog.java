@@ -51,7 +51,6 @@ public class UserParameterEditorDialog extends JDialog {
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
         setTitle(title);
-        setLocationRelativeTo(relative);
 
         formValidator = new FormValidator(buttonOK);
 
@@ -82,6 +81,7 @@ public class UserParameterEditorDialog extends JDialog {
         formValidator.add(keyTextField, this::validateKey, FormValidator.REQUIRED);
 
         pack();
+        setLocationRelativeTo(relative);
         setMinimumSize(getSize());
     }
 

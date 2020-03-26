@@ -30,7 +30,7 @@ public class ScriptModellingExclusionDialog extends JDialog {
 
     private String exclusionWildcard;
 
-    private Disposable myDisposable = Disposer.newDisposable();
+    private FormValidator formValidator;
 
     public ScriptModellingExclusionDialog(String title, JComponent relative) {
         exclusionTextField.getEmptyText().clear().appendText("Wildcard pattern");
@@ -39,11 +39,10 @@ public class ScriptModellingExclusionDialog extends JDialog {
         setModal(true);
         getRootPane().setDefaultButton(buttonOK);
         setTitle(title);
-        setLocationRelativeTo(relative);
 
-        FormValidator validator = new FormValidator(buttonOK);
+        formValidator = new FormValidator(buttonOK);
         buttonOK.addActionListener(e -> {
-            if (!validator.canPerformOkRevalidateRefocus()) {
+            if (!formValidator.canPerformOkRevalidateRefocus()) {
                 return;
             }
             onOK();
@@ -64,7 +63,7 @@ public class ScriptModellingExclusionDialog extends JDialog {
         contentPane.registerKeyboardAction(e -> onCancel(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0),
                 JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
-        validator.add(exclusionTextField, () -> {
+        formValidator.add(exclusionTextField, () -> {
             String str = exclusionTextField.getText();
             if (str.isEmpty()) {
                 return new ValidationInfo("Please specify a wildcard for the excluded scripts.", exclusionTextField);
@@ -78,6 +77,7 @@ public class ScriptModellingExclusionDialog extends JDialog {
         }, FormValidator.REQUIRED | FormValidator.START_ON_FOCUS_LOST);
 
         pack();
+        setLocationRelativeTo(relative);
         setMinimumSize(getSize());
     }
 
@@ -106,7 +106,7 @@ public class ScriptModellingExclusionDialog extends JDialog {
 
     @Override
     public void dispose() {
-        Disposer.dispose(myDisposable);
+        Disposer.dispose(formValidator);
         super.dispose();
     }
 

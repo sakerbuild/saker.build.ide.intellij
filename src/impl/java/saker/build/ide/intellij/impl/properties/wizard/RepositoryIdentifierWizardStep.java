@@ -9,7 +9,9 @@ public class RepositoryIdentifierWizardStep extends SakerWizardPageWizardStep<Re
     private RepositoryIdentifierWizardForm form;
 
     public RepositoryIdentifierWizardStep(SakerWizardModel model, RepositoryIdentifierSakerWizardPage wizardPage) {
-        super(model, wizardPage);
+        super("Choose Repository Identifier",
+                "The specified identifier can be used to reference the repository from build scripts.", model,
+                wizardPage);
         form = new RepositoryIdentifierWizardForm(this);
     }
 
