@@ -5,6 +5,9 @@ import com.intellij.execution.filters.FileHyperlinkInfo;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.actionSystem.ActionGroup;
+import com.intellij.openapi.actionSystem.AnAction;
+import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.SelectionModel;
@@ -30,6 +33,7 @@ import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.ide.configuration.IDEConfiguration;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
+import saker.build.ide.intellij.SakerBuildActionGroup;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.support.ExceptionDisplayer;
@@ -790,6 +794,90 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
 
     private void projectPropertiesChanged() {
         //TODO
+    }
+
+    @Override
+    public void addSakerBuildTargetsMenuActions(List<AnAction> result) {
+        NavigableSet<SakerPath> filepaths = getTrackedScriptPaths();
+        if (filepaths.isEmpty()) {
+            result.add(new AnAction("Add new build file") {
+                @Override
+                public void actionPerformed(@NotNull AnActionEvent e) {
+                    //TODO add new build file
+                    System.out.println("TargetsActionGroup.actionPerformed");
+                }
+            });
+        } else {
+            SakerPath workingdirpath = getWorkingDirectoryExecutionPath();
+            for (SakerPath buildfilepath : filepaths) {
+                SakerPath relativepath = buildfilepath;
+                if (workingdirpath != null) {
+                    if (buildfilepath.startsWith(workingdirpath)) {
+                        relativepath = workingdirpath.relativize(relativepath);
+                    }
+                }
+                result.add(new ActionGroup(relativepath.toString(), true) {
+                    @NotNull
+                    @Override
+                    public AnAction[] getChildren(@Nullable AnActionEvent e) {
+                        List<AnAction> targetresult = new ArrayList<>();
+                        appendTargetsToBuildFileMenu(targetresult);
+                        return targetresult.toArray(SakerBuildActionGroup.EMPTY_ANACTION_ARRAY);
+                    }
+
+                    private void appendTargetsToBuildFileMenu(List<AnAction> targetresult) {
+                        Set<String> scripttargets;
+                        try {
+                            scripttargets = getScriptTargets(buildfilepath);
+                        } catch (ScriptParsingFailedException ex) {
+                            ex.printStackTrace();
+                            targetresult.add(new AnAction("Failed to parse script file") {
+                                @Override
+                                public void actionPerformed(@NotNull AnActionEvent e) {
+                                    //TODO dummy
+                                }
+                            });
+                            return;
+                        } catch (IOException ex) {
+                            ex.printStackTrace();
+                            targetresult.add(new AnAction("Failed to open script file") {
+                                @Override
+                                public void actionPerformed(@NotNull AnActionEvent e) {
+                                    //TODO dummy
+                                }
+                            });
+                            return;
+                        }
+                        if (scripttargets == null) {
+                            targetresult.add(new AnAction("Script is not part of the configuration") {
+                                @Override
+                                public void actionPerformed(@NotNull AnActionEvent e) {
+                                    //TODO dummy
+                                }
+                            });
+                            return;
+                        }
+                        if (scripttargets.isEmpty()) {
+                            targetresult.add(new AnAction("No targets found") {
+                                @Override
+                                public void actionPerformed(@NotNull AnActionEvent e) {
+                                    //TODO dummy
+                                }
+                            });
+                            return;
+                        }
+                        for (String target : scripttargets) {
+                            targetresult.add(new AnAction(target) {
+                                @Override
+                                public void actionPerformed(@NotNull AnActionEvent e) {
+                                    buildAsync(buildfilepath, target);
+                                }
+                            });
+                        }
+                    }
+                });
+            }
+        }
     }
 
     private static class ProgressMonitorWrapper implements ExecutionProgressMonitor, TaskProgressMonitor {

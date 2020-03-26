@@ -8,7 +8,9 @@ import com.intellij.openapi.actionSystem.ActionManager;
 import com.intellij.openapi.actionSystem.ActionPlaces;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.application.PathManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.extensions.Extensions;
@@ -27,6 +29,7 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
@@ -41,6 +44,7 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.jar.JarFile;
 import java.util.zip.ZipFile;
 
@@ -49,7 +53,7 @@ public class SakerBuildPlugin {
     public static final Key<Boolean> SAKER_BUILD_NATURE_KEY = new Key<>(NATURE_KEY_NAME);
     private static IdeaPluginDescriptor implementationPluginDescriptor;
 
-    private static volatile ISakerBuildPluginImpl pluginImpl;
+    private static volatile Optional<ISakerBuildPluginImpl> pluginImpl;
 
     public static synchronized void setSakerBuildProjectNatureEnabled(Project project, boolean enabled) {
         if (project.isDisposed()) {
@@ -60,12 +64,15 @@ public class SakerBuildPlugin {
         propertiescomponent.setValue(NATURE_KEY_NAME, Boolean.toString(enabled));
 
         if (!enabled) {
-            ISakerBuildPluginImpl plugin = SakerBuildPlugin.pluginImpl;
-            if (plugin != null) {
-                try {
-                    plugin.closeProject(project);
-                } catch (Exception e) {
-                    plugin.displayException(e);
+            Optional<ISakerBuildPluginImpl> pluginopt = SakerBuildPlugin.pluginImpl;
+            if (pluginopt != null) {
+                ISakerBuildPluginImpl plugin = pluginopt.orElse(null);
+                if (plugin != null) {
+                    try {
+                        plugin.closeProject(project);
+                    } catch (Exception e) {
+                        plugin.displayException(e);
+                    }
                 }
             }
         }
@@ -137,18 +144,13 @@ public class SakerBuildPlugin {
 
             IdeaPluginDescriptor plugindescriptor = PluginManager.getPlugin(plugincl.getPluginId());
 
-            File pluginpath = plugindescriptor.getPath();
-            Path sbjar = pluginpath.toPath().resolve("saker.build.jar");
-            ClassLoader jarcl = plugincl;
             try {
                 Path sakerbuildjarpath = exportEmbeddedJar("saker.build.jar");
                 JarFile sbjf = createMultiReleaseJarFile(sakerbuildjarpath);
                 JarFile sbide = createMultiReleaseJarFile(exportEmbeddedJar("saker.build-ide.jar"));
-                jarcl = new ImplementationClassLoader(Arrays.asList(sbjf, sbide));
+                ClassLoader jarcl = new ImplementationClassLoader(Arrays.asList(sbjf, sbide));
 
                 implementationPluginDescriptor = new ForwardingImplementationPluginDescriptor(plugindescriptor, jarcl);
-
-                registerPluginComponents(jarcl);
 
                 Class<? extends ISakerBuildPluginImpl> pluginimplclass = Class
                         .forName("saker.build.ide.intellij.impl.IntellijSakerIDEPlugin", false, jarcl)
@@ -159,15 +161,15 @@ public class SakerBuildPlugin {
                         Paths.get(PathManager.getHomePath()));
                 pluginimplclass.getMethod("initialize", ImplementationStartArguments.class)
                         .invoke(plugininstance, initargs);
-                pluginImpl = plugininstance;
+                pluginImpl = Optional.of(plugininstance);
             } catch (Exception e) {
-                e.printStackTrace();
+                Logger.getInstance(SakerBuildPlugin.class).error("Failed to initialize saker.build plugin", e);
+                pluginImpl = Optional.empty();
             }
         }
     }
 
     public static EditorHighlighter getEditorHighlighter(Project project, VirtualFile file, EditorColorsScheme colors) {
-        System.out.println("BuildScriptEditorHighlighter.getEditorHighlighter " + file);
         VirtualFileSystem fs = file.getFileSystem();
         if (!(fs instanceof LocalFileSystem)) {
             return null;
@@ -179,64 +181,33 @@ public class SakerBuildPlugin {
         return sakerproject.getEditorHighlighter(file, colors);
     }
 
-    private static void registerPluginComponents(ClassLoader jarcl) throws Exception {
-        ActionManager actionmanager = ActionManager.getInstance();
-
-        ExtensionsArea rootarea = Extensions.getRootArea();
-        registerTargetsMenuAction(actionmanager, jarcl, "SAKER_BUILD_TARGETS_ACTION_GROUP",
-                "saker.build.ide.intellij.impl.TargetsActionGroup");
-        registerExtension(implementationPluginDescriptor, rootarea, "SAKER_BUILD_MODULE_TYPE",
-                "com.intellij.moduleType", "implementationClass", "saker.build.ide.intellij.impl.SakerBuildModuleType");
-
-        Element applicationConfigurable = new Element("applicationConfigurable");
-        applicationConfigurable.setAttribute("provider",
-                "saker.build.ide.intellij.impl.properties.SakerBuildApplicationConfigurableProvider");
-        applicationConfigurable.setAttribute("displayName", "Saker.build");
-        applicationConfigurable.setAttribute("groupId", "build.tools");
-
-        Element envuserparametersconfigurable = new Element("configurable");
-        envuserparametersconfigurable.setAttribute("displayName", "Environment User Parameters");
-        envuserparametersconfigurable.setAttribute("implementation",
-                "saker.build.ide.intellij.impl.properties.EnvironmentUserParametersConfigurable");
-        applicationConfigurable.addContent(envuserparametersconfigurable);
-
-        rootarea.registerExtension(implementationPluginDescriptor, applicationConfigurable, "com.intellij");
-
-        Element completioncontributor = new Element("completion.contributor");
-        completioncontributor.setAttribute("implementationClass",
-                "saker.build.ide.intellij.impl.editor.BuildScriptCompletionContributor");
-        completioncontributor.setAttribute("language", BuildScriptLanguage.INSTANCE.getID());
-        rootarea.registerExtension(implementationPluginDescriptor, completioncontributor, "com.intellij");
-    }
-
-    public static IdeaPluginDescriptor getImplementationPluginDescriptor() {
-        return implementationPluginDescriptor;
-    }
-
     public static void close() {
         synchronized (SakerBuildPlugin.class) {
-            if (pluginImpl instanceof Closeable) {
-                try {
-                    ((Closeable) pluginImpl).close();
-                } catch (Exception e) {
-                    e.printStackTrace();
+            try {
+                Optional<ISakerBuildPluginImpl> pluginopt = SakerBuildPlugin.pluginImpl;
+                if (pluginopt == null) {
+                    return;
                 }
+                ISakerBuildPluginImpl plugin = pluginopt.orElse(null);
+                if (plugin instanceof Closeable) {
+                    try {
+                        ((Closeable) plugin).close();
+                    } catch (Exception e) {
+                        Logger.getInstance(SakerBuildPlugin.class).error("Failed to close saker.build plugin", e);
+                    }
+                }
+            } finally {
+                SakerBuildPlugin.pluginImpl = Optional.empty();
             }
-            pluginImpl = null;
         }
     }
 
     public static ISakerBuildPluginImpl getPluginImpl() {
-        return pluginImpl;
-    }
-
-    private static void registerTargetsMenuAction(ActionManager actionmanager, ClassLoader jarcl, String id,
-            String classname) throws InstantiationException, IllegalAccessException, InvocationTargetException,
-            NoSuchMethodException, ClassNotFoundException {
-        AnAction action = Class.forName(classname, false, jarcl).asSubclass(AnAction.class).getConstructor()
-                .newInstance();
-        DefaultActionGroup group = (DefaultActionGroup) actionmanager.getAction(ActionPlaces.MAIN_MENU);
-        group.add(action);
+        Optional<ISakerBuildPluginImpl> pluginopt = SakerBuildPlugin.pluginImpl;
+        if (pluginopt == null) {
+            return null;
+        }
+        return pluginopt.orElse(null);
     }
 
     private static void registerExtension(IdeaPluginDescriptor implplugindesc, ExtensionsArea rootarea, String id,
@@ -252,6 +223,9 @@ public class SakerBuildPlugin {
 
     private static Path exportEmbeddedJar(String jarname) throws IOException {
         URL jarentry = SakerBuildPlugin.class.getClassLoader().getResource(jarname);
+        if (jarentry == null) {
+            throw new FileNotFoundException("Embedded " + jarname + " not found.");
+        }
         URLConnection conn = jarentry.openConnection();
         Path result = Paths.get(PathManager.getHomePath()).resolve(jarname);
         Long existinglast = getLastModifiedTimeOrNull(result);

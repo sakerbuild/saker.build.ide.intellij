@@ -7,9 +7,10 @@ import org.jetbrains.annotations.Nullable;
 
 public class BuildScriptLanguage extends Language {
     public static final BuildScriptLanguage INSTANCE = new BuildScriptLanguage();
+    public static final String ID = "SAKER_BUILD_SCRIPT_LANGUAGE";
 
     protected BuildScriptLanguage() {
-        super("SAKER_BUILD_SCRIPT_LANGUAGE");
+        super(ID);
     }
 
     @Nullable

@@ -1,5 +1,6 @@
 package saker.build.ide.intellij.impl;
 
+import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
@@ -8,6 +9,7 @@ import org.jetbrains.annotations.NotNull;
 import saker.build.ide.intellij.ISakerBuildPluginImpl;
 import saker.build.ide.intellij.ImplementationStartArguments;
 import saker.build.ide.intellij.SakerBuildPlugin;
+import saker.build.ide.intellij.impl.properties.SakerBuildApplicationConfigurable;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
@@ -131,6 +133,11 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
     public void displayException(Throwable exc) {
         //TODO display exception
         exc.printStackTrace();
+    }
+
+    @Override
+    public Configurable createApplicationConfigurable() {
+        return new SakerBuildApplicationConfigurable();
     }
 
     private void closeProjects() throws IOException {

@@ -5,10 +5,7 @@
             url="https://saker.build">saker.build
     </vendor>
 
-    <description><![CDATA[
-    Enter short description for your plugin here.<br>
-    <em>most HTML tags may be used</em>
-    ]]></description>
+    <description>Plug-in for saker.build system integration</description>
 
     <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
          on how to target different products -->
@@ -20,9 +17,6 @@
     </applicationListeners>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!--
-        <moduleType id="SAKER_BUILD_MODULE_TYPE" implementationClass="saker.build.ide.intellij.impl.SakerBuildModuleType"/>
-        -->
         <toolWindow id="saker.build"
                     anchor="bottom"
                     factoryClass="saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory"/>
@@ -40,6 +34,12 @@
             settings tree.
             -->
         </projectConfigurable>
+        <applicationConfigurable
+                id="SAKER_BUILD_APPLICATION_SETTINGS"
+                groupId="build.tools"
+                displayName="Saker.build"
+                provider="saker.build.ide.intellij.properties.SakerBuildApplicationConfigurableProvider"
+                dynamic="true"/>
         <fileType name="Saker.build script file"
                   implementationClass="saker.build.ide.intellij.BuildScriptFileType"
                   fieldName="INSTANCE"
@@ -54,6 +54,9 @@
                                     language="SAKER_BUILD_SCRIPT_LANGUAGE"/>
         <lang.psiStructureViewFactory implementationClass="saker.build.ide.intellij.BuildScriptStructureViewFactory"
                                       language="SAKER_BUILD_SCRIPT_LANGUAGE"/>
+        <completion.contributor implementationClass="saker.build.ide.intellij.BuildScriptCompletionContributor"
+                                language="SAKER_BUILD_SCRIPT_LANGUAGE"
+                                id="SAKER_BUILD_SCRIPT_COMPLETION_CONTRIBUTOR"/>
     </extensions>
 
     <actions>
@@ -78,6 +81,11 @@
                                keymap="$default"/>
             <add-to-group group-id="BuildMenu"/>
         </action>
+        <group id="SAKER_BUILD_TARGETS_ACION_GROUP"
+               text="Saker.build"
+               class="saker.build.ide.intellij.SakerBuildActionGroup">
+            <add-to-group group-id="MainMenu"/>
+        </group>
     </actions>
     <idea-version since-build="193"/>
 </idea-plugin>

@@ -1,5 +1,11 @@
 package saker.build.ide.intellij.impl.editor;
 
+import com.intellij.codeInsight.completion.CompletionParameters;
+import com.intellij.codeInsight.completion.CompletionResultSet;
+import com.intellij.codeInsight.completion.InsertHandler;
+import com.intellij.codeInsight.completion.InsertionContext;
+import com.intellij.codeInsight.lookup.LookupElement;
+import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.ide.projectView.PresentationData;
 import com.intellij.ide.structureView.FileEditorPositionListener;
 import com.intellij.ide.structureView.ModelListener;
@@ -33,20 +39,27 @@ import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.tree.IElementType;
+import com.intellij.ui.ColorUtil;
 import com.intellij.ui.JBColor;
 import com.intellij.util.containers.ContainerUtil;
+import groovyjarjarantlr.Token;
 import org.apache.commons.io.input.CharSequenceInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.BuildScriptLanguage;
+import saker.build.ide.intellij.DocumentationHolder;
 import saker.build.ide.intellij.IBuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.runtime.environment.SakerEnvironmentImpl;
+import saker.build.scripting.model.CompletionProposalEdit;
+import saker.build.scripting.model.CompletionProposalEditKind;
 import saker.build.scripting.model.FormattedTextContent;
+import saker.build.scripting.model.InsertCompletionProposalEdit;
 import saker.build.scripting.model.PartitionedTextContent;
+import saker.build.scripting.model.ScriptCompletionProposal;
 import saker.build.scripting.model.ScriptModellingEnvironment;
 import saker.build.scripting.model.ScriptStructureOutline;
 import saker.build.scripting.model.ScriptSyntaxModel;
@@ -103,6 +116,8 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     private Collection<ModelUpdateListener> modelUpdateListeners = ContainerUtil.createLockFreeCopyOnWriteList();
 
+    private int currentTheme = TokenStyle.THEME_LIGHT;
+
     private final StructureViewBuilder structureViewBuilder = new TreeBasedStructureViewBuilder() {
         @NotNull
         @Override
@@ -134,6 +149,75 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     @Override
     public StructureView createStructureView(PsiFile psiFile, FileEditor fileEditor) {
         return structureViewBuilder.createStructureView(fileEditor, project.getProject());
+    }
+
+    @Override
+    public void performCompletion(@NotNull CompletionParameters parameters, @NotNull CompletionResultSet result) {
+        ScriptSyntaxModel model = getModel();
+        if (model == null) {
+            return;
+        }
+        List<? extends ScriptCompletionProposal> proposals = model.getCompletionProposals(parameters.getOffset());
+        for (ScriptCompletionProposal proposal : proposals) {
+            addIntellijProposal(parameters, result, proposal);
+        }
+    }
+
+    private void addIntellijProposal(CompletionParameters parameters, @NotNull CompletionResultSet result,
+            ScriptCompletionProposal proposal) {
+        List<? extends CompletionProposalEdit> changes = proposal.getTextChanges();
+        if (ObjectUtils.isNullOrEmpty(changes)) {
+            return;
+        }
+        //TODO support complex edits
+        for (CompletionProposalEdit c : changes) {
+            String ckind = c.getKind();
+            if (!CompletionProposalEditKind.INSERT.equalsIgnoreCase(ckind)) {
+                //non insert proposals not yet supported
+                return;
+            }
+        }
+        int count = changes.size();
+        if (count != 1) {
+            return;
+        }
+        for (int i = 0; i < count; i++) {
+            CompletionProposalEdit c = changes.get(i);
+            for (int j = i + 1; j < count; j++) {
+                CompletionProposalEdit c2 = changes.get(j);
+                if (CompletionProposalEdit.overlaps(c, c2)) {
+                    System.err.println("Overlaps: " + c + " and " + c2);
+                    //XXX display info?
+                    //invalid proposal
+                    return;
+                }
+            }
+        }
+        InsertCompletionProposalEdit edit = (InsertCompletionProposalEdit) changes.get(0);
+        LookupElementBuilder builder = LookupElementBuilder.create(new DocumentationHolder() {
+            @Override
+            public String getDocumentation() {
+                return BuildScriptEditorHighlighter.generateDocumentation(proposal.getInformation());
+            }
+        }, edit.getText());
+        builder = builder.withPresentableText(proposal.getDisplayString());
+        if (!ObjectUtils.isNullOrEmpty(proposal.getDisplayRelation())) {
+            builder = builder.withTailText(" : " + proposal.getDisplayRelation());
+        }
+        if (!ObjectUtils.isNullOrEmpty(proposal.getDisplayType())) {
+            builder = builder.withTypeText(proposal.getDisplayType());
+        }
+        builder = builder.withInsertHandler(new InsertHandler<LookupElement>() {
+            @Override
+            public void handleInsert(@NotNull InsertionContext context, @NotNull LookupElement item) {
+                int editoffset = edit.getOffset();
+                context.getDocument().replaceString(editoffset, context.getSelectionEndOffset(),
+                        ObjectUtils.nullDefault(edit.getText(), ""));
+                context.getEditor().getCaretModel().moveToOffset(proposal.getSelectionOffset());
+                context.commitDocument();
+            }
+        });
+        result.addElement(builder);
     }
 
     @Override
@@ -270,7 +354,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             }
         }
         appendHtmlFooter(sb);
-        System.out.println(sb);
         return sb.toString();
     }
 
@@ -340,8 +423,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                         if (tokenstyles == null) {
                             return DEFAULT_TOKEN_STYLE;
                         }
-                        //TODO take theme into account
-                        int currenttheme = TokenStyle.THEME_LIGHT;
+                        int currenttheme = BuildScriptEditorHighlighter.this.currentTheme;
                         TokenStyle style = findAppropriateStyleForTheme(tokenstyles, currenttheme);
                         return getTokenStyleAttributes(style);
                     }
@@ -517,8 +599,8 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     @Override
     public void setColorScheme(@NotNull EditorColorsScheme scheme) {
-        System.out.println("BuildScriptEditorHighlighter.setColorScheme " + scheme);
         this.colors = scheme;
+        currentTheme = ColorUtil.isDark(scheme.getDefaultBackground()) ? TokenStyle.THEME_DARK : TokenStyle.THEME_LIGHT;
     }
 
     @Override
