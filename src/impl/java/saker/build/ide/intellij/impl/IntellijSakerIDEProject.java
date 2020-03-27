@@ -260,6 +260,9 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     public void disposeHighlighter(SakerPath scriptPath, BuildScriptEditorHighlighter highlighter) {
+        if (scriptPath == null) {
+            return;
+        }
         highlighters.remove(scriptPath, highlighter);
     }
 
@@ -550,7 +553,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
 
                 executionLock.lockInterruptibly();
                 console[0].clear();
-                SwingUtilities.invokeLater(() -> tw[0].activate(null));
+                SwingUtilities.invokeLater(() -> tw[0].activate(null, false));
                 if (monitorwrapper.isCancelled()) {
                     out.write("Build cancelled.\n".getBytes());
                     return;
@@ -799,6 +802,10 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     @Override
     public Project getProject() {
         return project;
+    }
+
+    public SakerIDEProject getSakerProject() {
+        return sakerProject;
     }
 
     @Override

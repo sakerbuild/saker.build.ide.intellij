@@ -42,7 +42,6 @@ import com.intellij.psi.tree.IElementType;
 import com.intellij.ui.ColorUtil;
 import com.intellij.ui.JBColor;
 import com.intellij.util.containers.ContainerUtil;
-import org.apache.commons.io.input.CharSequenceInputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
@@ -50,16 +49,13 @@ import saker.build.ide.intellij.BuildScriptLanguage;
 import saker.build.ide.intellij.DocumentationHolder;
 import saker.build.ide.intellij.IBuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
-import saker.build.ide.support.SakerIDEPlugin;
-import saker.build.ide.support.SakerIDEProject;
-import saker.build.runtime.environment.SakerEnvironmentImpl;
+import saker.build.ide.support.ui.ScriptEditorModel;
 import saker.build.scripting.model.CompletionProposalEdit;
 import saker.build.scripting.model.CompletionProposalEditKind;
 import saker.build.scripting.model.FormattedTextContent;
 import saker.build.scripting.model.InsertCompletionProposalEdit;
 import saker.build.scripting.model.PartitionedTextContent;
 import saker.build.scripting.model.ScriptCompletionProposal;
-import saker.build.scripting.model.ScriptModellingEnvironment;
 import saker.build.scripting.model.ScriptStructureOutline;
 import saker.build.scripting.model.ScriptSyntaxModel;
 import saker.build.scripting.model.ScriptToken;
@@ -69,14 +65,11 @@ import saker.build.scripting.model.TextPartition;
 import saker.build.scripting.model.TextRegionChange;
 import saker.build.scripting.model.TokenStyle;
 import saker.build.thirdparty.saker.util.ObjectUtils;
-import saker.build.thirdparty.saker.util.io.ByteSource;
-import saker.build.thirdparty.saker.util.io.function.IOSupplier;
 
+import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Font;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.EnumMap;
 import java.util.Iterator;
 import java.util.List;
@@ -84,38 +77,23 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildScriptEditorHighlighter {
-    private static final AtomicReferenceFieldUpdater<BuildScriptEditorHighlighter, ModelReference> ARFU_model = AtomicReferenceFieldUpdater
-            .newUpdater(BuildScriptEditorHighlighter.class, ModelReference.class, "model");
 
     private static final IElementType TOKEN_ELEMENT_TYPE = new IElementType("SAKER_SCRIPT_TOKEN",
             BuildScriptLanguage.INSTANCE);
 
     private final IntellijSakerIDEProject project;
-    private final SakerPath scriptFileExecutionPath;
 
-    private final Object inputAccessLock = new Object();
-    private StringBuilder input;
-    private List<TextRegionChange> regionChanges = new ArrayList<>();
-
-    private EditorColorsScheme colors;
     private HighlighterClient editor;
 
-    private volatile ModelReference model;
-
-    private volatile boolean disposed = false;
-
-    private boolean bulkChange;
+    private List<TextRegionChange> buildRegionChanges = null;
 
     private ScriptingResourcesChangeListener changeListener;
 
     private ConcurrentHashMap<TokenStyle, TextAttributes> tokenStyleAttributes = new ConcurrentHashMap<>();
 
-    private Collection<ModelUpdateListener> modelUpdateListeners = ContainerUtil.createLockFreeCopyOnWriteList();
-
-    private int currentTheme = TokenStyle.THEME_LIGHT;
+    private ScriptEditorModel editorModel = new ScriptEditorModel();
 
     private final StructureViewBuilder structureViewBuilder = new TreeBasedStructureViewBuilder() {
         @NotNull
@@ -130,19 +108,34 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
     };
 
+    //IntelliJ warns that this could be a local variable.
+    //  As listeners are weakly referenced by the model, keep this as a field.
+    private final ScriptEditorModel.ModelUpdateListener modelUpdateListener = model -> {
+        HighlighterClient editor = BuildScriptEditorHighlighter.this.editor;
+        if (editor != null) {
+            SwingUtilities.invokeLater(() -> {
+                editor.repaint(0, Integer.MAX_VALUE);
+            });
+        }
+    };
+
     public BuildScriptEditorHighlighter(IntellijSakerIDEProject project, SakerPath scriptpath,
             EditorColorsScheme colors) {
         this.project = project;
-        this.scriptFileExecutionPath = scriptpath;
-        this.colors = colors;
+        editorModel.setEnvironment(project.getSakerProject());
+        editorModel.setScriptExecutionPath(scriptpath);
+        editorModel.setTokenTheme(colorSchemeToTokenTheme(colors));
+
+        editorModel.addModelListener(modelUpdateListener);
     }
 
     public ScriptSyntaxModel getModel() {
-        ModelReference modelref = this.model;
-        if (modelref == null) {
+        try {
+            return editorModel.getUpToDateModel();
+        } catch (Exception e) {
+            project.displayException(e);
             return null;
         }
-        return modelref.model;
     }
 
     @Override
@@ -359,132 +352,187 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     @NotNull
     @Override
     public HighlighterIterator createIterator(int startOffset) {
-        ModelReference modelref = this.model;
-        if (modelref != null) {
-            try {
-                ScriptSyntaxModel model = modelref.model;
-                synchronized (modelref) {
-                    synchronized (inputAccessLock) {
-                        modelref.text = input.toString();
-                        if (!regionChanges.isEmpty()) {
-                            modelref.regionChanges.addAll(regionChanges);
-                            regionChanges.clear();
-                            modelref.updateCalled = false;
-                        }
-                    }
-                    if (!modelref.updateCalled) {
-                        modelref.updateCalled = true;
-                        IOSupplier<ByteSource> inputsupplier = () -> ByteSource
-                                .valueOf(new CharSequenceInputStream(modelref.text, StandardCharsets.UTF_8));
-                        if (modelref.regionChanges.isEmpty()) {
-                            //create the model directly for the first time
-                            model.createModel(inputsupplier);
-                        } else {
-                            model.updateModel(modelref.regionChanges, inputsupplier);
-                        }
-                        modelref.regionChanges.clear();
-
-                        callModelListeners(model);
-                    }
-                }
-                Map<String, Set<? extends TokenStyle>> styles = model.getTokenStyles();
-
-                Iterable<? extends ScriptToken> tokens = model.getTokens(startOffset, Integer.MAX_VALUE);
-                ArrayList<? extends ScriptToken> tokenslist = ObjectUtils.newArrayList(tokens);
-                if (tokenslist.isEmpty()) {
-                    //no tokens
-                    return emptyIterator;
-                }
-                int startidx = 0;
-                while (startidx < tokenslist.size()) {
-                    ScriptToken token = tokenslist.get(startidx);
-                    if (token.getEndOffset() >= startOffset) {
-                        break;
-                    }
-                    startidx++;
-                }
-
-                List<? extends ScriptToken> uselist =
-                        startidx == 0 ? tokenslist : tokenslist.subList(startidx, tokenslist.size());
-
-                if (uselist.isEmpty()) {
-                    return emptyIterator;
-                }
-
-                return new HighlighterIterator() {
-                    private ListIterator<? extends ScriptToken> iter = uselist.listIterator();
-                    private ScriptToken token = iter.next();
-
-                    @Override
-                    public TextAttributes getTextAttributes() {
-                        String type = token.getType();
-                        Set<? extends TokenStyle> tokenstyles = styles.get(type);
-                        if (tokenstyles == null) {
-                            return DEFAULT_TOKEN_STYLE;
-                        }
-                        int currenttheme = BuildScriptEditorHighlighter.this.currentTheme;
-                        TokenStyle style = findAppropriateStyleForTheme(tokenstyles, currenttheme);
-                        return getTokenStyleAttributes(style);
-                    }
-
-                    @Override
-                    public int getStart() {
-                        return Math.max(startOffset, token.getOffset());
-                    }
-
-                    @Override
-                    public int getEnd() {
-                        return token.getEndOffset();
-                    }
-
-                    @Override
-                    public void advance() {
-                        if (!iter.hasNext()) {
-                            token = null;
-                        } else {
-                            token = iter.next();
-                        }
-                    }
-
-                    @Override
-                    public void retreat() {
-                        token = iter.previous();
-                    }
-
-                    @Override
-                    public boolean atEnd() {
-                        return token == null && !iter.hasNext();
-                    }
-
-                    @Override
-                    public Document getDocument() {
-                        return editor.getDocument();
-                    }
-
-                    @Override
-                    public IElementType getTokenType() {
-                        return TOKEN_ELEMENT_TYPE;
-                    }
-
-                };
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+        List<ScriptEditorModel.TokenState> tokenstateiterable = editorModel.getCurrentTokenState();
+        if (tokenstateiterable.isEmpty()) {
+            return new EmptyNoTokensHighlighterIterator();
         }
+        return new HighlighterIterator() {
+            private ListIterator<? extends ScriptEditorModel.TokenState> iter = tokenstateiterable.listIterator();
+            private ScriptEditorModel.TokenState token = iter.hasNext() ? iter.next() : null;
 
-        TextAttributes textattrs = new TextAttributes();
-        int myTextLength = input.length();
-        return new EmptyFullTextHighlighterIterator(startOffset, textattrs, myTextLength);
-    }
-
-    private void callModelListeners(ScriptSyntaxModel model) {
-        for (ModelUpdateListener l : modelUpdateListeners) {
-            try {
-                l.modelUpdated(model);
-            } catch (Exception e) {
-                project.displayException(e);
+            @Override
+            public TextAttributes getTextAttributes() {
+                if (token == null) {
+                    return DEFAULT_TOKEN_STYLE;
+                }
+                TokenStyle style = token.getStyle();
+                if (style == null) {
+                    return DEFAULT_TOKEN_STYLE;
+                }
+                return getTokenStyleAttributes(style);
             }
-        }
+
+            @Override
+            public int getStart() {
+                if (token == null) {
+                    return startOffset;
+                }
+                return Math.max(startOffset, token.getOffset());
+            }
+
+            @Override
+            public int getEnd() {
+                if (token == null) {
+                    return startOffset;
+                }
+                return token.getEndOffset();
+            }
+
+            @Override
+            public void advance() {
+                if (!iter.hasNext()) {
+                    token = null;
+                } else {
+                    token = iter.next();
+                }
+            }
+
+            @Override
+            public void retreat() {
+                token = iter.previous();
+            }
+
+            @Override
+            public boolean atEnd() {
+                return token == null && !iter.hasNext();
+            }
+
+            @Override
+            public Document getDocument() {
+                return editor.getDocument();
+            }
+
+            @Override
+            public IElementType getTokenType() {
+                return TOKEN_ELEMENT_TYPE;
+            }
+        };
+//        ModelReference modelref = this.model;
+//        if (modelref != null) {
+//            try {
+//                ScriptSyntaxModel model = modelref.model;
+//                synchronized (modelref) {
+//                    synchronized (inputAccessLock) {
+//                        modelref.text = input.toString();
+//                        if (!regionChanges.isEmpty()) {
+//                            modelref.regionChanges.addAll(regionChanges);
+//                            regionChanges.clear();
+//                            modelref.updateCalled = false;
+//                        }
+//                    }
+//                    if (!modelref.updateCalled) {
+//                        modelref.updateCalled = true;
+//                        IOSupplier<ByteSource> inputsupplier = () -> ByteSource
+//                                .valueOf(new CharSequenceInputStream(modelref.text, StandardCharsets.UTF_8));
+//                        if (modelref.regionChanges.isEmpty()) {
+//                            //create the model directly for the first time
+//                            model.createModel(inputsupplier);
+//                        } else {
+//                            model.updateModel(modelref.regionChanges, inputsupplier);
+//                        }
+//                        modelref.regionChanges.clear();
+//
+//                        callModelListeners(model);
+//                    }
+//                }
+//                Map<String, Set<? extends TokenStyle>> styles = model.getTokenStyles();
+//
+//                Iterable<? extends ScriptToken> tokens = model.getTokens(startOffset, Integer.MAX_VALUE);
+//                ArrayList<? extends ScriptToken> tokenslist = ObjectUtils.newArrayList(tokens);
+//                if (tokenslist.isEmpty()) {
+//                    //no tokens
+//                    return emptyIterator;
+//                }
+//                int startidx = 0;
+//                while (startidx < tokenslist.size()) {
+//                    ScriptToken token = tokenslist.get(startidx);
+//                    if (token.getEndOffset() >= startOffset) {
+//                        break;
+//                    }
+//                    startidx++;
+//                }
+//
+//                List<? extends ScriptToken> uselist =
+//                        startidx == 0 ? tokenslist : tokenslist.subList(startidx, tokenslist.size());
+//
+//                if (uselist.isEmpty()) {
+//                    return emptyIterator;
+//                }
+//
+//                return new HighlighterIterator() {
+//                    private ListIterator<? extends ScriptToken> iter = uselist.listIterator();
+//                    private ScriptToken token = iter.next();
+//
+//                    @Override
+//                    public TextAttributes getTextAttributes() {
+//                        String type = token.getType();
+//                        Set<? extends TokenStyle> tokenstyles = styles.get(type);
+//                        if (tokenstyles == null) {
+//                            return DEFAULT_TOKEN_STYLE;
+//                        }
+//                        int currenttheme = BuildScriptEditorHighlighter.this.currentTheme;
+//                        TokenStyle style = findAppropriateStyleForTheme(tokenstyles, currenttheme);
+//                        return getTokenStyleAttributes(style);
+//                    }
+//
+//                    @Override
+//                    public int getStart() {
+//                        return Math.max(startOffset, token.getOffset());
+//                    }
+//
+//                    @Override
+//                    public int getEnd() {
+//                        return token.getEndOffset();
+//                    }
+//
+//                    @Override
+//                    public void advance() {
+//                        if (!iter.hasNext()) {
+//                            token = null;
+//                        } else {
+//                            token = iter.next();
+//                        }
+//                    }
+//
+//                    @Override
+//                    public void retreat() {
+//                        token = iter.previous();
+//                    }
+//
+//                    @Override
+//                    public boolean atEnd() {
+//                        return token == null && !iter.hasNext();
+//                    }
+//
+//                    @Override
+//                    public Document getDocument() {
+//                        return editor.getDocument();
+//                    }
+//
+//                    @Override
+//                    public IElementType getTokenType() {
+//                        return TOKEN_ELEMENT_TYPE;
+//                    }
+//
+//                };
+//            } catch (Exception e) {
+//                e.printStackTrace();
+//            }
+//        }
+//
+//        TextAttributes textattrs = new TextAttributes();
+//        int myTextLength = input.length();
+//        return new EmptyFullTextHighlighterIterator(startOffset, textattrs, myTextLength);
     }
 
     private TextAttributes getTokenStyleAttributes(TokenStyle style) {
@@ -535,50 +583,15 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         });
     }
 
-    private static TokenStyle findAppropriateStyleForTheme(Set<? extends TokenStyle> styles, int theme) {
-        if (styles == null) {
-            return null;
-        }
-        Iterator<? extends TokenStyle> it = styles.iterator();
-        if (!it.hasNext()) {
-            return null;
-        }
-
-        TokenStyle first = it.next();
-        TokenStyle notheme = null;
-        if (((first.getStyle() & theme) == theme)) {
-            return first;
-        }
-        if (((first.getStyle() & TokenStyle.THEME_MASK) == 0)) {
-            notheme = first;
-        }
-        while (it.hasNext()) {
-            TokenStyle ts = it.next();
-            if (((ts.getStyle() & theme) == theme)) {
-                return ts;
-            }
-            if (((ts.getStyle() & TokenStyle.THEME_MASK) == 0)) {
-                notheme = ts;
-            }
-        }
-        return notheme == null ? first : notheme;
-    }
-
     @Override
     public void setText(@NotNull CharSequence text) {
-        synchronized (inputAccessLock) {
-            if (this.input != null) {
-                //already set. should be updated via document listener
-                return;
-            }
-            this.input = new StringBuilder(text);
-        }
-        initModel();
+        System.out.println("BuildScriptEditorHighlighter.setText " + text.length());
+        editorModel.resetInput(text);
     }
 
     @Override
     public void setEditor(@NotNull HighlighterClient editor) {
-        System.out.println("BuildScriptEditorHighlighter.setEditor " + scriptFileExecutionPath);
+        System.out.println("BuildScriptEditorHighlighter.setEditor " + editorModel.getScriptExecutionPath());
         this.editor = editor;
 
         installListener();
@@ -588,12 +601,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             @Override
             public void editorReleased(@NotNull EditorFactoryEvent event) {
                 if (event.getEditor() == editor) {
-                    //TODO dispose the model
-                    disposed = true;
-                    disposeModel();
-                    System.out.println(
-                            "BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER " + scriptFileExecutionPath);
-                    project.disposeHighlighter(scriptFileExecutionPath, BuildScriptEditorHighlighter.this);
+                    System.out.println("BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER " + editorModel
+                            .getScriptExecutionPath());
+
+                    project.disposeHighlighter(editorModel.getScriptExecutionPath(), BuildScriptEditorHighlighter.this);
+                    editorModel.close();
                     editorfactory.removeEditorFactoryListener(this);
                     uninstallListener();
                 }
@@ -603,8 +615,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     @Override
     public void setColorScheme(@NotNull EditorColorsScheme scheme) {
-        this.colors = scheme;
-        currentTheme = ColorUtil.isDark(scheme.getDefaultBackground()) ? TokenStyle.THEME_DARK : TokenStyle.THEME_LIGHT;
+        editorModel.setTokenTheme(colorSchemeToTokenTheme(scheme));
+    }
+
+    private static int colorSchemeToTokenTheme(@NotNull EditorColorsScheme scheme) {
+        return ColorUtil.isDark(scheme.getDefaultBackground()) ? TokenStyle.THEME_DARK : TokenStyle.THEME_LIGHT;
     }
 
     @Override
@@ -613,22 +628,23 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     @Override
     public void documentChanged(@NotNull DocumentEvent e) {
-        synchronized (inputAccessLock) {
-            TextRegionChange regionchange = toTextRegionChange(e);
-            regionChanges.add(regionchange);
-
-            applyDocumentEvent(input, e);
+        TextRegionChange regionchange = toTextRegionChange(e);
+        if (buildRegionChanges != null) {
+            buildRegionChanges.add(regionchange);
+        } else {
+            editorModel.textChange(regionchange);
         }
     }
 
     @Override
     public void bulkUpdateStarting(@NotNull Document document) {
-        bulkChange = true;
+        buildRegionChanges = new ArrayList<>();
     }
 
     @Override
     public void bulkUpdateFinished(@NotNull Document document) {
-        bulkChange = false;
+        editorModel.textChange(buildRegionChanges);
+        buildRegionChanges = null;
     }
 
     private static TextRegionChange toTextRegionChange(DocumentEvent event) {
@@ -645,87 +661,28 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         sb.replace(offset, offset + change.getLength(), ObjectUtils.nullDefault(change.getText(), ""));
     }
 
-    private void initModel() {
-        if (disposed) {
-            return;
-        }
-        synchronized (this) {
-            if (model != null) {
-                //model already inited
-                return;
-            }
-            ScriptModellingEnvironment scriptingenv = project.getScriptingEnvironment();
-
-            if (scriptingenv != null) {
-                disposeModelLocked();
-                ScriptSyntaxModel scriptmodel = scriptingenv.getModel(scriptFileExecutionPath);
-                if (scriptmodel != null) {
-                    this.model = new ModelReference(scriptmodel);
-                    callModelListeners(scriptmodel);
-                }
-            }
-        }
-    }
-
-    private void disposeModel() {
-        synchronized (this) {
-            disposeModelLocked();
-        }
-    }
-
-    private void disposeModelLocked() {
-        ModelReference modelref = ARFU_model.getAndSet(this, null);
-        if (modelref != null) {
-            modelref.invalidateModel();
-            callModelListeners(null);
-        }
-    }
-
     private void installListener() {
         changeListener = new ScriptingResourcesChangeListener();
-        project.addProjectResourceListener(changeListener);
         project.addProjectPropertiesChangeListener(changeListener);
-        project.getPlugin().addPluginResourceListener(changeListener);
     }
 
     private void uninstallListener() {
         if (changeListener != null) {
-            project.removeProjectResourceListener(changeListener);
             project.removeProjectPropertiesChangeListener(changeListener);
-            project.getPlugin().removePluginResourceListener(changeListener);
             changeListener = null;
         }
     }
 
-    private class ScriptingResourcesChangeListener implements SakerIDEProject.ProjectResourceListener, SakerIDEPlugin.PluginResourceListener, IntellijSakerIDEProject.ProjectPropertiesChangeListener {
-        @Override
-        public void environmentClosing(SakerEnvironmentImpl environment) {
-            disposeModel();
-        }
-
-        @Override
-        public void environmentCreated(SakerEnvironmentImpl environment) {
-            initModel();
-        }
-
-        @Override
-        public void scriptModellingEnvironmentClosing(ScriptModellingEnvironment env) {
-            disposeModel();
-        }
-
-        @Override
-        public void scriptModellingEnvironmentCreated(ScriptModellingEnvironment env) {
-            initModel();
-        }
+    private class ScriptingResourcesChangeListener implements IntellijSakerIDEProject.ProjectPropertiesChangeListener {
 
         @Override
         public void projectPropertiesChanging() {
-            disposeModel();
+            editorModel.clearModel();
         }
 
         @Override
         public void projectPropertiesChanged() {
-            initModel();
+            editorModel.initModel();
         }
     }
 
@@ -850,7 +807,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     private static final Filter[] EMPTY_FILTER_ARRAY = new Filter[0];
     private static final OutlineEntryElement[] EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY = new OutlineEntryElement[0];
 
-    private class BuildScriptStructureViewModel implements StructureViewModel, StructureViewModel.ElementInfoProvider, ModelUpdateListener {
+    private class BuildScriptStructureViewModel implements StructureViewModel, StructureViewModel.ElementInfoProvider, ScriptEditorModel.ModelUpdateListener {
         private final Editor myEditor;
         private final List<FileEditorPositionListener> myListeners = ContainerUtil.createLockFreeCopyOnWriteList();
         private final List<ModelListener> myModelListeners = ContainerUtil.createLockFreeCopyOnWriteList();
@@ -866,13 +823,14 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             }
         };
 
-        private OutlineRootElement rootNode;
+        private final OutlineRootElement rootNode;
 
         public BuildScriptStructureViewModel(Editor editor) {
             this.myEditor = editor;
+            this.rootNode = new OutlineRootElement(editor);
+
             this.myEditor.getCaretModel().addCaretListener(myEditorCaretListener, myEditorCaretListenerDisposable);
-            modelUpdateListeners.add(this);
-            rootNode = new OutlineRootElement(editor);
+            editorModel.addModelListener(this);
         }
 
         @Nullable
@@ -931,7 +889,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             Disposer.dispose(myEditorCaretListenerDisposable);
             myListeners.clear();
             myModelListeners.clear();
-            modelUpdateListeners.remove(this);
+            editorModel.removeModelListener(this);
         }
 
         public void fireModelUpdate() {
@@ -1116,7 +1074,4 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
     }
 
-    private interface ModelUpdateListener {
-        public void modelUpdated(ScriptSyntaxModel model);
-    }
 }
