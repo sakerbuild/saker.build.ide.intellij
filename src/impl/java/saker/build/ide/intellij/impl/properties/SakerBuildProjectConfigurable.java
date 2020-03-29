@@ -3,13 +3,11 @@ package saker.build.ide.intellij.impl.properties;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.ui.DocumentAdapter;
-import com.intellij.ui.components.JBTextField;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.support.properties.IDEProjectProperties;
-import saker.build.ide.support.properties.MountPathIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 
 import javax.swing.JComponent;

@@ -16,10 +16,24 @@
                   topic="com.intellij.ide.AppLifecycleListener"/>
     </applicationListeners>
 
+    <extensionPoints>
+        <extensionPoint name="params.environment.contributor"
+                        beanClass="saker.build.ide.intellij.extension.params.EnvironmentUserParameterContributorProviderExtensionPointBean">
+            <with attribute="implementationClass"
+                  implements="saker.build.ide.intellij.extension.params.IEnvironmentUserParameterContributor"/>
+        </extensionPoint>
+        <extensionPoint name="params.execution.contributor"
+                        interface="saker.build.ide.intellij.extension.params.ExecutionUserParameterContributorProviderExtensionPointBean">
+            <with attribute="implementationClass"
+                  implements="saker.build.ide.intellij.extension.params.IExecutionUserParameterContributor"/>
+        </extensionPoint>
+    </extensionPoints>
+
     <extensions defaultExtensionNs="com.intellij">
         <toolWindow id="saker.build"
                     anchor="bottom"
-                    factoryClass="saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory"/>
+                    factoryClass="saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory"
+                    doNotActivateOnStart="true"/>
         <projectConfigurable id="SAKER_BUILD_PROJECT_SETTINGS"
                              displayName="Saker.build Project Settings"
                              provider="saker.build.ide.intellij.properties.SakerBuildProjectConfigurableProvider"

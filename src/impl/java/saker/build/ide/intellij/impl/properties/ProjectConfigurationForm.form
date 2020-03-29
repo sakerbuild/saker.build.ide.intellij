@@ -8,7 +8,7 @@
     <properties/>
     <border type="none"/>
     <children>
-      <component id="ecf4a" class="javax.swing.JLabel">
+      <component id="bfafb" class="com.intellij.ui.components.JBLabel">
         <constraints>
           <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
         </constraints>
@@ -32,7 +32,7 @@
             <properties/>
             <border type="none"/>
             <children>
-              <component id="db3a2" class="javax.swing.JCheckBox" binding="generateIDEConfigurationFromCheckBox" default-binding="true">
+              <component id="d4c87" class="com.intellij.ui.components.JBCheckBox" binding="generateIDEConfigurationFromCheckBox">
                 <constraints>
                   <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
@@ -50,7 +50,7 @@
             <properties/>
             <border type="none"/>
             <children>
-              <component id="32e2e" class="javax.swing.JCheckBox" binding="embedOutputArtifactsCheckBox">
+              <component id="d5779" class="com.intellij.ui.components.JBCheckBox" binding="embedOutputArtifactsCheckBox">
                 <constraints>
                   <grid row="1" column="0" row-span="1" col-span="2" vsize-policy="0" hsize-policy="3" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>
@@ -58,7 +58,7 @@
                   <text value="Embed output artifacts in build trace"/>
                 </properties>
               </component>
-              <component id="4d9d8" class="javax.swing.JLabel">
+              <component id="a03a1" class="com.intellij.ui.components.JBLabel">
                 <constraints>
                   <grid row="0" column="0" row-span="1" col-span="1" vsize-policy="0" hsize-policy="0" anchor="8" fill="0" indent="0" use-parent-layout="false"/>
                 </constraints>

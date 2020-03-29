@@ -4,8 +4,8 @@ import com.intellij.openapi.actionSystem.ActionToolbarPosition;
 import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
-import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.ToolbarDecorator;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -24,7 +24,6 @@ import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.RepositoryIDEProperty;
-import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.ide.support.ui.wizard.BaseSakerWizardManager;
 import saker.build.ide.support.ui.wizard.SakerWizardPage;
 import saker.build.runtime.repository.SakerRepositoryFactory;
@@ -33,15 +32,12 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.SwingUtilities;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import java.awt.CardLayout;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -246,9 +242,9 @@ public class RepositoryConfigurationForm {
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
-        final JLabel label1 = new JLabel();
-        label1.setText("The following repositories are used during the build execution to look up build tasks.");
-        rootPanel.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        final JBLabel jBLabel1 = new JBLabel();
+        jBLabel1.setText("The following repositories are used during the build execution to look up build tasks.");
+        rootPanel.add(jBLabel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         configurationsPanel = new JPanel();
         configurationsPanel.setLayout(new CardLayout(0, 0));

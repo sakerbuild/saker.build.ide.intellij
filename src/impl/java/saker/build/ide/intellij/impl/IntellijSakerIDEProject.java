@@ -11,6 +11,7 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.Separator;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ScrollType;
@@ -20,16 +21,16 @@ import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.options.Configurable;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
+import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
-import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
-import javafx.application.Application;
 import org.apache.commons.io.output.WriterOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -39,20 +40,32 @@ import saker.build.exception.ScriptPositionedExceptionView;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.ide.configuration.IDEConfiguration;
+import saker.build.ide.intellij.ContributedExtensionConfiguration;
+import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.SakerBuildActionGroup;
+import saker.build.ide.intellij.SakerBuildPlugin;
+import saker.build.ide.intellij.extension.params.ExecutionUserParameterContributorProviderExtensionPointBean;
+import saker.build.ide.intellij.extension.params.IExecutionUserParameterContributor;
+import saker.build.ide.intellij.extension.params.UserParameterModification;
 import saker.build.ide.intellij.impl.dialog.BuildTargetChooserDialog;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.intellij.impl.ui.ProjectPropertiesValidationDialog;
 import saker.build.ide.support.ExceptionDisplayer;
+import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.configuration.ProjectIDEConfigurationCollection;
+import saker.build.ide.support.persist.StructuredObjectInput;
+import saker.build.ide.support.persist.StructuredObjectOutput;
+import saker.build.ide.support.persist.XMLStructuredReader;
+import saker.build.ide.support.persist.XMLStructuredWriter;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.PropertiesValidationException;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
+import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.runtime.environment.BuildTaskExecutionResult;
 import saker.build.runtime.environment.BuildTaskExecutionResultImpl;
 import saker.build.runtime.execution.BuildUserPromptHandler;
@@ -78,14 +91,15 @@ import saker.build.thirdparty.saker.util.io.StreamUtils;
 import saker.build.util.exc.ExceptionView;
 
 import javax.swing.SwingUtilities;
-import javax.swing.event.HyperlinkListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -96,10 +110,12 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -117,6 +133,9 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         }
     }
 
+    private static final String CONFIG_FILE_ROOT_OBJECT_NAME = "saker.build.ide.intellij.project.config";
+    private static final String PROPERTIES_FILE_NAME = "." + CONFIG_FILE_ROOT_OBJECT_NAME;
+
     private static final String LAST_BUILD_SCRIPT_PATH = "last-build-script-path";
     private static final String LAST_BUILD_TARGET_NAME = "last-build-target-name";
 
@@ -130,6 +149,10 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     private final Set<ProjectPropertiesChangeListener> propertiesChangeListeners = Collections
             .newSetFromMap(new WeakHashMap<>());
 
+    private List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> executionParameterContributors = Collections
+            .emptyList();
+    private Path projectConfigurationFilePath;
+
     public IntellijSakerIDEProject(IntellijSakerIDEPlugin plugin, SakerIDEProject sakerProject, Project project) {
         this.plugin = plugin;
         this.sakerProject = sakerProject;
@@ -140,10 +163,55 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         sakerProject.addExceptionDisplayer(this);
 
         String basepath = project.getBasePath();
-        if (basepath != null) {
-            Path projectpath = Paths.get(basepath);
-            sakerProject.initialize(projectpath);
+        if (basepath == null) {
+            Logger.getInstance(IntellijSakerIDEProject.class)
+                    .warn("Failed to initialize saker.build project. No project base path found.");
+            return;
         }
+
+        Path projectpath = Paths.get(basepath);
+        this.projectConfigurationFilePath = projectpath.resolve(PROPERTIES_FILE_NAME);
+
+        Set<ExtensionDisablement> extensiondisablements = new HashSet<>();
+
+        try (InputStream in = Files.newInputStream(projectConfigurationFilePath)) {
+            XMLStructuredReader reader = new XMLStructuredReader(in);
+            try (StructuredObjectInput configurationobj = reader.readObject(CONFIG_FILE_ROOT_OBJECT_NAME)) {
+                IntellijSakerIDEPlugin.readExtensionDisablements(configurationobj, extensiondisablements);
+            }
+        } catch (NoSuchFileException e) {
+        } catch (IOException e) {
+            displayException(e);
+        }
+
+        executionParameterContributors = new ArrayList<>();
+        for (ExecutionUserParameterContributorProviderExtensionPointBean extbean : ExecutionUserParameterContributorProviderExtensionPointBean.EP_NAME
+                .getExtensionList()) {
+            if (extbean.getId() == null) {
+                Logger.getInstance(IntellijSakerIDEProject.class)
+                        .warn("No id attribute specified for extension: " + extbean);
+                continue;
+            }
+
+            boolean enabled = !ExtensionDisablement
+                    .isDisabled(extensiondisablements, extbean.getPluginId(), extbean.getId());
+
+            try {
+                IExecutionUserParameterContributor contributor = extbean.createContributor(project);
+                executionParameterContributors
+                        .add(new ContributedExtensionConfiguration<>(contributor, extbean, enabled));
+            } catch (Exception e) {
+                Logger.getInstance(IntellijSakerIDEProject.class)
+                        .error("Failed to instantiate extension: " + extbean, e);
+            }
+        }
+        executionParameterContributors = ImmutableUtils.unmodifiableList(executionParameterContributors);
+
+        sakerProject.initialize(projectpath);
+    }
+
+    public List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> getExecutionParameterContributors() {
+        return executionParameterContributors;
     }
 
     public void addProjectPropertiesChangeListener(ProjectPropertiesChangeListener listener) {
@@ -198,6 +266,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         return projectPathToExecutionPath(SakerPath.EMPTY);
     }
 
+    @Override
+    public String projectPathToExecutionPath(String path) {
+        return Objects.toString(projectPathToExecutionPath(SakerIDESupportUtils.tryParsePath(path)), null);
+    }
+
     public SakerPath projectPathToExecutionPath(SakerPath path) {
         return SakerIDESupportUtils
                 .projectPathToExecutionPath(getIDEProjectProperties(), SakerPath.valueOf(getProjectPath()), path);
@@ -222,6 +295,12 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 build(scriptfile, targetname, indicator);
             }
         });
+    }
+
+    @Override
+    public String executionPathToProjectRelativePath(String executionpath) {
+        return Objects
+                .toString(executionPathToProjectRelativePath(SakerIDESupportUtils.tryParsePath(executionpath)), null);
     }
 
     public SakerPath executionPathToProjectRelativePath(SakerPath executionsakerpath) {
@@ -456,6 +535,9 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     protected void build(SakerPath scriptfile, String targetname, ProgressIndicator monitor) {
+        if (monitor == null) {
+            monitor = new EmptyProgressIndicator();
+        }
         ProgressMonitorWrapper monitorwrapper = new ProgressMonitorWrapper(monitor);
 
         boolean wasinterrupted = false;
@@ -485,7 +567,14 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                     return;
                 }
                 ExecutionParametersImpl params;
-                IDEProjectProperties projectproperties = getIDEProjectProperties();
+                IDEProjectProperties projectproperties;
+                try {
+                    projectproperties = getIDEProjectPropertiesWithExecutionParameterContributions(
+                            getIDEProjectProperties(), monitor);
+                } catch (ProcessCanceledException e) {
+                    out.write("Build cancelled.\n".getBytes());
+                    return;
+                }
                 try {
                     params = sakerProject.createExecutionParameters(projectproperties);
                     //there were no validation errors
@@ -837,12 +926,29 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         sakerProject.removeProjectResourceListener(listener);
     }
 
+    @Override
     public IntellijSakerIDEPlugin getPlugin() {
         return plugin;
     }
 
     protected void close() throws IOException {
-
+        IOException exc = null;
+        List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> envparamcontributors = executionParameterContributors;
+        if (!ObjectUtils.isNullOrEmpty(envparamcontributors)) {
+            this.executionParameterContributors = Collections.emptyList();
+            for (ContributedExtensionConfiguration<IExecutionUserParameterContributor> contributor : envparamcontributors) {
+                try {
+                    IExecutionUserParameterContributor paramcontributor = contributor.getContributor();
+                    if (paramcontributor != null) {
+                        paramcontributor.dispose();
+                    }
+                } catch (Exception e) {
+                    //catch just in case
+                    exc = IOUtils.addExc(exc, e);
+                }
+            }
+        }
+        IOUtils.throwExc(exc);
     }
 
     @Override
@@ -857,6 +963,41 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     @Override
     public Configurable getProjectPropertiesConfigurable() {
         return new SakerBuildProjectConfigurable(this);
+    }
+
+    public void setIDEProjectProperties(IDEProjectProperties properties,
+            List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> executionParameterContributors) {
+        synchronized (configurationChangeLock) {
+            try {
+                projectPropertiesChanging();
+            } catch (Exception e) {
+                displayException(e);
+            }
+            try {
+                sakerProject.setIDEProjectProperties(properties);
+                Set<ExtensionDisablement> prevdisablements = IntellijSakerIDEPlugin
+                        .getExtensionDisablements(this.executionParameterContributors);
+                this.executionParameterContributors = executionParameterContributors;
+                Set<ExtensionDisablement> currentdisablements = IntellijSakerIDEPlugin
+                        .getExtensionDisablements(this.executionParameterContributors);
+                if (!prevdisablements.equals(currentdisablements)) {
+                    try {
+                        writeProjectConfigurationFile(currentdisablements);
+                    } catch (IOException e) {
+                        displayException(e);
+                    }
+                }
+                sakerProject.updateForProjectProperties(
+                        getIDEProjectPropertiesWithExecutionParameterContributions(properties, null));
+            } finally {
+                try {
+                    projectPropertiesChanged();
+                } catch (Exception e) {
+                    //don't propagate exceptions
+                    displayException(e);
+                }
+            }
+        }
     }
 
     public void setIDEProjectProperties(IDEProjectProperties properties) {
@@ -882,6 +1023,71 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 } catch (Exception e) {
                     //don't propagate exceptions
                     displayException(e);
+                }
+            }
+        }
+    }
+
+    private IDEProjectProperties getIDEProjectPropertiesWithExecutionParameterContributions(
+            IDEProjectProperties properties, ProgressIndicator monitor) {
+        if (executionParameterContributors.isEmpty()) {
+            return properties;
+        }
+        SimpleIDEProjectProperties.Builder builder = SimpleIDEProjectProperties.builder(properties);
+        Map<String, String> userparameters = SakerIDEPlugin.entrySetToMap(properties.getUserParameters());
+        List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> contributors = executionParameterContributors;
+
+        NavigableMap<String, String> userparamworkmap = getUserParametersWithContributors(userparameters, contributors,
+                monitor);
+        builder.setUserParameters(userparamworkmap.entrySet());
+        return builder.build();
+    }
+
+    public NavigableMap<String, String> getUserParametersWithContributors(Map<String, String> userparameters,
+            List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> contributors,
+            ProgressIndicator monitor) {
+        NavigableMap<String, String> userparamworkmap = ObjectUtils.newTreeMap(userparameters);
+        NavigableMap<String, String> unmodifiableuserparammap = ImmutableUtils
+                .unmodifiableNavigableMap(userparamworkmap);
+        contributor_loop:
+        for (ContributedExtensionConfiguration<IExecutionUserParameterContributor> extension : contributors) {
+            if (!extension.isEnabled()) {
+                continue;
+            }
+            if (monitor != null && monitor.isCanceled()) {
+                throw new ProcessCanceledException();
+            }
+            try {
+                Set<UserParameterModification> modifications = extension.getContributor()
+                        .contribute(this, unmodifiableuserparammap, monitor);
+                if (ObjectUtils.isNullOrEmpty(modifications)) {
+                    continue;
+                }
+                Set<String> keys = new TreeSet<>();
+                for (UserParameterModification mod : modifications) {
+                    if (!keys.add(mod.getKey())) {
+                        displayException(new IllegalArgumentException(
+                                "Multiple execution user parameter modification for key: " + mod.getKey()));
+                        continue contributor_loop;
+                    }
+                }
+                for (UserParameterModification mod : modifications) {
+                    mod.apply(userparamworkmap);
+                }
+            } catch (Exception e) {
+                //catch other kind of exceptions too
+                displayException(e);
+            }
+        }
+        return userparamworkmap;
+    }
+
+    private void writeProjectConfigurationFile(Iterable<? extends ExtensionDisablement> disablements) throws
+            IOException {
+        try (OutputStream os = Files.newOutputStream(projectConfigurationFilePath)) {
+            try (XMLStructuredWriter writer = new XMLStructuredWriter(os)) {
+                try (StructuredObjectOutput configurationobj = writer.writeObject(CONFIG_FILE_ROOT_OBJECT_NAME)) {
+                    IntellijSakerIDEPlugin.writeExtensionDisablements(configurationobj, disablements);
                 }
             }
         }
@@ -914,8 +1120,23 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             result.add(new AnAction("Add new build file") {
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e) {
-                    //TODO add new build file
-                    System.out.println("TargetsActionGroup.actionPerformed");
+                    VirtualFile projectdir = LocalFileSystem.getInstance().findFileByPath(getProjectPath().toString());
+                    if (!projectdir.isDirectory()) {
+                        return;
+                    }
+                    VirtualFile child = projectdir.findChild("saker.build");
+                    if (child != null) {
+                        FileEditorManager.getInstance(project).openEditor(new OpenFileDescriptor(project, child), true);
+                        return;
+                    }
+                    try {
+                        VirtualFile createdfile = projectdir.createChildData(e, "saker.build");
+                        FileEditorManager.getInstance(project)
+                                .openEditor(new OpenFileDescriptor(project, createdfile), true);
+                        return;
+                    } catch (IOException ex) {
+                        displayException(ex);
+                    }
                 }
             });
         } else {

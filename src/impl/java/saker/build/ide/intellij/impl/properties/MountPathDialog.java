@@ -1,6 +1,5 @@
 package saker.build.ide.intellij.impl.properties;
 
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.fileChooser.FileChooser;
 import com.intellij.openapi.fileChooser.FileChooserDescriptor;
 import com.intellij.openapi.project.Project;

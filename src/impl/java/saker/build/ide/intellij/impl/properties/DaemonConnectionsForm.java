@@ -5,6 +5,7 @@ import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.ToolbarDecorator;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -26,7 +27,6 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.TreeModelEvent;
-import javax.swing.event.TreeModelListener;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
@@ -292,9 +292,9 @@ public class DaemonConnectionsForm {
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
                         0, false));
-        final JLabel label1 = new JLabel();
-        label1.setText("Execution daemon:");
-        rootPanel.add(label1, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        final JBLabel jBLabel1 = new JBLabel();
+        jBLabel1.setText("Execution daemon:");
+        rootPanel.add(jBLabel1, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         executionDaemonComboBox = new JComboBox();
         rootPanel.add(executionDaemonComboBox,
@@ -305,9 +305,9 @@ public class DaemonConnectionsForm {
         rootPanel.add(spacer1,
                 new GridConstraints(2, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
-        final JLabel label2 = new JLabel();
-        label2.setText("The build will use the following daemons as part of the execution.");
-        rootPanel.add(label2, new GridConstraints(0, 0, 1, 3, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        final JBLabel jBLabel2 = new JBLabel();
+        jBLabel2.setText("The build will use the following daemons as part of the execution.");
+        rootPanel.add(jBLabel2, new GridConstraints(0, 0, 1, 3, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 

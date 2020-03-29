@@ -6,14 +6,9 @@ import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.support.properties.IDEProjectProperties;
-import saker.build.ide.support.properties.ProviderMountIDEProperty;
-import saker.build.ide.support.properties.SimpleIDEProjectProperties;
-import saker.build.thirdparty.saker.util.ImmutableUtils;
 
 import javax.swing.JComponent;
-import java.util.Collections;
 import java.util.Objects;
-import java.util.Set;
 
 public class PathConfigurationConfigurable implements Configurable, Configurable.NoScroll {
     private final IntellijSakerIDEProject project;

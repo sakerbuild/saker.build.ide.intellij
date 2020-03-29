@@ -6,12 +6,11 @@ import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
+import saker.build.ide.intellij.api.ISakerProject;
 
 import java.util.List;
 
-public interface ISakerBuildProjectImpl {
-    public Project getProject();
-
+public interface ISakerBuildProjectImpl extends ISakerProject {
     public void buildAsync();
 
     public Configurable getProjectPropertiesConfigurable();

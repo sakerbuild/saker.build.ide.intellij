@@ -1,15 +1,12 @@
 package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.AddEditRemovePanel;
-import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.IdeBorderFactory;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.impl.ui.SakerPropertyPageAddEditRemovePanel;
@@ -25,17 +22,14 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
-import javax.swing.event.DocumentEvent;
 import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class PathConfigurationForm {
     private JPanel rootPanel;

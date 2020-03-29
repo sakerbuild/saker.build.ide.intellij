@@ -2,6 +2,8 @@ package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.ui.TextFieldWithBrowseButton;
 import com.intellij.ui.IdeBorderFactory;
+import com.intellij.ui.components.JBCheckBox;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
@@ -23,8 +25,8 @@ public class ProjectConfigurationForm {
     private JPanel rootPanel;
     private JPanel ideConfigurationPanel;
     private JPanel buildTracePanel;
-    private JCheckBox generateIDEConfigurationFromCheckBox;
-    private JCheckBox embedOutputArtifactsCheckBox;
+    private JBCheckBox generateIDEConfigurationFromCheckBox;
+    private JBCheckBox embedOutputArtifactsCheckBox;
     private TextFieldWithBrowseButton buildTraceOutputTextField;
 
     private SakerBuildProjectConfigurable configurable;
@@ -113,9 +115,9 @@ public class ProjectConfigurationForm {
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
-        final JLabel label1 = new JLabel();
-        label1.setText("Saker.build project settings are available on the sub-pages.");
-        rootPanel.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        final JBLabel jBLabel1 = new JBLabel();
+        jBLabel1.setText("Saker.build project settings are available on the sub-pages.");
+        rootPanel.add(jBLabel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
@@ -130,7 +132,7 @@ public class ProjectConfigurationForm {
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
                         0, false));
-        generateIDEConfigurationFromCheckBox = new JCheckBox();
+        generateIDEConfigurationFromCheckBox = new JBCheckBox();
         generateIDEConfigurationFromCheckBox.setText("Generate IDE configuration from build tasks");
         ideConfigurationPanel.add(generateIDEConfigurationFromCheckBox,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
@@ -143,15 +145,15 @@ public class ProjectConfigurationForm {
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
                         0, false));
-        embedOutputArtifactsCheckBox = new JCheckBox();
+        embedOutputArtifactsCheckBox = new JBCheckBox();
         embedOutputArtifactsCheckBox.setText("Embed output artifacts in build trace");
         buildTracePanel.add(embedOutputArtifactsCheckBox,
                 new GridConstraints(1, 0, 1, 2, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        final JLabel label2 = new JLabel();
-        label2.setText("Build trace output:");
-        buildTracePanel.add(label2,
+        final JBLabel jBLabel2 = new JBLabel();
+        jBLabel2.setText("Build trace output:");
+        buildTracePanel.add(jBLabel2,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                         GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
                         false));

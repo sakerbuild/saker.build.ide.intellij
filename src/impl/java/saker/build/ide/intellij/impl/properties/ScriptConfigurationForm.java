@@ -6,8 +6,8 @@ import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.IdeBorderFactory;
-import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.ToolbarDecorator;
+import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -28,9 +28,7 @@ import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.ClassPathLocationIDEProperty;
 import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
-import saker.build.ide.support.properties.RepositoryIDEProperty;
 import saker.build.ide.support.properties.ScriptConfigurationIDEProperty;
-import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.ide.support.ui.wizard.BaseSakerWizardManager;
 import saker.build.ide.support.ui.wizard.SakerWizardPage;
 import saker.build.scripting.ScriptAccessProvider;
@@ -50,8 +48,6 @@ import javax.swing.tree.TreePath;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -305,9 +301,9 @@ public class ScriptConfigurationForm {
         final JPanel panel1 = new JPanel();
         panel1.setLayout(new GridLayoutManager(2, 1, new Insets(5, 5, 5, 5), -1, -1));
         tabbedPane1.addTab("Configurations", panel1);
-        final JLabel label1 = new JLabel();
-        label1.setText("The following language definitions are applied to the build scripts.");
-        panel1.add(label1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+        final JBLabel jBLabel1 = new JBLabel();
+        jBLabel1.setText("The following language definitions are applied to the build scripts.");
+        panel1.add(jBLabel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         configurationsPanel = new JPanel();
         configurationsPanel.setLayout(new CardLayout(0, 0));
@@ -319,9 +315,9 @@ public class ScriptConfigurationForm {
         ideModellingPanel = new JPanel();
         ideModellingPanel.setLayout(new GridLayoutManager(2, 1, new Insets(5, 5, 5, 5), -1, -1));
         tabbedPane1.addTab("IDE modelling", ideModellingPanel);
-        final JLabel label2 = new JLabel();
-        label2.setText("The build scripts matching the specified wildcards won't be part of the script modelling.");
-        ideModellingPanel.add(label2,
+        final JBLabel jBLabel2 = new JBLabel();
+        jBLabel2.setText("The build scripts matching the specified wildcards won't be part of the script modelling.");
+        ideModellingPanel.add(jBLabel2,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                         GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
                         false));

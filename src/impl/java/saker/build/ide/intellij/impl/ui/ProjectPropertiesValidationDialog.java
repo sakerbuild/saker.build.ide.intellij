@@ -1,11 +1,8 @@
 package saker.build.ide.intellij.impl.ui;
 
-import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.wm.IdeFrame;
-import com.intellij.openapi.wm.WindowManager;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
@@ -20,24 +17,17 @@ import saker.build.ide.intellij.impl.properties.TaskRepositoriesConfigurable;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
-import saker.build.ide.support.properties.PropertiesValidationException;
 
 import javax.swing.DefaultListModel;
 import javax.swing.JButton;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
-import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JList;
 import javax.swing.JPanel;
 import javax.swing.KeyStroke;
-import javax.swing.event.ListSelectionEvent;
-import javax.swing.event.ListSelectionListener;
-import java.awt.Container;
 import java.awt.Dimension;
 import java.awt.Insets;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.WindowAdapter;

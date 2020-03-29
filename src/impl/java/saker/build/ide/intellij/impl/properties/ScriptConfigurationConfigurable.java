@@ -4,14 +4,10 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
-import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.support.properties.IDEProjectProperties;
-import saker.build.ide.support.properties.ScriptConfigurationIDEProperty;
-import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 
 import javax.swing.JComponent;
 import java.util.Objects;
-import java.util.Set;
 
 public class ScriptConfigurationConfigurable implements Configurable, Configurable.NoScroll {
     private final SakerBuildProjectConfigurable parent;

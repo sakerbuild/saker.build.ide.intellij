@@ -4,6 +4,8 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
+import saker.build.ide.intellij.ContributedExtensionConfiguration;
+import saker.build.ide.intellij.extension.params.IEnvironmentUserParameterContributor;
 import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
@@ -11,6 +13,7 @@ import saker.build.ide.support.properties.IDEPluginProperties;
 import javax.swing.JComponent;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -66,8 +69,12 @@ public class EnvironmentUserParametersConfigurable implements Configurable, Conf
     @Override
     public void apply() throws ConfigurationException {
         Set<Map.Entry<String, String>> vals = getCurrentValues();
+        List<ContributedExtensionConfiguration<IEnvironmentUserParameterContributor>> environmentparamcontributors = plugin
+                .getEnvironmentParameterContributors();
+
         plugin.setIDEPluginProperties(
-                SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties()).setUserParameters(vals).build());
+                SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties()).setUserParameters(vals).build(),
+                environmentparamcontributors);
         this.userParameters = vals;
     }
 
