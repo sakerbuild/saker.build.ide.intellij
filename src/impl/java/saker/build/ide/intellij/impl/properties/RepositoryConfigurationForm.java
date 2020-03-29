@@ -4,10 +4,13 @@ import com.intellij.openapi.actionSystem.ActionToolbarPosition;
 import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
+import com.intellij.ui.SimpleTextAttributes;
 import com.intellij.ui.ToolbarDecorator;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import com.intellij.util.ui.tree.TreeModelAdapter;
+import org.jetbrains.annotations.NotNull;
 import saker.build.ide.intellij.impl.properties.wizard.ClassPathTypeChooserWizardForm;
 import saker.build.ide.intellij.impl.properties.wizard.SakerWizardDialog;
 import saker.build.ide.intellij.impl.properties.wizard.SakerWizardModel;
@@ -21,6 +24,7 @@ import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.ClassPathServiceEnumeratorIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.RepositoryIDEProperty;
+import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.ide.support.ui.wizard.BaseSakerWizardManager;
 import saker.build.ide.support.ui.wizard.SakerWizardPage;
 import saker.build.runtime.repository.SakerRepositoryFactory;
@@ -29,11 +33,15 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.SwingUtilities;
+import javax.swing.event.TreeModelEvent;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
 import java.awt.CardLayout;
 import java.awt.Insets;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -55,7 +63,6 @@ public class RepositoryConfigurationForm {
         DefaultTreeModel treemodel = new DefaultTreeModel(rootTreeNode, false);
         configTree = new Tree(treemodel);
         configTree.setRootVisible(false);
-        //TODO add reset default link
         configTree.getEmptyText().clear().appendText("No repositories defined.");
 
         decorator = ToolbarDecorator.createDecorator(configTree);
@@ -75,14 +82,24 @@ public class RepositoryConfigurationForm {
                     performEditAction();
                     return true;
                 }
-                //don't edit on root daemon connection node, as it opens and closes
+                //don't edit on root node, as it opens and closes
                 return false;
             }
         }.installOn(configTree);
         decorator.getActionsPanel().setEnabled(CommonActionsPanel.Buttons.EDIT, configTree.getSelectionPath() != null);
+
+        configTree.getModel().addTreeModelListener(new TreeModelAdapter() {
+            @Override
+            protected void process(@NotNull TreeModelEvent event, @NotNull EventType type) {
+                configurable.getParent().getBuilder().setRepositories(getRepositories());
+            }
+        });
     }
 
-    public void reset(IDEProjectProperties properties) {
+    public void reset() {
+        IDEProjectProperties properties = configurable.getParent().getProperties();
+
+        rootTreeNode.clear();
         for (RepositoryIDEProperty sc : properties.getRepositories()) {
             RepositoryPropertyTreeNode node = new RepositoryPropertyTreeNode(rootTreeNode);
             node.setProperty(sc);
@@ -142,11 +159,15 @@ public class RepositoryConfigurationForm {
     private void addAction(AnActionButton anActionButton) {
         RepositoryIDEProperty property = showWizard(null);
         if (property != null) {
-            RepositoryPropertyTreeNode node = new RepositoryPropertyTreeNode(rootTreeNode);
-            node.setProperty(property);
-            int idx = rootTreeNode.add(node);
-            ((DefaultTreeModel) configTree.getModel()).nodesWereInserted(rootTreeNode, new int[] { idx });
+            addProperty(property);
         }
+    }
+
+    private void addProperty(RepositoryIDEProperty property) {
+        RepositoryPropertyTreeNode node = new RepositoryPropertyTreeNode(rootTreeNode);
+        node.setProperty(property);
+        int idx = rootTreeNode.add(node);
+        ((DefaultTreeModel) configTree.getModel()).nodesWereInserted(rootTreeNode, new int[] { idx });
     }
 
     private void removeAction(AnActionButton anActionButton) {

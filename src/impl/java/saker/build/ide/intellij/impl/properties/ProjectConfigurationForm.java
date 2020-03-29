@@ -16,6 +16,8 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.Insets;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 
 public class ProjectConfigurationForm {
     private JPanel rootPanel;
@@ -26,16 +28,43 @@ public class ProjectConfigurationForm {
     private TextFieldWithBrowseButton buildTraceOutputTextField;
 
     private SakerBuildProjectConfigurable configurable;
-    private MountPathIDEProperty outputProperty;
 
     public ProjectConfigurationForm(SakerBuildProjectConfigurable configurable) {
         this.configurable = configurable;
 
         ideConfigurationPanel.setBorder(IdeBorderFactory.createTitledBorder("IDE configuration", true));
         buildTracePanel.setBorder(IdeBorderFactory.createTitledBorder("Build trace", true));
+
+        generateIDEConfigurationFromCheckBox.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                configurable.getBuilder()
+                        .setRequireTaskIDEConfiguration(generateIDEConfigurationFromCheckBox.isSelected());
+            }
+        });
+        embedOutputArtifactsCheckBox.addItemListener(new ItemListener() {
+            @Override
+            public void itemStateChanged(ItemEvent e) {
+                configurable.getBuilder().setBuildTraceEmbedArtifacts(embedOutputArtifactsCheckBox.isSelected());
+            }
+        });
+
+        buildTraceOutputTextField.addActionListener(e -> {
+            SelectBuildTraceOutputDialog dialog = new SelectBuildTraceOutputDialog("Build Trace Output", rootPanel,
+                    configurable.getProject().getProject(),
+                    configurable.getCurrentProjectProperties().getConnections());
+            dialog.setEditProperty(configurable.getCurrentProjectProperties().getBuildTraceOutput());
+            dialog.setVisible(true);
+            MountPathIDEProperty prop = dialog.getProperty();
+            updateOutputTextField(prop);
+
+            configurable.getBuilder().setBuildTraceOutput(prop);
+        });
+        buildTraceOutputTextField.getTextField().setEditable(false);
     }
 
-    public void reset(IDEProjectProperties properties) {
+    public void reset() {
+        IDEProjectProperties properties = configurable.getProperties();
         generateIDEConfigurationFromCheckBox.setSelected(properties.isRequireTaskIDEConfiguration());
         embedOutputArtifactsCheckBox.setSelected(properties.isBuildTraceEmbedArtifacts());
 
@@ -43,19 +72,6 @@ public class ProjectConfigurationForm {
         if (btout != null) {
             updateOutputTextField(btout);
         }
-        outputProperty = btout;
-
-        buildTraceOutputTextField.addActionListener(e -> {
-            SelectBuildTraceOutputDialog dialog = new SelectBuildTraceOutputDialog("Build Trace Output", rootPanel,
-                    configurable.getProject().getProject(),
-                    configurable.getCurrentProjectProperties().getConnections());
-            dialog.setEditProperty(outputProperty);
-            dialog.setVisible(true);
-            MountPathIDEProperty prop = dialog.getProperty();
-            outputProperty = prop;
-            updateOutputTextField(prop);
-        });
-        buildTraceOutputTextField.getTextField().setEditable(false);
     }
 
     private void updateOutputTextField(MountPathIDEProperty btout) {
@@ -71,18 +87,6 @@ public class ProjectConfigurationForm {
             buildTraceOutputTextField.setText(ObjectUtils.nullDefault(clientname, "") + " : " + ObjectUtils
                     .nullDefault(btout.getMountPath(), "<missing>"));
         }
-    }
-
-    public boolean isRequireIDEConfiguration() {
-        return generateIDEConfigurationFromCheckBox.isSelected();
-    }
-
-    public boolean isEmbedBuildTraceArtifacts() {
-        return embedOutputArtifactsCheckBox.isSelected();
-    }
-
-    public MountPathIDEProperty getBuildTraceOutput() {
-        return outputProperty;
     }
 
     public JPanel getRootPanel() {

@@ -5,6 +5,7 @@ import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
+import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.RepositoryIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 
@@ -15,8 +16,6 @@ import java.util.Set;
 public class TaskRepositoriesConfigurable implements Configurable, Configurable.NoScroll {
     private final SakerBuildProjectConfigurable parent;
     private RepositoryConfigurationForm form;
-
-    private Set<RepositoryIDEProperty> repositories;
 
     public TaskRepositoriesConfigurable(SakerBuildProjectConfigurable parent) {
         this.parent = parent;
@@ -41,14 +40,15 @@ public class TaskRepositoriesConfigurable implements Configurable, Configurable.
 
     @Override
     public void reset() {
-        form.reset(parent.getProject().getIDEProjectProperties());
-
-        repositories = form.getRepositories();
+        form.reset();
     }
 
     @Override
     public boolean isModified() {
-        if (!Objects.equals(this.repositories, form.getRepositories())) {
+        IDEProjectProperties currentprops = parent.getCurrentProjectProperties();
+        IDEProjectProperties properties = parent.getProperties();
+
+        if (!Objects.equals(currentprops.getRepositories(), properties.getRepositories())) {
             return true;
         }
         return false;
@@ -56,8 +56,5 @@ public class TaskRepositoriesConfigurable implements Configurable, Configurable.
 
     @Override
     public void apply() throws ConfigurationException {
-        IntellijSakerIDEProject project = parent.getProject();
-        project.setIDEProjectProperties(SimpleIDEProjectProperties.builder(project.getIDEProjectProperties())
-                .setRepositories(form.getRepositories()).build());
     }
 }

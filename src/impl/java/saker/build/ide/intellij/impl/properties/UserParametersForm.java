@@ -11,6 +11,8 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
@@ -27,7 +29,7 @@ public class UserParametersForm {
     private AddEditRemovePanel<Map.Entry<String, String>> parametersEditPanel;
     private String userParameterKind = "";
 
-    public UserParametersForm() {
+    private UserParametersForm() {
         parametersEditPanel = new SakerPropertyPageAddEditRemovePanel<Map.Entry<String, String>>(
                 new KeyValueTableModel()) {
             @Nullable
@@ -44,6 +46,24 @@ public class UserParametersForm {
         };
 
         parametersPanel.add(parametersEditPanel);
+    }
+
+    public UserParametersForm(ExecutionUserParametersConfigureable configurable) {
+        this();
+        parametersEditPanel.getTable().getModel().addTableModelListener(new TableModelListener() {
+            @Override
+            public void tableChanged(TableModelEvent e) {
+                configurable.getParent().getBuilder().setUserParameters(getCurrentValues());
+            }
+        });
+    }
+
+    public UserParametersForm(EnvironmentUserParametersConfigurable configurable) {
+        this();
+    }
+
+    public Set<Map.Entry<String, String>> getCurrentValues() {
+        return new LinkedHashSet<>(parametersEditPanel.getData());
     }
 
     public JLabel getParametersInfoLabel() {

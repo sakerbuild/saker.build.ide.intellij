@@ -8,6 +8,7 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.actionSystem.Separator;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -887,7 +888,22 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                     public AnAction[] getChildren(@Nullable AnActionEvent e) {
                         List<AnAction> targetresult = new ArrayList<>();
                         appendTargetsToBuildFileMenu(targetresult);
+                        targetresult.add(new Separator());
+                        targetresult.add(new AnAction("Open in editor") {
+                            @Override
+                            public void actionPerformed(@NotNull AnActionEvent e) {
+                                openEditor();
+                            }
+                        });
                         return targetresult.toArray(SakerBuildActionGroup.EMPTY_ANACTION_ARRAY);
+                    }
+
+                    private void openEditor() {
+                        VirtualFile vfile = getVirtualFileAtExecutionPath(buildfilepath);
+                        if (vfile != null) {
+                            FileEditorManager.getInstance(project)
+                                    .openEditor(new OpenFileDescriptor(project, vfile), true);
+                        }
                     }
 
                     private void appendTargetsToBuildFileMenu(List<AnAction> targetresult) {
@@ -899,7 +915,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                             targetresult.add(new AnAction("Failed to parse script file") {
                                 @Override
                                 public void actionPerformed(@NotNull AnActionEvent e) {
-                                    //TODO dummy
+                                    openEditor();
                                 }
                             });
                             return;
@@ -908,7 +924,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                             targetresult.add(new AnAction("Failed to open script file") {
                                 @Override
                                 public void actionPerformed(@NotNull AnActionEvent e) {
-                                    //TODO dummy
+                                    openEditor();
                                 }
                             });
                             return;
@@ -917,7 +933,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                             targetresult.add(new AnAction("Script is not part of the configuration") {
                                 @Override
                                 public void actionPerformed(@NotNull AnActionEvent e) {
-                                    //TODO dummy
+                                    openEditor();
                                 }
                             });
                             return;
@@ -926,7 +942,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                             targetresult.add(new AnAction("No targets found") {
                                 @Override
                                 public void actionPerformed(@NotNull AnActionEvent e) {
-                                    //TODO dummy
+                                    openEditor();
                                 }
                             });
                             return;
@@ -941,6 +957,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                         }
                     }
                 });
+
             }
         }
     }

@@ -17,16 +17,17 @@ import java.util.Set;
 
 public class PathConfigurationConfigurable implements Configurable, Configurable.NoScroll {
     private final IntellijSakerIDEProject project;
+    private final SakerBuildProjectConfigurable parent;
     private final PathConfigurationForm form;
-
-    private Set<ProviderMountIDEProperty> mounts = Collections.emptySet();
-    private String workingDirectoryProperty;
-    private String buildDirectoryProperty;
-    private String mirrorDirectoryProperty;
 
     public PathConfigurationConfigurable(SakerBuildProjectConfigurable parent) {
         this.project = parent.getProject();
-        this.form = new PathConfigurationForm(project.getProject());
+        this.parent = parent;
+        this.form = new PathConfigurationForm(this);
+    }
+
+    public SakerBuildProjectConfigurable getParent() {
+        return parent;
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)
@@ -48,27 +49,24 @@ public class PathConfigurationConfigurable implements Configurable, Configurable
 
     @Override
     public void reset() {
-        IDEProjectProperties props = project.getIDEProjectProperties();
-        form.reset(props);
-
-        this.mounts = form.getMounts();
-        this.workingDirectoryProperty = form.getWorkingDirectory();
-        this.buildDirectoryProperty = form.getBuildDirectory();
-        this.mirrorDirectoryProperty = form.getMirrorDirectory();
+        form.reset();
     }
 
     @Override
     public boolean isModified() {
-        if (!Objects.equals(this.mounts, form.getMounts())) {
+        IDEProjectProperties currentprops = parent.getCurrentProjectProperties();
+        IDEProjectProperties properties = parent.getProperties();
+
+        if (!Objects.equals(currentprops.getMounts(), properties.getMounts())) {
             return true;
         }
-        if (!Objects.equals(this.workingDirectoryProperty, form.getWorkingDirectory())) {
+        if (!Objects.equals(currentprops.getWorkingDirectory(), properties.getWorkingDirectory())) {
             return true;
         }
-        if (!Objects.equals(this.buildDirectoryProperty, form.getBuildDirectory())) {
+        if (!Objects.equals(currentprops.getBuildDirectory(), properties.getBuildDirectory())) {
             return true;
         }
-        if (!Objects.equals(this.mirrorDirectoryProperty, form.getMirrorDirectory())) {
+        if (!Objects.equals(currentprops.getMirrorDirectory(), properties.getMirrorDirectory())) {
             return true;
         }
         return false;
@@ -76,9 +74,5 @@ public class PathConfigurationConfigurable implements Configurable, Configurable
 
     @Override
     public void apply() throws ConfigurationException {
-        project.setIDEProjectProperties(SimpleIDEProjectProperties.builder(project.getIDEProjectProperties())
-                .setWorkingDirectory(form.getWorkingDirectory()).setBuildDirectory(form.getBuildDirectory())
-                .setMirrorDirectory(form.getMirrorDirectory())
-                .setMounts(ImmutableUtils.makeImmutableLinkedHashSet(form.getMounts())).build());
     }
 }

@@ -23,7 +23,7 @@ public class EnvironmentUserParametersConfigurable implements Configurable, Conf
 
     public EnvironmentUserParametersConfigurable() {
         plugin = IntellijSakerIDEPlugin.getInstance();
-        form = new UserParametersForm();
+        form = new UserParametersForm(this);
         form.setUserParameterKind("environment");
         form.getParametersInfoLabel().setText("The following user parameters are defined for the build environment.");
     }

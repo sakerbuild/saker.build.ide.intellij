@@ -5,6 +5,7 @@ import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
+import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.ScriptConfigurationIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 
@@ -15,9 +16,6 @@ import java.util.Set;
 public class ScriptConfigurationConfigurable implements Configurable, Configurable.NoScroll {
     private final SakerBuildProjectConfigurable parent;
     private final ScriptConfigurationForm form;
-
-    private Set<String> exclusionWildcards;
-    private Set<ScriptConfigurationIDEProperty> scriptConfigurations;
 
     public ScriptConfigurationConfigurable(SakerBuildProjectConfigurable parent) {
         this.parent = parent;
@@ -42,18 +40,18 @@ public class ScriptConfigurationConfigurable implements Configurable, Configurab
 
     @Override
     public void reset() {
-        form.reset(parent.getProject().getIDEProjectProperties());
-
-        exclusionWildcards = form.getExclusionWildcards();
-        scriptConfigurations = form.getScriptConfiguration();
+        form.reset();
     }
 
     @Override
     public boolean isModified() {
-        if (!Objects.equals(exclusionWildcards, form.getExclusionWildcards())) {
+        IDEProjectProperties currentprops = parent.getCurrentProjectProperties();
+        IDEProjectProperties properties = parent.getProperties();
+
+        if (!Objects.equals(currentprops.getScriptModellingExclusions(), properties.getScriptModellingExclusions())) {
             return true;
         }
-        if (!Objects.equals(scriptConfigurations, form.getScriptConfiguration())) {
+        if (!Objects.equals(currentprops.getScriptConfigurations(), properties.getScriptConfigurations())) {
             return true;
         }
         return false;
@@ -61,9 +59,5 @@ public class ScriptConfigurationConfigurable implements Configurable, Configurab
 
     @Override
     public void apply() throws ConfigurationException {
-        IntellijSakerIDEProject project = parent.getProject();
-        project.setIDEProjectProperties(SimpleIDEProjectProperties.builder(project.getIDEProjectProperties())
-                .setScriptConfigurations(form.getScriptConfiguration())
-                .setScriptModellingExclusions(form.getExclusionWildcards()).build());
     }
 }

@@ -4,10 +4,12 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.AddEditRemovePanel;
+import com.intellij.ui.DocumentAdapter;
 import com.intellij.ui.IdeBorderFactory;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.impl.ui.SakerPropertyPageAddEditRemovePanel;
@@ -16,12 +18,16 @@ import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
+import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.ide.support.ui.FileSystemEndpointSelector;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.event.DocumentEvent;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import java.awt.CardLayout;
 import java.awt.Dimension;
 import java.awt.Insets;
@@ -29,6 +35,7 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.function.Consumer;
 
 public class PathConfigurationForm {
     private JPanel rootPanel;
@@ -40,12 +47,11 @@ public class PathConfigurationForm {
 
     private Disposable myDisposable = Disposer.newDisposable();
 
-    private Project project;
     private AddEditRemovePanel<ProviderMountIDEProperty> mountsEditPanel;
-    private Iterable<? extends DaemonConnectionIDEProperty> daemonConnections = Collections.emptySet();
+    private PathConfigurationConfigurable configurable;
 
-    public PathConfigurationForm(Project project) {
-        this.project = project;
+    public PathConfigurationForm(PathConfigurationConfigurable configurable) {
+        this.configurable = configurable;
 
         workingDirectoryTextField.getEmptyText().clear().appendText("Execution path");
         buildDirectoryTextField.getEmptyText().clear().appendText("Execution path");
@@ -71,6 +77,21 @@ public class PathConfigurationForm {
 
         tablePanel.add(mountsEditPanel);
         mountsEditPanel.getEmptyText().clear().appendText("No mounted paths.");
+
+        mountsEditPanel.getTable().getModel().addTableModelListener(new TableModelListener() {
+            @Override
+            public void tableChanged(TableModelEvent e) {
+                configurable.getParent().getBuilder().setMounts(getMounts());
+            }
+        });
+
+        SimpleIDEProjectProperties.Builder propertiesbuilder = configurable.getParent().getBuilder();
+        SakerBuildProjectConfigurable
+                .addTextPropertyChangeListener(workingDirectoryTextField, propertiesbuilder::setWorkingDirectory);
+        SakerBuildProjectConfigurable
+                .addTextPropertyChangeListener(buildDirectoryTextField, propertiesbuilder::setBuildDirectory);
+        SakerBuildProjectConfigurable
+                .addTextPropertyChangeListener(mirrorDirectoryTextField, propertiesbuilder::setMirrorDirectory);
     }
 
     private Set<String> getRoots() {
@@ -87,14 +108,18 @@ public class PathConfigurationForm {
     }
 
     private ProviderMountIDEProperty addItem() {
-        MountPathDialog dialog = new MountPathDialog("Mount Path", tablePanel, project, daemonConnections);
+        MountPathDialog dialog = new MountPathDialog("Mount Path", tablePanel,
+                configurable.getParent().getProject().getProject(),
+                configurable.getParent().getCurrentProjectProperties().getConnections());
         dialog.setExistingRoots(getRoots());
         dialog.setVisible(true);
         return dialog.getProperty();
     }
 
     private ProviderMountIDEProperty editItem(ProviderMountIDEProperty o) {
-        MountPathDialog dialog = new MountPathDialog("Edit Mount Path", tablePanel, project, daemonConnections);
+        MountPathDialog dialog = new MountPathDialog("Edit Mount Path", tablePanel,
+                configurable.getParent().getProject().getProject(),
+                configurable.getParent().getCurrentProjectProperties().getConnections());
         Set<String> existingroots = getRoots();
         existingroots.remove(SakerIDESupportUtils.tryNormalizePathRoot(o.getRoot()));
         dialog.setExistingRoots(existingroots);
@@ -107,17 +132,17 @@ public class PathConfigurationForm {
         mountsEditPanel.setData(ObjectUtils.newArrayList(properties));
     }
 
-    public void reset(IDEProjectProperties props) {
-        if (props != null) {
-            mountsEditPanel.setData(ObjectUtils.newArrayList(props.getMounts()));
-            workingDirectoryTextField.setText(
-                    ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getWorkingDirectory()), ""));
-            buildDirectoryTextField.setText(
-                    ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getBuildDirectory()), ""));
-            mirrorDirectoryTextField.setText(
-                    ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getMirrorDirectory()), ""));
-            daemonConnections = props.getConnections();
-        }
+    public void reset() {
+        IDEProjectProperties props = configurable.getParent().getProperties();
+        mountsEditPanel.setData(ObjectUtils.newArrayList(props.getMounts()));
+        workingDirectoryTextField
+                .setText(ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getWorkingDirectory()), ""));
+        buildDirectoryTextField
+                .setText(ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getBuildDirectory()), ""));
+        mirrorDirectoryTextField
+                .setText(ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePath(props.getMirrorDirectory()), ""));
+
+        configurable.getParent().getBuilder().setMounts(getMounts());
     }
 
     public void dispose() {
@@ -126,18 +151,6 @@ public class PathConfigurationForm {
 
     public Set<ProviderMountIDEProperty> getMounts() {
         return new LinkedHashSet<>(mountsEditPanel.getData());
-    }
-
-    public String getWorkingDirectory() {
-        return SakerIDESupportUtils.normalizePath(workingDirectoryTextField.getText());
-    }
-
-    public String getBuildDirectory() {
-        return SakerIDESupportUtils.normalizePath(buildDirectoryTextField.getText());
-    }
-
-    public String getMirrorDirectory() {
-        return SakerIDESupportUtils.normalizePath(mirrorDirectoryTextField.getText());
     }
 
     public JPanel getRootPanel() {
@@ -167,8 +180,8 @@ public class PathConfigurationForm {
                 }
                 case 1: {
                     String mountnamestr = o.getMountClientName();
-                    DaemonConnectionIDEProperty connprop = SakerIDESupportUtils
-                            .getConnectionPropertyWithName(daemonConnections, mountnamestr);
+                    DaemonConnectionIDEProperty connprop = SakerIDESupportUtils.getConnectionPropertyWithName(
+                            configurable.getParent().getCurrentProjectProperties().getConnections(), mountnamestr);
                     if (connprop != null) {
                         if (ObjectUtils.isNullOrEmpty(connprop.getNetAddress())) {
                             return connprop.getConnectionName();

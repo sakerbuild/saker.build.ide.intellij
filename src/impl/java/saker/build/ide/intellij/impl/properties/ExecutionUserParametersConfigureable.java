@@ -16,17 +16,20 @@ import java.util.Objects;
 import java.util.Set;
 
 public class ExecutionUserParametersConfigureable implements Configurable, Configurable.NoScroll {
-    private final IntellijSakerIDEProject project;
-    private Set<? extends Map.Entry<String, String>> userParameters = null;
+    private final SakerBuildProjectConfigurable parent;
 
     private final UserParametersForm form;
 
     public ExecutionUserParametersConfigureable(SakerBuildProjectConfigurable parent) {
-        this.project = parent.getProject();
+        this.parent = parent;
 
-        form = new UserParametersForm();
+        form = new UserParametersForm(this);
         form.setUserParameterKind("execution");
         form.getParametersInfoLabel().setText("The following user parameters are defined for the build execution.");
+    }
+
+    public SakerBuildProjectConfigurable getParent() {
+        return parent;
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)
@@ -43,15 +46,7 @@ public class ExecutionUserParametersConfigureable implements Configurable, Confi
 
     @Override
     public void reset() {
-        this.userParameters = null;
-        IDEProjectProperties props = project.getIDEProjectProperties();
-        if (props != null) {
-            this.userParameters = props.getUserParameters();
-        }
-        if (this.userParameters == null) {
-            this.userParameters = Collections.emptySet();
-        }
-        form.setUserParameters(this.userParameters);
+        form.setUserParameters(parent.getProperties().getUserParameters());
     }
 
     private Set<Map.Entry<String, String>> getCurrentValues() {
@@ -60,12 +55,15 @@ public class ExecutionUserParametersConfigureable implements Configurable, Confi
 
     @Override
     public boolean isModified() {
-        return !Objects.equals(this.userParameters, getCurrentValues());
+        IDEProjectProperties currentprops = parent.getCurrentProjectProperties();
+        IDEProjectProperties properties = parent.getProperties();
+        if (!Objects.equals(currentprops.getUserParameters(), properties.getUserParameters())) {
+            return true;
+        }
+        return false;
     }
 
     @Override
     public void apply() throws ConfigurationException {
-        project.setIDEProjectProperties(SimpleIDEProjectProperties.builder(project.getIDEProjectProperties())
-                .setUserParameters(getCurrentValues()).build());
     }
 }

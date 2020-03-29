@@ -9,6 +9,8 @@ import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import com.intellij.util.ui.tree.TreeModelAdapter;
+import org.jetbrains.annotations.NotNull;
 import saker.build.ide.intellij.impl.ui.PropertyAttributeTreeNode;
 import saker.build.ide.intellij.impl.ui.PropertyTreeNode;
 import saker.build.ide.intellij.impl.ui.RootTreeNode;
@@ -23,6 +25,8 @@ import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.event.TreeModelEvent;
+import javax.swing.event.TreeModelListener;
 import javax.swing.tree.DefaultTreeModel;
 import javax.swing.tree.TreeNode;
 import javax.swing.tree.TreePath;
@@ -44,8 +48,10 @@ public class DaemonConnectionsForm {
     private ExecutionDaemonSelector daemonSelector = new ExecutionDaemonSelector(null);
     private RootTreeNode<DaemonPropertyTreeNode> rootTreeNode = new RootTreeNode<>();
     private ToolbarDecorator decorator;
+    private DaemonConnectionsConfigurable configurable;
 
-    public DaemonConnectionsForm() {
+    public DaemonConnectionsForm(DaemonConnectionsConfigurable configurable) {
+        this.configurable = configurable;
         DefaultTreeModel treemodel = new DefaultTreeModel(rootTreeNode, false);
         configTree = new Tree(treemodel);
         configTree.setRootVisible(false);
@@ -59,6 +65,14 @@ public class DaemonConnectionsForm {
         configTree.addTreeSelectionListener(e -> {
             decorator.getActionsPanel()
                     .setEnabled(CommonActionsPanel.Buttons.EDIT, configTree.getSelectionPath() != null);
+        });
+        configTree.getModel().addTreeModelListener(new TreeModelAdapter() {
+            @Override
+            protected void process(@NotNull TreeModelEvent event, @NotNull EventType type) {
+                configurable.getParent().getBuilder().setConnections(getDaemonConnections());
+                daemonSelector.reset(getDaemonConnections(), daemonSelector.getSelectedExecutionDaemonName());
+                updateDaemonComboBox();
+            }
         });
         new DoubleClickListener() {
             @Override
@@ -78,14 +92,18 @@ public class DaemonConnectionsForm {
         updateDaemonComboBox();
         executionDaemonComboBox.addItemListener(e -> {
             daemonSelector.setExecutionDaemonIndex(executionDaemonComboBox.getSelectedIndex());
+            configurable.getParent().getBuilder()
+                    .setExecutionDaemonConnectionName(daemonSelector.getSelectedExecutionDaemonName());
         });
     }
 
     public void dispose() {
     }
 
-    public void reset(IDEProjectProperties properties) {
+    public void reset() {
+        IDEProjectProperties properties = configurable.getParent().getProperties();
         daemonSelector.reset(properties);
+        rootTreeNode.clear();
         for (DaemonConnectionIDEProperty connection : properties.getConnections()) {
             DaemonPropertyTreeNode node = new DaemonPropertyTreeNode(rootTreeNode);
             node.setProperty(connection);

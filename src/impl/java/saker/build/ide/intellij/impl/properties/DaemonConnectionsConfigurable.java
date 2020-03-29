@@ -16,15 +16,12 @@ import java.util.Objects;
 import java.util.Set;
 
 public class DaemonConnectionsConfigurable implements Configurable, Configurable.NoScroll {
-    private final IntellijSakerIDEProject project;
+    private final SakerBuildProjectConfigurable parent;
     private final DaemonConnectionsForm form;
 
-    private String executionDaemonName;
-    private Set<DaemonConnectionIDEProperty> daemonConnections = Collections.emptySet();
-
     public DaemonConnectionsConfigurable(SakerBuildProjectConfigurable parent) {
-        this.project = parent.getProject();
-        form = new DaemonConnectionsForm();
+        this.parent = parent;
+        this.form = new DaemonConnectionsForm(this);
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)
@@ -46,30 +43,28 @@ public class DaemonConnectionsConfigurable implements Configurable, Configurable
 
     @Override
     public void reset() {
-        IDEProjectProperties props = project.getIDEProjectProperties();
-        form.reset(props);
-
-        this.executionDaemonName = form.getExecutionDaemonName();
-        this.daemonConnections = form.getDaemonConnections();
+        form.reset();
     }
 
     @Override
     public boolean isModified() {
-        if (!Objects.equals(this.executionDaemonName, form.getExecutionDaemonName())) {
+        IDEProjectProperties currentprops = parent.getCurrentProjectProperties();
+        IDEProjectProperties properties = parent.getProperties();
+
+        if (!Objects.equals(currentprops.getExecutionDaemonConnectionName(), properties.getExecutionDaemonConnectionName())) {
             return true;
         }
-        if (!daemonConnections.equals(form.getDaemonConnections())) {
+        if (!Objects.equals(currentprops.getConnections(), properties.getConnections())) {
             return true;
         }
         return false;
     }
 
+    public SakerBuildProjectConfigurable getParent() {
+        return parent;
+    }
+
     @Override
     public void apply() throws ConfigurationException {
-        Set<DaemonConnectionIDEProperty> connections = form.getDaemonConnections();
-        String execdaemonname = form.getExecutionDaemonName();
-        project.setIDEProjectProperties(SimpleIDEProjectProperties.builder(project.getIDEProjectProperties())
-                .setConnections(ImmutableUtils.makeImmutableLinkedHashSet((connections)))
-                .setExecutionDaemonConnectionName(execdaemonname).build());
     }
 }
