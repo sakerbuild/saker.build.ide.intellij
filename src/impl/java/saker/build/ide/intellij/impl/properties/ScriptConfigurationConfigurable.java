@@ -59,5 +59,6 @@ public class ScriptConfigurationConfigurable implements Configurable, Configurab
 
     @Override
     public void apply() throws ConfigurationException {
+        parent.apply();
     }
 }

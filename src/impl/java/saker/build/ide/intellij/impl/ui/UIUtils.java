@@ -1,5 +1,12 @@
 package saker.build.ide.intellij.impl.ui;
 
+import com.intellij.openapi.project.Project;
+import com.intellij.openapi.wm.IdeFrame;
+import com.intellij.openapi.wm.WindowManager;
+
+import javax.swing.JComponent;
+import javax.swing.JDialog;
+import javax.swing.JFrame;
 import javax.swing.JTextField;
 
 public class UIUtils {
@@ -9,5 +16,28 @@ public class UIUtils {
         }
         tf.requestFocus();
         tf.select(0, tf.getText().length());
+    }
+
+    public static void setLocationRelativeTo(JDialog dialog, Project project) {
+        if (project == null) {
+            return;
+        }
+        WindowManager wm = WindowManager.getInstance();
+        if (wm == null) {
+            return;
+        }
+        JFrame projectframe = wm.getFrame(project);
+        if (projectframe != null) {
+            dialog.setLocationRelativeTo(projectframe);
+            return;
+        }
+        IdeFrame ideframe = wm.getIdeFrame(project);
+        if (ideframe != null) {
+            JComponent ideframecomponent = ideframe.getComponent();
+            if (ideframecomponent != null) {
+                dialog.setLocationRelativeTo(ideframecomponent);
+                return;
+            }
+        }
     }
 }

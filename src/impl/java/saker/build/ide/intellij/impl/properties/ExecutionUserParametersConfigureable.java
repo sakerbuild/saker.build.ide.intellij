@@ -65,5 +65,6 @@ public class ExecutionUserParametersConfigureable implements Configurable, Confi
 
     @Override
     public void apply() throws ConfigurationException {
+        parent.apply();
     }
 }

@@ -74,5 +74,6 @@ public class PathConfigurationConfigurable implements Configurable, Configurable
 
     @Override
     public void apply() throws ConfigurationException {
+        parent.apply();
     }
 }

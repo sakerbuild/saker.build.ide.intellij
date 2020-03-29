@@ -88,8 +88,10 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
     @Override
     public void apply() throws ConfigurationException {
         IDEProjectProperties properties = this.builder.buildReuse();
-        project.setIDEProjectProperties(properties);
-        this.properties = properties;
+        if (!this.properties.equals(properties)) {
+            project.setIDEProjectProperties(properties);
+            this.properties = properties;
+        }
     }
 
     public SimpleIDEProjectProperties.Builder getBuilder() {

@@ -56,5 +56,6 @@ public class TaskRepositoriesConfigurable implements Configurable, Configurable.
 
     @Override
     public void apply() throws ConfigurationException {
+        parent.apply();
     }
 }

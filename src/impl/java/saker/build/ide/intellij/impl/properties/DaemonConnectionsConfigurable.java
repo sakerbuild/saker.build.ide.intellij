@@ -66,5 +66,6 @@ public class DaemonConnectionsConfigurable implements Configurable, Configurable
 
     @Override
     public void apply() throws ConfigurationException {
+        parent.apply();
     }
 }

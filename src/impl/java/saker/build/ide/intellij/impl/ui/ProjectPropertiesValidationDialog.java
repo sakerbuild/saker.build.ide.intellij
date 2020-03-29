@@ -100,34 +100,13 @@ public class ProjectPropertiesValidationDialog extends JDialog {
         }.installOn(errorsList);
 
         pack();
-        setLocationRelativeTo(project.getProject());
+        UIUtils.setLocationRelativeTo(this, project.getProject());
         setMinimumSize(getSize());
     }
 
-    private void setLocationRelativeTo(Project project) {
-        if (project == null) {
-            return;
-        }
-        WindowManager wm = WindowManager.getInstance();
-        if (wm == null) {
-            return;
-        }
-        JFrame projectframe = wm.getFrame(project);
-        if (projectframe != null) {
-            setLocationRelativeTo(projectframe);
-            return;
-        }
-        IdeFrame ideframe = wm.getIdeFrame(project);
-        if (ideframe != null) {
-            JComponent ideframecomponent = ideframe.getComponent();
-            if (ideframecomponent != null) {
-                setLocationRelativeTo(ideframecomponent);
-                return;
-            }
-        }
-    }
 
-    private Class<? extends Configurable> getConfigurableClass(PropertiesValidationErrorResult err) {
+
+    private static Class<? extends Configurable> getConfigurableClass(PropertiesValidationErrorResult err) {
         Class<? extends Configurable> pageclass;
         String type = err.errorType;
         if (type.startsWith(SakerIDEProject.NS_BUILD_DIRECTORY)) {
@@ -162,9 +141,15 @@ public class ProjectPropertiesValidationDialog extends JDialog {
         dispose();
         ValidationItem selected = errorsList.getSelectedValue();
         if (selected != null) {
-            ShowSettingsUtil.getInstance()
-                    .showSettingsDialog(project.getProject(), getConfigurableClass(selected.error));
+            Project project = this.project.getProject();
+            PropertiesValidationErrorResult validationerror = selected.error;
+            showSettingsForValidationError(project, validationerror);
         }
+    }
+
+    public static void showSettingsForValidationError(Project project,
+            PropertiesValidationErrorResult validationerror) {
+        ShowSettingsUtil.getInstance().showSettingsDialog(project, getConfigurableClass(validationerror));
     }
 
     private void onCancel() {

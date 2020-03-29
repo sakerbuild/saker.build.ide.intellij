@@ -2,6 +2,7 @@ package saker.build.ide.intellij.impl;
 
 import com.intellij.execution.filters.BrowserHyperlinkInfo;
 import com.intellij.execution.filters.FileHyperlinkInfo;
+import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.ide.util.PropertiesComponent;
@@ -12,6 +13,7 @@ import com.intellij.openapi.actionSystem.Separator;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
+import com.intellij.openapi.editor.ScrollType;
 import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
@@ -23,6 +25,7 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.LocalFileSystem;
+import com.intellij.openapi.vfs.VfsUtil;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
@@ -31,12 +34,14 @@ import org.apache.commons.io.output.WriterOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.daemon.DaemonEnvironment;
+import saker.build.exception.BuildTargetNotFoundException;
 import saker.build.exception.ScriptPositionedExceptionView;
 import saker.build.file.path.SakerPath;
 import saker.build.file.provider.LocalFileProvider;
 import saker.build.ide.configuration.IDEConfiguration;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.SakerBuildActionGroup;
+import saker.build.ide.intellij.impl.dialog.BuildTargetChooserDialog;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.intellij.impl.ui.ProjectPropertiesValidationDialog;
@@ -60,6 +65,8 @@ import saker.build.scripting.ScriptParsingFailedException;
 import saker.build.scripting.model.ScriptModellingEnvironment;
 import saker.build.task.TaskProgressMonitor;
 import saker.build.task.TaskResultCollection;
+import saker.build.task.exception.MultiTaskExecutionFailedException;
+import saker.build.task.exception.TaskExecutionFailedException;
 import saker.build.task.utils.TaskUtils;
 import saker.build.thirdparty.saker.util.DateUtils;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
@@ -68,8 +75,10 @@ import saker.build.thirdparty.saker.util.io.ByteSink;
 import saker.build.thirdparty.saker.util.io.ByteSource;
 import saker.build.thirdparty.saker.util.io.IOUtils;
 import saker.build.thirdparty.saker.util.io.StreamUtils;
+import saker.build.util.exc.ExceptionView;
 
 import javax.swing.SwingUtilities;
+import javax.swing.event.HyperlinkListener;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -403,16 +412,27 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 if (editor != null) {
                     SelectionModel selectionmodel = editor.getSelectionModel();
                     Document document = editor.getDocument();
+                    int lc = document.getLineCount();
+                    int line = this.line;
+                    int length = this.length;
+                    if (line >= lc) {
+                        //this can happen is the file is edited meanwhile.
+                        line = lc - 1;
+                        length = 0;
+                    }
                     int coloffset = document.getLineStartOffset(line) + column;
                     int lineendoffset = document.getLineEndOffset(line);
-                    if (coloffset > lineendoffset) {
+                    if (coloffset < 0 || coloffset > lineendoffset) {
                         coloffset = lineendoffset;
                     }
 
                     //only higlight the first line, as the selection for multiple lines doesn't work,
                     //    as IntelliJ doesn't handle line endings properly
                     // (\r\n line endings occupy only a single element, therefore multi-line highlight will drift off)
-                    selectionmodel.setSelection(coloffset, coloffset + Math.min(length, lineendoffset - coloffset));
+                    int selectionendoffset = coloffset + Math.min(length, lineendoffset - coloffset);
+                    selectionmodel.setSelection(coloffset, selectionendoffset);
+                    editor.getCaretModel().moveToOffset(selectionendoffset);
+                    editor.getScrollingModel().scrollToCaret(ScrollType.MAKE_VISIBLE);
                     return;
                 }
                 //fallback based on FileHyperlinkInfoBase
@@ -446,117 +466,22 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
 
             OutputStream out = null;
             OutputStream err = null;
+            ToolWindow[] tw = { null };
+            ConsoleView[] console = { null };
             try {
-                ToolWindow[] tw = { null };
-                ConsoleView[] console = { null };
                 SwingUtilities.invokeAndWait(() -> {
                     tw[0] = ToolWindowManager.getInstance(project).getToolWindow("saker.build");
                     console[0] = (ConsoleView) tw[0].getContentManager().getContent(0).getComponent();
                 });
 
-                out = new ConsoleViewOutputStream(console[0]) {
-                    private Matcher matcher = CONSOLE_MARKER_PATTERN.matcher("");
-
-                    @Override
-                    protected void appendLine(String line) {
-                        matcher.reset(line);
-                        ConsoleViewContentType contenttype = defaultContentType;
-                        if (matcher.matches()) {
-                            String severity = matcher.group(CONSOLE_MARKER_GROUP_SEVERITY);
-                            contenttype = SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP.getOrDefault(severity, contenttype);
-
-                            String file = matcher.group(CONSOLE_MARKER_GROUP_FILEPATH);
-                            if (!ObjectUtils.isNullOrEmpty(file)) {
-                                file = file.trim();
-                                VirtualFile vfile = getVirtualFileAtExecutionPath(SakerPath.valueOf(file));
-                                if (vfile != null) {
-                                    String linenumstr = matcher.group(CONSOLE_MARKER_GROUP_LINE);
-                                    String linestart = matcher.group(CONSOLE_MARKER_GROUP_LINESTART);
-                                    String lineend = matcher.group(CONSOLE_MARKER_GROUP_LINEEND);
-                                    int linenumber = linenumstr == null ? 0 : (Integer.parseInt(linenumstr) - 1);
-                                    if (linenumber <= 0) {
-                                        linenumber = 0;
-                                    }
-                                    int linestartnumber = linestart == null ? 0 : (Integer.parseInt(linestart) - 1);
-                                    if (linestartnumber < 0) {
-                                        linestartnumber = 0;
-                                    }
-
-                                    int len = 0;
-                                    if (lineend != null) {
-                                        int lineendnumber = Integer.parseInt(lineend) - 1;
-                                        if (lineendnumber < 0) {
-                                            lineendnumber = 0;
-                                        }
-                                        len = lineendnumber - linestartnumber + 1;
-                                    }
-                                    int pathandlocstart = matcher.start(CONSOLE_MARKER_GROUP_PATHANDLOCATION);
-                                    int pathandlocend = matcher.end(CONSOLE_MARKER_GROUP_PATHANDLOCATION);
-                                    console.print(line.substring(0, pathandlocstart), contenttype);
-                                    console.printHyperlink(line.substring(pathandlocstart, pathandlocend),
-                                            new SelectionOpenFileHyperlinkInfo(project, vfile, linenumber,
-                                                    linestartnumber, len));
-                                    console.print(line.substring(pathandlocend) + LINE_SEPARATOR, contenttype);
-                                    return;
-                                }
-                            }
-                        }
-                        console.print(line + LINE_SEPARATOR, contenttype);
-                    }
-                };
-                err = new ConsoleViewOutputStream(console[0]) {
-                    private Matcher matcher = AT_BUILD_FILE_ERROR_PATTERN.matcher("");
-
-                    {
-                        defaultContentType = ConsoleViewContentType.ERROR_OUTPUT;
-                    }
-
-                    @Override
-                    protected void appendLine(String line) {
-                        matcher.reset(line);
-                        if (matcher.matches()) {
-                            String path = matcher.group(AT_BUILD_FILE_ERROR_GROUP_PATH);
-                            if (!ObjectUtils.isNullOrEmpty(path)) {
-                                path = path.trim();
-                                VirtualFile vfile = getVirtualFileAtExecutionPath(SakerPath.valueOf(path));
-                                if (vfile != null) {
-                                    String linenumstr = matcher.group(AT_BUILD_FILE_ERROR_GROUP_LINE_NUMBER);
-                                    String linestart = matcher.group(AT_BUILD_FILE_ERROR_GROUP_LINE_START);
-                                    String lineend = matcher.group(AT_BUILD_FILE_ERROR_GROUP_LINE_END);
-                                    int linenumber = linenumstr == null ? 0 : (Integer.parseInt(linenumstr) - 1);
-                                    if (linenumber <= 0) {
-                                        linenumber = 0;
-                                    }
-                                    int linestartnumber = linestart == null ? 0 : (Integer.parseInt(linestart) - 1);
-                                    if (linestartnumber < 0) {
-                                        linestartnumber = 0;
-                                    }
-                                    int len = 0;
-                                    if (lineend != null) {
-                                        int lineendnumber = Integer.parseInt(lineend) - 1;
-                                        if (lineendnumber < 0) {
-                                            lineendnumber = 0;
-                                        }
-                                        len = lineendnumber - linestartnumber + 1;
-                                    }
-                                    int pathstartidx = matcher.start(AT_BUILD_FILE_ERROR_GROUP_PATH);
-                                    console.print(line.substring(0, pathstartidx), defaultContentType);
-                                    console.printHyperlink(line.substring(pathstartidx) + LINE_SEPARATOR,
-                                            new SelectionOpenFileHyperlinkInfo(project, vfile, linenumber,
-                                                    linestartnumber, len));
-                                    return;
-                                }
-                            }
-                        }
-                        super.appendLine(line);
-                    }
-                };
+                out = new StandardConsoleViewOutputStream(console[0]);
+                err = new ErrorConsoleViewOutputStream(console[0]);
 
                 executionLock.lockInterruptibly();
                 console[0].clear();
                 SwingUtilities.invokeLater(() -> tw[0].activate(null, false));
                 if (monitorwrapper.isCancelled()) {
-                    out.write("Build cancelled.\n".getBytes());
+                    out.write(("Build cancelled." + LINE_SEPARATOR).getBytes());
                     return;
                 }
                 ExecutionParametersImpl params;
@@ -565,14 +490,21 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                     params = sakerProject.createExecutionParameters(projectproperties);
                     //there were no validation errors
                 } catch (PropertiesValidationException e) {
-                    //TODO remove exception display
-                    displayException(e);
-                    //TODO show some dialog and fixes
-                    err.write("Invalid build configuration:\n".getBytes());
+                    err.write(("Invalid build configuration:" + LINE_SEPARATOR).getBytes());
                     for (PropertiesValidationErrorResult error : e.getErrors()) {
-                        //TODO write as hyperlinkgs
-                        err.write(SakerIDESupportUtils.createValidationErrorMessage(error).getBytes());
-                        err.write('\n');
+                        String errormsg = SakerIDESupportUtils.createValidationErrorMessage(error);
+
+                        console[0].printHyperlink(errormsg + LINE_SEPARATOR, new HyperlinkInfo() {
+                            @Override
+                            public void navigate(Project project) {
+                                ProjectPropertiesValidationDialog.showSettingsForValidationError(project, error);
+                            }
+
+                            @Override
+                            public boolean includeInOccurenceNavigation() {
+                                return false;
+                            }
+                        });
                     }
 
                     ApplicationManager.getApplication().invokeLater(() -> {
@@ -629,7 +561,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 };
                 params.setSecretInputReader(secretinputreader);
                 try {
-                    out.write(("Build started. (" + jobname + ")\n").getBytes());
+                    out.write(("Build started. (" + jobname + ")" + LINE_SEPARATOR).getBytes());
                 } catch (IOException e) {
                     //shouldnt happen, we don't display this exception to the user
                     e.printStackTrace();
@@ -643,10 +575,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
 
                 try {
                     if (result.getResultKind() == BuildTaskExecutionResult.ResultKind.INITIALIZATION_ERROR) {
-                        out.write("Failed to initialize execution.\n".getBytes());
+                        out.write(("Failed to initialize execution." + LINE_SEPARATOR).getBytes());
                     } else {
                         out.write(("Build finished. " + new Date(System.currentTimeMillis()) + " (" + DateUtils
-                                .durationToString((finishtime - starttime) / 1_000_000) + ")\n").getBytes());
+                                .durationToString((finishtime - starttime) / 1_000_000) + ")" + LINE_SEPARATOR)
+                                .getBytes());
                     }
                 } catch (IOException e) {
                     //shouldnt happen, we don't display this exception to the user
@@ -654,22 +587,20 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 }
                 SakerPath builddir = params.getBuildDirectory();
                 Path projectpath = getProjectPath();
+                Path builddirlocalpath = null;
                 if (builddir != null) {
                     try {
                         if (builddir.isRelative()) {
                             builddir = pathconfiguration.getWorkingDirectory().resolve(builddir);
                         }
-                        Path builddirlocalpath = pathconfiguration.toLocalPath(builddir);
+                        builddirlocalpath = pathconfiguration.toLocalPath(builddir);
                         if (builddirlocalpath != null && builddirlocalpath.startsWith(projectpath)) {
-                            //TODO refresh build folder
-//                            IFolder buildfolder = ideProject
-//                                    .getFolder(projectpath.relativize(builddirlocalpath).toString());
-//                            if (buildfolder != null) {
-//                                buildfolder.refreshLocal(IFolder.DEPTH_INFINITE, monitor);
-//                                if (buildfolder.exists()) {
-//                                    buildfolder.setDerived(true, monitor);
-//                                }
-//                            }
+                            //TODO mark build dir as derived
+                            VirtualFile builddirfile = LocalFileSystem.getInstance()
+                                    .findFileByPath(builddirlocalpath.toString());
+                            if (builddirfile != null) {
+                                builddirfile.refresh(true, true);
+                            }
                         }
                     } catch (Exception e) {
                         //CoreException, or if we fail some path parsing, converting, or others
@@ -684,12 +615,14 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                             Path localmirrorpath = LocalFileProvider.toRealPath(mirrordir);
                             if (localmirrorpath.startsWith(projectpath)) {
                                 //TODO mark mirror folder as derived
-//                                IFolder mirrorfolder = ideProject
-//                                        .getFolder(projectpath.relativize(localmirrorpath).toString());
-//                                if (mirrorfolder != null) {
-//                                    //intentionally don't refresh. There's no particular need for it
-//                                    mirrorfolder.setDerived(true, monitor);
-//                                }
+                                if (builddirlocalpath == null || !localmirrorpath.startsWith(builddirlocalpath)) {
+                                    //only refresh the mirror path if it is not under the build directory
+                                    VirtualFile mirrordirfile = LocalFileSystem.getInstance()
+                                            .findFileByPath(localmirrorpath.toString());
+                                    if (mirrordirfile != null) {
+                                        mirrordirfile.refresh(true, true);
+                                    }
+                                }
                             }
                         }
                     } catch (InvalidPathException e) {
@@ -710,7 +643,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 if (result == null) {
                     result = BuildTaskExecutionResultImpl.createInitializationFailed(e);
                     try {
-                        out.write("Failed to initialize execution.\n".getBytes());
+                        out.write(("Failed to initialize execution." + LINE_SEPARATOR).getBytes());
                     } catch (IOException e1) {
                         e1.printStackTrace();
                     }
@@ -722,8 +655,38 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                     if (posexcview != null) {
                         //TODO make exception format configureable
                         if (err != null) {
-                            TaskUtils.printTaskExceptionsOmitTransitive(posexcview, new PrintStream(err),
-                                    executionworkingdir, SakerLog.CommonExceptionFormat.DEFAULT_FORMAT);
+                            try (PrintStream errps = new PrintStream(err)) {
+                                TaskUtils.printTaskExceptionsOmitTransitive(posexcview, errps, executionworkingdir,
+                                        SakerLog.CommonExceptionFormat.DEFAULT_FORMAT);
+                            }
+                            if (isBuildTargetNotFoundExceptionResult(result)) {
+                                console[0].printHyperlink("Choose a different build target\n", new HyperlinkInfo() {
+                                    @Override
+                                    public void navigate(Project project) {
+                                        BuildTargetChooserDialog.BuildTargetItem item = askBuildTarget();
+                                        if (item != null) {
+                                            buildAsync(item.getScriptPath(), item.getTarget());
+                                        }
+                                    }
+                                });
+                            }
+                            console[0].printHyperlink("Show full stacktrace\n", new HyperlinkInfo() {
+                                private boolean printed = false;
+
+                                @Override
+                                public synchronized void navigate(Project project) {
+                                    if (!printed) {
+                                        printed = true;
+                                        ConsoleViewOutputStream cvout = new ErrorConsoleViewOutputStream(console[0]);
+                                        try (PrintStream ps = new PrintStream(cvout)) {
+                                            ps.println();
+                                            ps.println("Complete build exception stacktrace:");
+                                            SakerLog.printFormatException(posexcview, ps,
+                                                    SakerLog.CommonExceptionFormat.FULL);
+                                        }
+                                    }
+                                }
+                            });
                         }
                     }
                 }
@@ -735,9 +698,36 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             }
         } finally {
             if (wasinterrupted) {
-                Thread.interrupted();
+                Thread.currentThread().interrupt();
             }
         }
+    }
+
+    private static boolean isBuildTargetNotFoundExceptionResult(BuildTaskExecutionResult result) {
+        if (result.getResultKind() != BuildTaskExecutionResult.ResultKind.FAILURE) {
+            return false;
+        }
+        ExceptionView ev = result.getExceptionView();
+        if (!MultiTaskExecutionFailedException.class.getName().equals(ev.getExceptionClassName())) {
+            return false;
+        }
+        ExceptionView[] suppressed = ev.getSuppressed();
+        if (ObjectUtils.isNullOrEmpty(suppressed)) {
+            return false;
+        }
+        for (ExceptionView supr : suppressed) {
+            if (!TaskExecutionFailedException.class.getName().equals(supr.getExceptionClassName())) {
+                return false;
+            }
+            ExceptionView cause = supr.getCause();
+            if (cause == null) {
+                return false;
+            }
+            if (!BuildTargetNotFoundException.class.getName().equals(cause.getExceptionClassName())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void addIDEConfigurations(Collection<? extends IDEConfiguration> ideconfigs) {
@@ -778,10 +768,65 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 consumer.accept(lastbuildpath, lasttargetname);
                 return;
             }
+            BuildTargetChooserDialog.BuildTargetItem item = askBuildTarget();
+            if (item != null) {
+                consumer.accept(item.getScriptPath(), item.getTarget());
+            }
         } catch (Exception e) {
             displayException(e);
         }
-        //TODO ask which one to call and run
+    }
+
+    private BuildTargetChooserDialog.BuildTargetItem askBuildTarget() {
+        List<BuildTargetChooserDialog.BuildTargetItem> items = new ArrayList<>();
+
+        Set<? extends SakerPath> buildfiles = getTrackedScriptPaths();
+        Iterator<? extends SakerPath> it = buildfiles.iterator();
+        SakerPath workingdirpath = getWorkingDirectoryExecutionPath();
+
+        while (it.hasNext()) {
+            SakerPath displaybuildfile;
+            SakerPath buildfile = it.next();
+            if (workingdirpath != null && buildfile.startsWith(workingdirpath)) {
+                displaybuildfile = workingdirpath.relativize(buildfile);
+            } else {
+                displaybuildfile = buildfile;
+            }
+
+            try {
+                Set<String> targets = getScriptTargets(buildfile);
+                if (!ObjectUtils.isNullOrEmpty(targets)) {
+                    for (String target : targets) {
+                        items.add(new BuildTargetChooserDialog.BuildTargetItem(buildfile, target, displaybuildfile));
+                    }
+                }
+            } catch (ScriptParsingFailedException | IOException e) {
+                displayException(e);
+                //XXX open dialog with errors?
+            }
+        }
+
+        items.sort((l, r) -> {
+            int cmp = l.getDisplayPath().compareTo(r.getDisplayPath());
+            if (cmp != 0) {
+                return cmp;
+            }
+            cmp = l.getTarget().compareTo(r.getTarget());
+            if (cmp != 0) {
+                return cmp;
+            }
+            return 0;
+        });
+
+        BuildTargetChooserDialog.BuildTargetItem item;
+        if (items.size() == 1) {
+            item = items.get(0);
+        } else {
+            BuildTargetChooserDialog dialog = new BuildTargetChooserDialog(project, items);
+            dialog.setVisible(true);
+            item = dialog.getSelectedItem();
+        }
+        return item;
     }
 
     public final void addProjectResourceListener(SakerIDEProject.ProjectResourceListener listener) {
@@ -987,5 +1032,109 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             return this;
         }
 
+    }
+
+    private class ErrorConsoleViewOutputStream extends ConsoleViewOutputStream {
+        private Matcher matcher;
+
+        public ErrorConsoleViewOutputStream(ConsoleView console) {
+            super(console);
+            matcher = AT_BUILD_FILE_ERROR_PATTERN.matcher("");
+            defaultContentType = ConsoleViewContentType.ERROR_OUTPUT;
+        }
+
+        @Override
+        protected void appendLine(String line) {
+            matcher.reset(line);
+            if (matcher.matches()) {
+                String path = matcher.group(AT_BUILD_FILE_ERROR_GROUP_PATH);
+                if (!ObjectUtils.isNullOrEmpty(path)) {
+                    path = path.trim();
+                    VirtualFile vfile = getVirtualFileAtExecutionPath(SakerPath.valueOf(path));
+                    if (vfile != null) {
+                        String linenumstr = matcher.group(AT_BUILD_FILE_ERROR_GROUP_LINE_NUMBER);
+                        String linestart = matcher.group(AT_BUILD_FILE_ERROR_GROUP_LINE_START);
+                        String lineend = matcher.group(AT_BUILD_FILE_ERROR_GROUP_LINE_END);
+                        int linenumber = linenumstr == null ? 0 : (Integer.parseInt(linenumstr) - 1);
+                        if (linenumber <= 0) {
+                            linenumber = 0;
+                        }
+                        int linestartnumber = linestart == null ? 0 : (Integer.parseInt(linestart) - 1);
+                        if (linestartnumber < 0) {
+                            linestartnumber = 0;
+                        }
+                        int len = 0;
+                        if (lineend != null) {
+                            int lineendnumber = Integer.parseInt(lineend) - 1;
+                            if (lineendnumber < 0) {
+                                lineendnumber = 0;
+                            }
+                            len = lineendnumber - linestartnumber + 1;
+                        }
+                        int pathstartidx = matcher.start(AT_BUILD_FILE_ERROR_GROUP_PATH);
+                        console.print(line.substring(0, pathstartidx), defaultContentType);
+                        console.printHyperlink(line.substring(pathstartidx) + LINE_SEPARATOR,
+                                new SelectionOpenFileHyperlinkInfo(project, vfile, linenumber, linestartnumber, len));
+                        return;
+                    }
+                }
+            }
+            super.appendLine(line);
+        }
+    }
+
+    private class StandardConsoleViewOutputStream extends ConsoleViewOutputStream {
+        private Matcher matcher;
+
+        public StandardConsoleViewOutputStream(ConsoleView console) {
+            super(console);
+            matcher = CONSOLE_MARKER_PATTERN.matcher("");
+        }
+
+        @Override
+        protected void appendLine(String line) {
+            matcher.reset(line);
+            ConsoleViewContentType contenttype = defaultContentType;
+            if (matcher.matches()) {
+                String severity = matcher.group(CONSOLE_MARKER_GROUP_SEVERITY);
+                contenttype = SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP.getOrDefault(severity, contenttype);
+
+                String file = matcher.group(CONSOLE_MARKER_GROUP_FILEPATH);
+                if (!ObjectUtils.isNullOrEmpty(file)) {
+                    file = file.trim();
+                    VirtualFile vfile = getVirtualFileAtExecutionPath(SakerPath.valueOf(file));
+                    if (vfile != null) {
+                        String linenumstr = matcher.group(CONSOLE_MARKER_GROUP_LINE);
+                        String linestart = matcher.group(CONSOLE_MARKER_GROUP_LINESTART);
+                        String lineend = matcher.group(CONSOLE_MARKER_GROUP_LINEEND);
+                        int linenumber = linenumstr == null ? 0 : (Integer.parseInt(linenumstr) - 1);
+                        if (linenumber <= 0) {
+                            linenumber = 0;
+                        }
+                        int linestartnumber = linestart == null ? 0 : (Integer.parseInt(linestart) - 1);
+                        if (linestartnumber < 0) {
+                            linestartnumber = 0;
+                        }
+
+                        int len = 0;
+                        if (lineend != null) {
+                            int lineendnumber = Integer.parseInt(lineend) - 1;
+                            if (lineendnumber < 0) {
+                                lineendnumber = 0;
+                            }
+                            len = lineendnumber - linestartnumber + 1;
+                        }
+                        int pathandlocstart = matcher.start(CONSOLE_MARKER_GROUP_PATHANDLOCATION);
+                        int pathandlocend = matcher.end(CONSOLE_MARKER_GROUP_PATHANDLOCATION);
+                        console.print(line.substring(0, pathandlocstart), contenttype);
+                        console.printHyperlink(line.substring(pathandlocstart, pathandlocend),
+                                new SelectionOpenFileHyperlinkInfo(project, vfile, linenumber, linestartnumber, len));
+                        console.print(line.substring(pathandlocend) + LINE_SEPARATOR, contenttype);
+                        return;
+                    }
+                }
+            }
+            console.print(line + LINE_SEPARATOR, contenttype);
+        }
     }
 }

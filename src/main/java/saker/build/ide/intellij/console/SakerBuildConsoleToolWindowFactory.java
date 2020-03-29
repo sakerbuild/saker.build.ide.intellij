@@ -1,5 +1,6 @@
 package saker.build.ide.intellij.console;
 
+import com.intellij.execution.filters.TextConsoleBuilder;
 import com.intellij.execution.filters.TextConsoleBuilderFactory;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.openapi.project.Project;
@@ -14,7 +15,8 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory {
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         ContentManager contentManager = toolWindow.getContentManager();
-        ConsoleView consoleview = TextConsoleBuilderFactory.getInstance().createBuilder(project).getConsole();
+        TextConsoleBuilder builder = TextConsoleBuilderFactory.getInstance().createBuilder(project);
+        ConsoleView consoleview = builder.getConsole();
 //        ConsoleView consoleview = new StyledHyperlinkConsoleViewImpl(project);
         Content content = contentManager.getFactory().createContent(consoleview.getComponent(), "Build Output", true);
         contentManager.addContent(content);
