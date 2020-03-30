@@ -27,6 +27,11 @@ public class AbstractUserParameterExtensionPointBean extends AbstractExtensionPo
     }
 
     @Override
+    public String getImplementationClass() {
+        return implementationClass;
+    }
+
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         if (myPluginDescriptor != null) {

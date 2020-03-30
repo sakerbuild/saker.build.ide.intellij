@@ -13,9 +13,7 @@ import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.MountPathIDEProperty;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
-import javax.swing.JCheckBox;
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import java.awt.Insets;
 import java.awt.event.ItemEvent;

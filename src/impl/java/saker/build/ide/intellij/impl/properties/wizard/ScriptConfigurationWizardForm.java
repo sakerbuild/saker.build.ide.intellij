@@ -22,6 +22,7 @@ import javax.swing.event.TableModelEvent;
 import javax.swing.event.TableModelListener;
 import java.awt.Dimension;
 import java.awt.Insets;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
@@ -32,37 +33,41 @@ public class ScriptConfigurationWizardForm {
     private JBTextField scriptFilesWildcardTextField;
 
     private ScriptConfigurationWizardStep wizardStep;
-    private AddEditRemovePanel<Map.Entry<String, String>> optionsEditPanel;
+    private AddEditRemovePanel<UserParametersForm.UserParameterEntry> optionsEditPanel;
 
     public ScriptConfigurationWizardForm(ScriptConfigurationWizardStep wizardstep) {
         wizardStep = wizardstep;
         ScriptConfigurationSakerWizardPage wizardpage = wizardstep.getWizardPage();
-        Set<? extends Map.Entry<String, String>> options = wizardpage.getScriptOptions();
         String wildcard = ObjectUtils.nullDefault(wizardpage.getScriptsWildcard(), "");
 
-        optionsEditPanel = new SakerPropertyPageAddEditRemovePanel<Map.Entry<String, String>>(
-                new UserParametersForm.KeyValueTableModel(), ObjectUtils.newArrayList(options)) {
+        Set<? extends Map.Entry<String, String>> options = wizardpage.getScriptOptions();
+        ArrayList<UserParametersForm.UserParameterEntry> data = new ArrayList<>();
+        for (Map.Entry<String, String> entry : options) {
+            data.add(UserParametersForm.UserParameterEntry.valueOf(entry));
+        }
+        optionsEditPanel = new SakerPropertyPageAddEditRemovePanel<UserParametersForm.UserParameterEntry>(
+                new UserParametersForm.KeyValueTableModel(), data) {
             @Nullable
             @Override
-            protected Map.Entry<String, String> addItem() {
+            protected UserParametersForm.UserParameterEntry addItem() {
                 UserParameterEditorDialog dialog = createDialog();
                 dialog.setExistingKeys(getKeys());
                 dialog.setVisible(true);
 
-                return dialog.getEntry();
+                return UserParametersForm.UserParameterEntry.valueOf(dialog.getEntry());
             }
 
             @Nullable
             @Override
-            protected Map.Entry<String, String> editItem(Map.Entry<String, String> o) {
+            protected UserParametersForm.UserParameterEntry editItem(UserParametersForm.UserParameterEntry o) {
                 UserParameterEditorDialog dialog = createDialog();
-                dialog.setEntry(o);
+                dialog.setEntry(o.toEntry());
                 Set<String> keys = getKeys();
                 keys.remove(o.getKey());
                 dialog.setExistingKeys(keys);
                 dialog.setVisible(true);
 
-                return dialog.getEntry();
+                return UserParametersForm.UserParameterEntry.valueOf(dialog.getEntry());
             }
 
             @NotNull
@@ -109,7 +114,7 @@ public class ScriptConfigurationWizardForm {
 
     private Set<String> getKeys() {
         LinkedHashSet<String> result = new LinkedHashSet<>();
-        for (Map.Entry<String, String> entry : optionsEditPanel.getData()) {
+        for (UserParametersForm.UserParameterEntry entry : optionsEditPanel.getData()) {
             result.add(entry.getKey());
         }
         return result;
@@ -122,7 +127,11 @@ public class ScriptConfigurationWizardForm {
     }
 
     private Set<? extends Map.Entry<String, String>> getScriptOptions() {
-        return new LinkedHashSet<>(optionsEditPanel.getData());
+        LinkedHashSet<Map.Entry<String, String>> result = new LinkedHashSet<>();
+        for (UserParametersForm.UserParameterEntry entry : optionsEditPanel.getData()) {
+            result.add(entry.toEntry());
+        }
+        return result;
     }
 
     private boolean isFormComplete() {

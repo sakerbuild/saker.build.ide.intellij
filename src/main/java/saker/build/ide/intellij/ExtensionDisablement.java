@@ -19,13 +19,17 @@ import com.intellij.openapi.extensions.PluginId;
 
 import java.util.Objects;
 
-public class ExtensionDisablement {
+public final class ExtensionDisablement {
     private PluginId pluginId;
     private String extensionId;
 
     public ExtensionDisablement(PluginId pluginId, String extensionId) {
         this.pluginId = Objects.requireNonNull(pluginId, "plugin id");
         this.extensionId = Objects.requireNonNull(extensionId, "extension id");
+    }
+
+    public ExtensionDisablement(ContributedExtension ext) {
+        this(ext.getPluginId(), ext.getId());
     }
 
     public PluginId getPluginId() {

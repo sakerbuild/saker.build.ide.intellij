@@ -7,16 +7,23 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
 public class SakerBuildApplicationConfigurable implements Configurable, Configurable.Composite {
+    private final IntellijSakerIDEPlugin plugin;
     private Configurable[] configurables;
 
     public SakerBuildApplicationConfigurable() {
-        this.configurables = new Configurable[] { new EnvironmentUserParametersConfigurable() };
+        this.plugin = IntellijSakerIDEPlugin.getInstance();
+        this.configurables = new Configurable[] { new EnvironmentUserParametersConfigurable(this) };
+    }
+
+    public IntellijSakerIDEPlugin getPlugin() {
+        return plugin;
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)

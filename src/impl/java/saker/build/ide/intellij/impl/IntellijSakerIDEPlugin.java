@@ -9,7 +9,6 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
-import saker.build.ide.intellij.ContributedExtension;
 import saker.build.ide.intellij.ContributedExtensionConfiguration;
 import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.ISakerBuildPluginImpl;
@@ -50,6 +49,7 @@ import java.util.NavigableMap;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 
 public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, ISakerBuildPluginImpl {
     private static final String CONFIG_FILE_ROOT_OBJECT_NAME = "saker.build.ide.intellij.plugin.config";
@@ -120,7 +120,9 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
         try {
             sakerPlugin.initialize(sakerJarPath, plugindirectory);
-            sakerPlugin.start(sakerPlugin.createDaemonLaunchParameters(sakerPlugin.getIDEPluginProperties()));
+            sakerPlugin.start(sakerPlugin.createDaemonLaunchParameters(
+                    getIDEPluginPropertiesWithEnvironmentParameterContributions(sakerPlugin.getIDEPluginProperties(),
+                            null)));
         } catch (IOException e) {
             displayException(e);
         }
@@ -171,18 +173,44 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
     @Deprecated
     public final void setIDEPluginProperties(IDEPluginProperties properties) {
-        this.setIDEPluginProperties(properties, environmentParameterContributors);
+        this.setIDEPluginProperties(properties, getExtensionDisablements());
     }
 
+    public final void setIDEPluginProperties(IDEPluginProperties properties,
+            Set<ExtensionDisablement> extensionDisablements) {
+        synchronized (configurationChangeLock) {
+            sakerPlugin.setIDEPluginProperties(properties);
+            Set<ExtensionDisablement> prevdisablements = getExtensionDisablements();
+
+            this.environmentParameterContributors = SakerBuildPlugin
+                    .applyExtensionDisablements(this.environmentParameterContributors, extensionDisablements);
+            if (!prevdisablements.equals(extensionDisablements)) {
+                try {
+                    writePluginConfigurationFile(extensionDisablements);
+                } catch (IOException e) {
+                    displayException(e);
+                }
+            }
+        }
+        ProgressManager progmanager = ProgressManager.getInstance();
+        progmanager.run(new Task.Backgroundable(null, "Updating saker.build plugin properties", true) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                sakerPlugin.updateForPluginProperties(
+                        getIDEPluginPropertiesWithEnvironmentParameterContributions(properties, indicator));
+            }
+        });
+    }
+
+    @Deprecated
     public final void setIDEPluginProperties(IDEPluginProperties properties,
             List<? extends ContributedExtensionConfiguration<IEnvironmentUserParameterContributor>> environmentParameterContributors) {
         synchronized (configurationChangeLock) {
             sakerPlugin.setIDEPluginProperties(properties);
-            Set<ExtensionDisablement> prevdisablements = getExtensionDisablements(
-                    this.environmentParameterContributors);
+            Set<ExtensionDisablement> prevdisablements = getExtensionDisablements();
+
             this.environmentParameterContributors = ImmutableUtils.makeImmutableList(environmentParameterContributors);
-            Set<ExtensionDisablement> currentdisablements = getExtensionDisablements(
-                    this.environmentParameterContributors);
+            Set<ExtensionDisablement> currentdisablements = getExtensionDisablements();
             if (!prevdisablements.equals(currentdisablements)) {
                 try {
                     writePluginConfigurationFile(currentdisablements);
@@ -199,6 +227,11 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
                         getIDEPluginPropertiesWithEnvironmentParameterContributions(properties, indicator));
             }
         });
+    }
+
+    @NotNull
+    public Set<ExtensionDisablement> getExtensionDisablements() {
+        return SakerBuildPlugin.getExtensionDisablements(this.environmentParameterContributors);
     }
 
     private IDEPluginProperties getIDEPluginPropertiesWithEnvironmentParameterContributions(
@@ -227,14 +260,15 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
         }
     }
 
-    public NavigableMap<String, String> getUserParametersWithContributors(Map<String, String> userparameters,
-            List<? extends ContributedExtensionConfiguration<? extends IEnvironmentUserParameterContributor>> contributors,
-            ProgressIndicator monitor) {
+    public static <E> NavigableMap<String, String> getUserParametersWithContributors(Map<String, String> userparameters,
+            List<? extends ContributedExtensionConfiguration<? extends E>> contributors,
+            ExceptionDisplayer excdisplayer, ProgressIndicator monitor,
+            BiFunction<? super E, ? super Map<String, String>, ? extends Set<UserParameterModification>> applier) {
         NavigableMap<String, String> userparamworkmap = ObjectUtils.newTreeMap(userparameters);
         NavigableMap<String, String> unmodifiableuserparammap = ImmutableUtils
                 .unmodifiableNavigableMap(userparamworkmap);
         contributor_loop:
-        for (ContributedExtensionConfiguration<? extends IEnvironmentUserParameterContributor> contributor : contributors) {
+        for (ContributedExtensionConfiguration<? extends E> contributor : contributors) {
             if (!contributor.isEnabled()) {
                 continue;
             }
@@ -242,30 +276,41 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
                 throw new ProcessCanceledException();
             }
             try {
-                Set<UserParameterModification> modifications = contributor.getContributor()
-                        .contribute(this, unmodifiableuserparammap, monitor);
+                Set<UserParameterModification> modifications = applier
+                        .apply(contributor.getContributor(), unmodifiableuserparammap);
                 if (ObjectUtils.isNullOrEmpty(modifications)) {
                     continue;
                 }
                 Set<String> keys = new TreeSet<>();
                 for (UserParameterModification mod : modifications) {
                     if (!keys.add(mod.getKey())) {
-                        displayException(new IllegalArgumentException(
-                                "Multiple environment user parameter modification for key: " + mod.getKey()));
+                        excdisplayer.displayException(new IllegalArgumentException(
+                                "Multiple user parameter modification for key: " + mod.getKey() + " by " + contributor
+                                        .getContributedExtension()));
                         continue contributor_loop;
                     }
                 }
                 for (UserParameterModification mod : modifications) {
                     mod.apply(userparamworkmap);
                 }
+            } catch (ProcessCanceledException e) {
+                throw e;
             } catch (Exception e) {
                 if (monitor != null && monitor.isCanceled()) {
                     throw new ProcessCanceledException();
                 }
-                displayException(e);
+                excdisplayer.displayException(e);
             }
         }
         return userparamworkmap;
+    }
+
+    public NavigableMap<String, String> getUserParametersWithContributors(Map<String, String> userparameters,
+            List<? extends ContributedExtensionConfiguration<? extends IEnvironmentUserParameterContributor>> contributors,
+            ProgressIndicator monitor) {
+        return getUserParametersWithContributors(userparameters, contributors, this, monitor, (ext, userparams) -> {
+            return ext.contribute(this, userparams, monitor);
+        });
     }
 
     public final void addPluginResourceListener(SakerIDEPlugin.PluginResourceListener listener) {
@@ -366,22 +411,6 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
                 }
             }
         }
-    }
-
-    public static Set<ExtensionDisablement> getExtensionDisablements(
-            Iterable<? extends ContributedExtensionConfiguration<?>> contributedextensions) {
-        if (ObjectUtils.isNullOrEmpty(contributedextensions)) {
-            return Collections.emptySet();
-        }
-        HashSet<ExtensionDisablement> result = new HashSet<>();
-        for (ContributedExtensionConfiguration<?> ext : contributedextensions) {
-            if (!ext.isEnabled()) {
-                ContributedExtension contributedextension = ext.getContributedExtension();
-                result.add(new ExtensionDisablement(contributedextension.getPluginDescriptor().getPluginId(),
-                        contributedextension.getId()));
-            }
-        }
-        return result;
     }
 
 }

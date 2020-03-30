@@ -37,8 +37,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.jar.JarFile;
 import java.util.zip.ZipFile;
 
@@ -247,6 +252,38 @@ public class SakerBuildPlugin {
     public static void displayException(Throwable exc) {
         //TODO some better display
         exc.printStackTrace();
+    }
+
+    public static <T> List<ContributedExtensionConfiguration<T>> applyExtensionDisablements(
+            List<? extends ContributedExtensionConfiguration<? extends T>> extensions,
+            Set<ExtensionDisablement> disablements) {
+        ArrayList<ContributedExtensionConfiguration<T>> result = new ArrayList<>();
+        for (ContributedExtensionConfiguration<? extends T> ext : extensions) {
+            ExtensionDisablement testdisablement = new ExtensionDisablement(ext.getContributedExtension());
+            boolean enabled = !disablements.contains(testdisablement);
+            if (enabled != ext.isEnabled()) {
+                result.add(new ContributedExtensionConfiguration<>(ext.getContributor(), ext.getContributedExtension(),
+                        enabled));
+            } else {
+                result.add(new ContributedExtensionConfiguration<>(ext.getContributor(), ext.getContributedExtension(),
+                        ext.isEnabled()));
+            }
+        }
+        return result;
+    }
+
+    public static Set<ExtensionDisablement> getExtensionDisablements(
+            Collection<? extends ContributedExtensionConfiguration<?>> contributedextensions) {
+        if (contributedextensions == null || contributedextensions.isEmpty()) {
+            return Collections.emptySet();
+        }
+        HashSet<ExtensionDisablement> result = new HashSet<>();
+        for (ContributedExtensionConfiguration<?> ext : contributedextensions) {
+            if (!ext.isEnabled()) {
+                result.add(new ExtensionDisablement(ext.getContributedExtension()));
+            }
+        }
+        return result;
     }
 
     private static class InitFailedPluginImpl implements ISakerBuildPluginImpl {

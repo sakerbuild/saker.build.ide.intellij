@@ -30,7 +30,6 @@ import saker.build.runtime.repository.SakerRepositoryFactory;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.tree.DefaultTreeModel;
@@ -243,7 +242,7 @@ public class RepositoryConfigurationForm {
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
         final JBLabel jBLabel1 = new JBLabel();
-        jBLabel1.setText("The following repositories are used during the build execution to look up build tasks.");
+        jBLabel1.setText("The following repositories are used during the build execution to look up build tasks:");
         rootPanel.add(jBLabel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         configurationsPanel = new JPanel();

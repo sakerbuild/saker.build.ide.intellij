@@ -23,6 +23,13 @@ public final class ContributedExtensionConfiguration<T> {
         return enabled;
     }
 
+    public ContributedExtensionConfiguration<T> setEnabled(boolean enabled) {
+        if (enabled == this.enabled) {
+            return this;
+        }
+        return new ContributedExtensionConfiguration<>(contributor, contributedExtension, enabled);
+    }
+
     @Override
     public int hashCode() {
         final int prime = 31;

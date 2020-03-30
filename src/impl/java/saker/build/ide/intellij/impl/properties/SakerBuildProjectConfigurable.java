@@ -6,14 +6,17 @@ import com.intellij.ui.DocumentAdapter;
 import org.jetbrains.annotations.Nls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
+import saker.build.thirdparty.saker.util.ImmutableUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class SakerBuildProjectConfigurable implements Configurable, Configurable.Composite {
@@ -23,18 +26,23 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
     private ProjectConfigurationForm form;
 
     private IDEProjectProperties properties;
+    private Set<ExtensionDisablement> extensionDisablements;
+
     private final SimpleIDEProjectProperties.Builder builder;
+    private Set<ExtensionDisablement> pendingExtensionDisablements;
 
     public SakerBuildProjectConfigurable(IntellijSakerIDEProject project) {
         this.project = project;
         this.properties = project.getIDEProjectProperties();
         this.builder = SimpleIDEProjectProperties.builder(this.properties);
+        this.extensionDisablements = project.getExtensionDisablements();
+        this.pendingExtensionDisablements = ImmutableUtils.makeImmutableLinkedHashSet(extensionDisablements);
 
         this.configurables = new Configurable[] { new DaemonConnectionsConfigurable(this),
                 new PathConfigurationConfigurable(this),
                 new ScriptConfigurationConfigurable(this),
                 new TaskRepositoriesConfigurable(this),
-                new ExecutionUserParametersConfigureable(this), };
+                new ExecutionUserParametersConfigurable(this), };
         this.form = new ProjectConfigurationForm(this);
     }
 
@@ -44,6 +52,18 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
 
     public IDEProjectProperties getProperties() {
         return properties;
+    }
+
+    public Set<ExtensionDisablement> getExtensionDisablements() {
+        return extensionDisablements;
+    }
+
+    public Set<ExtensionDisablement> getCurrentExtensionDisablements() {
+        return pendingExtensionDisablements;
+    }
+
+    public void setExtensionDisablements(Set<ExtensionDisablement> extensionDisablements) {
+        this.pendingExtensionDisablements = extensionDisablements;
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)
@@ -80,14 +100,18 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
         if (!Objects.equals(currentprops.getBuildTraceOutput(), this.properties.getBuildTraceOutput())) {
             return true;
         }
+        if (!Objects.equals(this.pendingExtensionDisablements, this.extensionDisablements)) {
+            return true;
+        }
         return false;
     }
 
     @Override
     public void apply() throws ConfigurationException {
         IDEProjectProperties properties = this.builder.buildReuse();
-        if (!this.properties.equals(properties)) {
-            project.setIDEProjectProperties(properties);
+        if (!this.properties.equals(properties) || !this.extensionDisablements
+                .equals(this.pendingExtensionDisablements)) {
+            project.setIDEProjectProperties(properties, this.pendingExtensionDisablements);
             this.properties = properties;
         }
     }
@@ -114,4 +138,5 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
             }
         });
     }
+
 }

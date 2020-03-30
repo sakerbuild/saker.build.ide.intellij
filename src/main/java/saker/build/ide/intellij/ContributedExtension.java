@@ -1,12 +1,13 @@
 package saker.build.ide.intellij;
 
-import com.intellij.openapi.extensions.PluginDescriptor;
+import com.intellij.openapi.extensions.PluginId;
 
 public interface ContributedExtension {
     public String getId();
 
     public String getDisplayName();
 
-    public PluginDescriptor getPluginDescriptor();
+    public PluginId getPluginId();
 
+    public String getImplementationClass();
 }

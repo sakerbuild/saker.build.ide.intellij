@@ -3,32 +3,36 @@ package saker.build.ide.intellij.impl.properties;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import saker.build.ide.intellij.ContributedExtensionConfiguration;
-import saker.build.ide.intellij.extension.params.IEnvironmentUserParameterContributor;
+import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
 
 import javax.swing.JComponent;
 import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
 public class EnvironmentUserParametersConfigurable implements Configurable, Configurable.NoScroll {
-    private final IntellijSakerIDEPlugin plugin;
+
     private Set<? extends Map.Entry<String, String>> userParameters = null;
+    private Set<ExtensionDisablement> extensionDisablements = null;
 
     private final UserParametersForm form;
+    private SakerBuildApplicationConfigurable parent;
 
-    public EnvironmentUserParametersConfigurable() {
-        plugin = IntellijSakerIDEPlugin.getInstance();
+    public EnvironmentUserParametersConfigurable(SakerBuildApplicationConfigurable parent) {
+        this.parent = parent;
         form = new UserParametersForm(this);
         form.setUserParameterKind("environment");
-        form.getParametersInfoLabel().setText("The following user parameters are defined for the build environment.");
+        form.getParametersInfoLabel().setText("The following user parameters are defined for the build environment:");
+    }
+
+    public SakerBuildApplicationConfigurable getParent() {
+        return parent;
     }
 
     @Nls(capitalization = Nls.Capitalization.Title)
@@ -47,34 +51,48 @@ public class EnvironmentUserParametersConfigurable implements Configurable, Conf
     public void reset() {
         this.userParameters = null;
 
-        IDEPluginProperties props = plugin.getIDEPluginProperties();
+        IDEPluginProperties props = parent.getPlugin().getIDEPluginProperties();
         if (props != null) {
             this.userParameters = props.getUserParameters();
         }
         if (this.userParameters == null) {
             this.userParameters = Collections.emptySet();
         }
-        form.setUserParameters(this.userParameters);
+        this.extensionDisablements = parent.getPlugin().getExtensionDisablements();
+        form.setUserParameters(this.userParameters, this.extensionDisablements);
     }
 
+    @NotNull
     private Set<Map.Entry<String, String>> getCurrentValues() {
-        return new LinkedHashSet<>(form.getParametersEditPanel().getData());
+        return form.getCurrentValues();
+    }
+
+    @NotNull
+    private Set<ExtensionDisablement> getCurrentExtensionDisablements() {
+        return form.getCurrentExtensionDisablements();
     }
 
     @Override
     public boolean isModified() {
-        return !Objects.equals(this.userParameters, getCurrentValues());
+        if (!Objects.equals(this.userParameters, getCurrentValues())) {
+            return true;
+        }
+        if (!Objects.equals(this.extensionDisablements, getCurrentExtensionDisablements())) {
+            return true;
+        }
+        return false;
     }
 
     @Override
     public void apply() throws ConfigurationException {
+        IntellijSakerIDEPlugin plugin = parent.getPlugin();
+
         Set<Map.Entry<String, String>> vals = getCurrentValues();
-        List<ContributedExtensionConfiguration<IEnvironmentUserParameterContributor>> environmentparamcontributors = plugin
-                .getEnvironmentParameterContributors();
+        Set<ExtensionDisablement> disablements = getCurrentExtensionDisablements();
 
         plugin.setIDEPluginProperties(
                 SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties()).setUserParameters(vals).build(),
-                environmentparamcontributors);
+                disablements);
         this.userParameters = vals;
     }
 

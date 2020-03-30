@@ -9,7 +9,7 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.intellij.impl.properties.DaemonConnectionsConfigurable;
-import saker.build.ide.intellij.impl.properties.ExecutionUserParametersConfigureable;
+import saker.build.ide.intellij.impl.properties.ExecutionUserParametersConfigurable;
 import saker.build.ide.intellij.impl.properties.PathConfigurationConfigurable;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.intellij.impl.properties.ScriptConfigurationConfigurable;
@@ -114,7 +114,7 @@ public class ProjectPropertiesValidationDialog extends JDialog {
         } else if (type.startsWith(SakerIDEProject.NS_SCRIPT_CONFIGURATION)) {
             pageclass = ScriptConfigurationConfigurable.class;
         } else if (type.startsWith(SakerIDEProject.NS_USER_PARAMETERS)) {
-            pageclass = ExecutionUserParametersConfigureable.class;
+            pageclass = ExecutionUserParametersConfigurable.class;
         } else if (type.startsWith(SakerIDEProject.NS_WORKING_DIRECTORY)) {
             pageclass = PathConfigurationConfigurable.class;
         } else if (type.startsWith(SakerIDEProject.NS_SCRIPT_MODELLING_EXCLUSION)) {

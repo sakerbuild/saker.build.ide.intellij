@@ -36,7 +36,6 @@ import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.event.TableModelEvent;
@@ -302,7 +301,7 @@ public class ScriptConfigurationForm {
         panel1.setLayout(new GridLayoutManager(2, 1, new Insets(5, 5, 5, 5), -1, -1));
         tabbedPane1.addTab("Configurations", panel1);
         final JBLabel jBLabel1 = new JBLabel();
-        jBLabel1.setText("The following language definitions are applied to the build scripts.");
+        jBLabel1.setText("The following language definitions are applied to the build scripts:");
         panel1.add(jBLabel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
         configurationsPanel = new JPanel();

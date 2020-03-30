@@ -7,22 +7,19 @@ import org.jetbrains.annotations.Nullable;
 import saker.build.ide.support.properties.IDEProjectProperties;
 
 import javax.swing.JComponent;
-import java.util.LinkedHashSet;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
-public class ExecutionUserParametersConfigureable implements Configurable, Configurable.NoScroll {
+public class ExecutionUserParametersConfigurable implements Configurable, Configurable.NoScroll {
     private final SakerBuildProjectConfigurable parent;
 
     private final UserParametersForm form;
 
-    public ExecutionUserParametersConfigureable(SakerBuildProjectConfigurable parent) {
+    public ExecutionUserParametersConfigurable(SakerBuildProjectConfigurable parent) {
         this.parent = parent;
 
         form = new UserParametersForm(this);
         form.setUserParameterKind("execution");
-        form.getParametersInfoLabel().setText("The following user parameters are defined for the build execution.");
+        form.getParametersInfoLabel().setText("The following user parameters are defined for the build execution:");
     }
 
     public SakerBuildProjectConfigurable getParent() {
@@ -43,18 +40,18 @@ public class ExecutionUserParametersConfigureable implements Configurable, Confi
 
     @Override
     public void reset() {
-        form.setUserParameters(parent.getProperties().getUserParameters());
-    }
-
-    private Set<Map.Entry<String, String>> getCurrentValues() {
-        return new LinkedHashSet<>(form.getParametersEditPanel().getData());
+        form.setUserParameters(parent.getProperties().getUserParameters(), parent.getExtensionDisablements());
     }
 
     @Override
     public boolean isModified() {
         IDEProjectProperties currentprops = parent.getCurrentProjectProperties();
         IDEProjectProperties properties = parent.getProperties();
+
         if (!Objects.equals(currentprops.getUserParameters(), properties.getUserParameters())) {
+            return true;
+        }
+        if (!Objects.equals(parent.getCurrentExtensionDisablements(), parent.getExtensionDisablements())) {
             return true;
         }
         return false;

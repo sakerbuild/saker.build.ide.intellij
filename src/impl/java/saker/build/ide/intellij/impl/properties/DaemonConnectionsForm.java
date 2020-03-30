@@ -24,7 +24,6 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.event.TreeModelEvent;
 import javax.swing.tree.DefaultTreeModel;
@@ -306,7 +305,7 @@ public class DaemonConnectionsForm {
                 new GridConstraints(2, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
         final JBLabel jBLabel2 = new JBLabel();
-        jBLabel2.setText("The build will use the following daemons as part of the execution.");
+        jBLabel2.setText("The build will use the following daemons as part of the execution:");
         rootPanel.add(jBLabel2, new GridConstraints(0, 0, 1, 3, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }

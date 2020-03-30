@@ -47,7 +47,6 @@ import saker.build.ide.intellij.SakerBuildActionGroup;
 import saker.build.ide.intellij.SakerBuildPlugin;
 import saker.build.ide.intellij.extension.params.ExecutionUserParameterContributorProviderExtensionPointBean;
 import saker.build.ide.intellij.extension.params.IExecutionUserParameterContributor;
-import saker.build.ide.intellij.extension.params.UserParameterModification;
 import saker.build.ide.intellij.impl.dialog.BuildTargetChooserDialog;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
@@ -115,7 +114,6 @@ import java.util.NavigableSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
-import java.util.TreeSet;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Lock;
@@ -966,6 +964,40 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     public void setIDEProjectProperties(IDEProjectProperties properties,
+            Set<ExtensionDisablement> extensionDisablements) {
+        synchronized (configurationChangeLock) {
+            try {
+                projectPropertiesChanging();
+            } catch (Exception e) {
+                displayException(e);
+            }
+            try {
+                Set<ExtensionDisablement> prevdisablements = getExtensionDisablements();
+                sakerProject.setIDEProjectProperties(properties);
+                this.executionParameterContributors = SakerBuildPlugin
+                        .applyExtensionDisablements(this.executionParameterContributors, extensionDisablements);
+                if (!prevdisablements.equals(extensionDisablements)) {
+                    try {
+                        writeProjectConfigurationFile(extensionDisablements);
+                    } catch (IOException e) {
+                        displayException(e);
+                    }
+                }
+                sakerProject.updateForProjectProperties(
+                        getIDEProjectPropertiesWithExecutionParameterContributions(properties, null));
+            } finally {
+                try {
+                    projectPropertiesChanged();
+                } catch (Exception e) {
+                    //don't propagate exceptions
+                    displayException(e);
+                }
+            }
+        }
+    }
+
+    @Deprecated
+    public void setIDEProjectProperties(IDEProjectProperties properties,
             List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> executionParameterContributors) {
         synchronized (configurationChangeLock) {
             try {
@@ -974,12 +1006,10 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 displayException(e);
             }
             try {
+                Set<ExtensionDisablement> prevdisablements = getExtensionDisablements();
                 sakerProject.setIDEProjectProperties(properties);
-                Set<ExtensionDisablement> prevdisablements = IntellijSakerIDEPlugin
-                        .getExtensionDisablements(this.executionParameterContributors);
                 this.executionParameterContributors = executionParameterContributors;
-                Set<ExtensionDisablement> currentdisablements = IntellijSakerIDEPlugin
-                        .getExtensionDisablements(this.executionParameterContributors);
+                Set<ExtensionDisablement> currentdisablements = getExtensionDisablements();
                 if (!prevdisablements.equals(currentdisablements)) {
                     try {
                         writeProjectConfigurationFile(currentdisablements);
@@ -998,6 +1028,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 }
             }
         }
+    }
+
+    @NotNull
+    public Set<ExtensionDisablement> getExtensionDisablements() {
+        return SakerBuildPlugin.getExtensionDisablements(this.executionParameterContributors);
     }
 
     public void setIDEProjectProperties(IDEProjectProperties properties) {
@@ -1044,42 +1079,12 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     public NavigableMap<String, String> getUserParametersWithContributors(Map<String, String> userparameters,
-            List<ContributedExtensionConfiguration<IExecutionUserParameterContributor>> contributors,
+            List<? extends ContributedExtensionConfiguration<? extends IExecutionUserParameterContributor>> contributors,
             ProgressIndicator monitor) {
-        NavigableMap<String, String> userparamworkmap = ObjectUtils.newTreeMap(userparameters);
-        NavigableMap<String, String> unmodifiableuserparammap = ImmutableUtils
-                .unmodifiableNavigableMap(userparamworkmap);
-        contributor_loop:
-        for (ContributedExtensionConfiguration<IExecutionUserParameterContributor> extension : contributors) {
-            if (!extension.isEnabled()) {
-                continue;
-            }
-            if (monitor != null && monitor.isCanceled()) {
-                throw new ProcessCanceledException();
-            }
-            try {
-                Set<UserParameterModification> modifications = extension.getContributor()
-                        .contribute(this, unmodifiableuserparammap, monitor);
-                if (ObjectUtils.isNullOrEmpty(modifications)) {
-                    continue;
-                }
-                Set<String> keys = new TreeSet<>();
-                for (UserParameterModification mod : modifications) {
-                    if (!keys.add(mod.getKey())) {
-                        displayException(new IllegalArgumentException(
-                                "Multiple execution user parameter modification for key: " + mod.getKey()));
-                        continue contributor_loop;
-                    }
-                }
-                for (UserParameterModification mod : modifications) {
-                    mod.apply(userparamworkmap);
-                }
-            } catch (Exception e) {
-                //catch other kind of exceptions too
-                displayException(e);
-            }
-        }
-        return userparamworkmap;
+        return IntellijSakerIDEPlugin
+                .getUserParametersWithContributors(userparameters, contributors, this, monitor, (ext, userparams) -> {
+                    return ext.contribute(this, userparams, monitor);
+                });
     }
 
     private void writeProjectConfigurationFile(Iterable<? extends ExtensionDisablement> disablements) throws

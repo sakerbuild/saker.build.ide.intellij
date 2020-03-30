@@ -4,10 +4,12 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.IdeFrame;
 import com.intellij.openapi.wm.WindowManager;
 
+import javax.swing.Icon;
 import javax.swing.JComponent;
 import javax.swing.JDialog;
 import javax.swing.JFrame;
 import javax.swing.JTextField;
+import javax.swing.tree.DefaultTreeCellRenderer;
 
 public class UIUtils {
     public static void selectAndFocusAll(JTextField tf) {
@@ -39,5 +41,13 @@ public class UIUtils {
                 return;
             }
         }
+    }
+
+    public static void setDefaultTreeCellRendererIcon(DefaultTreeCellRenderer renderer, Icon icon){
+        renderer.setIcon(icon);
+        renderer.setClosedIcon(icon);
+        renderer.setLeafIcon(icon);
+        renderer.setOpenIcon(icon);
+        renderer.setDisabledIcon(icon);
     }
 }
