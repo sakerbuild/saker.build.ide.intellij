@@ -13,9 +13,6 @@ public class RunBuildAction extends AnAction {
             return;
         }
         ISakerBuildPluginImpl plugin = SakerBuildPlugin.getPluginImpl();
-        if (plugin == null) {
-            return;
-        }
         ISakerBuildProjectImpl ideproject = plugin.getOrCreateProject(project);
         if (ideproject == null) {
             return;
@@ -28,11 +25,11 @@ public class RunBuildAction extends AnAction {
         super.update(e);
         Project project = e.getProject();
         if (project == null) {
-            e.getPresentation().setVisible(false);
+            e.getPresentation().setEnabledAndVisible(false);
             return;
         }
         if (!SakerBuildPlugin.isSakerBuildProjectNatureEnabled(project)) {
-            e.getPresentation().setVisible(false);
+            e.getPresentation().setEnabledAndVisible(false);
             return;
         }
         e.getPresentation().setEnabledAndVisible(true);

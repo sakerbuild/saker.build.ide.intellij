@@ -45,11 +45,15 @@ import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.SakerBuildActionGroup;
 import saker.build.ide.intellij.SakerBuildPlugin;
+import saker.build.ide.intellij.extension.ideconfig.IDEConfigurationTypeHandlerExtensionPointBean;
+import saker.build.ide.intellij.extension.ideconfig.IIDEConfigurationTypeHandler;
+import saker.build.ide.intellij.extension.ideconfig.IIDEProjectConfigurationRootEntry;
 import saker.build.ide.intellij.extension.params.ExecutionUserParameterContributorProviderExtensionPointBean;
 import saker.build.ide.intellij.extension.params.IExecutionUserParameterContributor;
 import saker.build.ide.intellij.impl.dialog.BuildTargetChooserDialog;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
+import saker.build.ide.intellij.impl.ui.IDEConfigurationSelectorDialog;
 import saker.build.ide.intellij.impl.ui.ProjectPropertiesValidationDialog;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
@@ -83,6 +87,7 @@ import saker.build.task.utils.TaskUtils;
 import saker.build.thirdparty.saker.util.DateUtils;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 import saker.build.thirdparty.saker.util.ObjectUtils;
+import saker.build.thirdparty.saker.util.function.Functionals;
 import saker.build.thirdparty.saker.util.io.ByteSink;
 import saker.build.thirdparty.saker.util.io.ByteSource;
 import saker.build.thirdparty.saker.util.io.IOUtils;
@@ -286,8 +291,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
     }
 
     public void buildAsync(SakerPath scriptfile, String targetname) {
-        ProgressManager progmanager = ProgressManager.getInstance();
-        progmanager.run(new Task.Backgroundable(project, "Saker.build execution", true) {
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Saker.build execution", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
                 build(scriptfile, targetname, indicator);
@@ -1044,13 +1048,13 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             }
             try {
                 sakerProject.setIDEProjectProperties(properties);
-                ProgressManager progmanager = ProgressManager.getInstance();
-                progmanager.run(new Task.Backgroundable(null, "Updating saker.build project properties", true) {
-                    @Override
-                    public void run(@NotNull ProgressIndicator indicator) {
-                        sakerProject.updateForProjectProperties(properties);
-                    }
-                });
+                ProgressManager.getInstance()
+                        .run(new Task.Backgroundable(null, "Updating saker.build project properties", false) {
+                            @Override
+                            public void run(@NotNull ProgressIndicator indicator) {
+                                sakerProject.updateForProjectProperties(properties);
+                            }
+                        });
 
             } finally {
                 try {
@@ -1120,6 +1124,160 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
 
     @Override
     public void addSakerBuildTargetsMenuActions(List<AnAction> result) {
+        addBuildFilesToTargetsMenu(result);
+        result.add(new Separator());
+        addIDEConfigurationsToTargetsMenu(result);
+    }
+
+    private void addIDEConfigurationsToTargetsMenu(List<AnAction> result) {
+        result.add(new ActionGroup("IDE Configuration", true) {
+            @NotNull
+            @Override
+            public AnAction[] getChildren(@Nullable AnActionEvent e) {
+                Collection<? extends IDEConfiguration> configurations = getProjectIDEConfigurationCollection()
+                        .getConfigurations();
+                if (configurations.isEmpty()) {
+                    return new AnAction[] { new AnAction("Run a build to generate an IDE configuration") {
+                        @Override
+                        public void actionPerformed(@NotNull AnActionEvent e) {
+                            buildAsync();
+                        }
+                    } };
+                }
+                Map<String, Set<String>> idetypetypenames = new TreeMap<>();
+
+                for (IDEConfigurationTypeHandlerExtensionPointBean extbean : IDEConfigurationTypeHandlerExtensionPointBean.EP_NAME
+                        .getExtensionList()) {
+                    String typename = extbean.getTypeName();
+                    if (ObjectUtils.isNullOrEmpty(typename)) {
+                        continue;
+                    }
+                    String type = extbean.getType();
+                    if (ObjectUtils.isNullOrEmpty(type)) {
+                        continue;
+                    }
+                    idetypetypenames.computeIfAbsent(type, Functionals.treeSetComputer()).add(typename);
+                }
+
+                Map<String, ApplyIDEConfigurationActionGroup> idetypemenumanagers = new TreeMap<>();
+                for (IDEConfiguration ideconfig : configurations) {
+                    String configtype = ideconfig.getType();
+                    if (ObjectUtils.isNullOrEmpty(configtype)) {
+                        continue;
+                    }
+                    String id = ideconfig.getIdentifier();
+                    if (ObjectUtils.isNullOrEmpty(id)) {
+                        continue;
+                    }
+                    Set<String> configtypenames = idetypetypenames.get(configtype);
+                    if (configtypenames == null) {
+                        configtypenames = Collections.singleton("<" + configtype + ">");
+                    }
+                    for (String typename : configtypenames) {
+                        ApplyIDEConfigurationActionGroup ideconfigmenumanager = idetypemenumanagers.get(typename);
+                        if (ideconfigmenumanager == null) {
+                            ideconfigmenumanager = new ApplyIDEConfigurationActionGroup(typename);
+                            idetypemenumanagers.put(typename, ideconfigmenumanager);
+                        }
+                        ideconfigmenumanager.ideConfigurations.add(ideconfig);
+                    }
+                }
+
+                return idetypemenumanagers.values().toArray(SakerBuildActionGroup.EMPTY_ANACTION_ARRAY);
+            }
+        });
+    }
+
+    private void applyIDEConfiguration(IDEConfiguration ideconfig) {
+        System.out.println("EclipseSakerIDEProject.applyIDEConfiguration() " + ideconfig);
+        if (ideconfig == null) {
+            //shouldn't really happen
+            return;
+        }
+        String ideconfigtype = ideconfig.getType();
+        if (ideconfigtype == null) {
+            //TODO message
+            return;
+        }
+        NavigableMap<String, Object> configfieldmap = new TreeMap<>();
+        for (String fn : ideconfig.getFieldNames()) {
+            if (fn == null) {
+                continue;
+            }
+            Object fval = ideconfig.getField(fn);
+            if (fval == null) {
+                continue;
+            }
+            configfieldmap.put(fn, fval);
+        }
+        configfieldmap = ImmutableUtils.unmodifiableNavigableMap(configfieldmap);
+        List<IIDEConfigurationTypeHandler> parsers = new ArrayList<>();
+        for (IDEConfigurationTypeHandlerExtensionPointBean extbean : IDEConfigurationTypeHandlerExtensionPointBean.EP_NAME
+                .getExtensionList()) {
+            String type = extbean.getType();
+            if (!ideconfigtype.equals(type)) {
+                continue;
+            }
+            try {
+                IIDEConfigurationTypeHandler typehandler = extbean.createTypeHandler(project);
+                parsers.add(typehandler);
+            } catch (Exception e) {
+                displayException(e);
+            }
+        }
+        if (parsers.isEmpty()) {
+            //TODO message
+            return;
+        }
+
+        //TODO some real monitor
+        ProgressIndicator monitor = new EmptyProgressIndicator();
+
+        List<IIDEProjectConfigurationRootEntry> rootentries = new ArrayList<>();
+        boolean hadsuccess = false;
+        for (IIDEConfigurationTypeHandler parser : parsers) {
+            IIDEProjectConfigurationRootEntry[] entries;
+            try {
+                entries = parser.parseConfiguration(this, configfieldmap, monitor);
+            } catch (Exception e) {
+                displayException(e);
+                continue;
+            }
+            if (ObjectUtils.isNullOrEmpty(entries)) {
+                continue;
+            }
+            for (IIDEProjectConfigurationRootEntry roote : entries) {
+                if (roote == null) {
+                    continue;
+                }
+                rootentries.add(roote);
+            }
+            hadsuccess = true;
+        }
+        if (!hadsuccess) {
+            //TODO message
+            return;
+        }
+        IDEConfigurationSelectorDialog dialog = new IDEConfigurationSelectorDialog(this, rootentries,
+                ideconfig.getIdentifier());
+        dialog.setVisible(true);
+        if (dialog.isOk()) {
+            for (IIDEProjectConfigurationRootEntry rootentry : rootentries) {
+                if (!rootentry.isSelected()) {
+                    continue;
+                }
+                try {
+                    rootentry.apply(monitor);
+                } catch (Exception e) {
+                    displayException(e);
+                    //TODO message
+                    return;
+                }
+            }
+        }
+    }
+
+    private void addBuildFilesToTargetsMenu(List<AnAction> result) {
         NavigableSet<SakerPath> filepaths = getTrackedScriptPaths();
         if (filepaths.isEmpty()) {
             result.add(new AnAction("Add new build file") {
@@ -1361,6 +1519,40 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 }
             }
             console.print(line + LINE_SEPARATOR, contenttype);
+        }
+    }
+
+    private class ApplyIDEConfigurationAnAction extends AnAction {
+        private final IDEConfiguration ideconfig;
+
+        public ApplyIDEConfigurationAnAction(IDEConfiguration ideconfig) {
+            super(ideconfig.getIdentifier());
+            this.ideconfig = ideconfig;
+        }
+
+        @Override
+        public void actionPerformed(@NotNull AnActionEvent e) {
+            applyIDEConfiguration(ideconfig);
+        }
+    }
+
+    private class ApplyIDEConfigurationActionGroup extends ActionGroup {
+        protected List<IDEConfiguration> ideConfigurations;
+
+        public ApplyIDEConfigurationActionGroup(String typename) {
+            super(typename, true);
+            ideConfigurations = new ArrayList<>();
+        }
+
+        @NotNull
+        @Override
+        public AnAction[] getChildren(@Nullable AnActionEvent e) {
+            List<AnAction> ideactionresults = new ArrayList<>();
+            for (IDEConfiguration ideconfig : ideConfigurations) {
+                ideactionresults.add(new ApplyIDEConfigurationAnAction(ideconfig));
+            }
+
+            return ideactionresults.toArray(SakerBuildActionGroup.EMPTY_ANACTION_ARRAY);
         }
     }
 }

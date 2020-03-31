@@ -2,7 +2,7 @@ package saker.build.ide.intellij;
 
 import com.intellij.openapi.extensions.PluginId;
 
-public interface ContributedExtension {
+public interface UserParameterContributorExtension {
     public String getId();
 
     public String getDisplayName();

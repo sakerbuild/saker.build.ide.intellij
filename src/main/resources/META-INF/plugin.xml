@@ -1,5 +1,6 @@
 <idea-plugin>
     <id>saker.build.ide.intellij</id>
+    <version>0.8.0</version>
     <name>Saker.build system plug-in for IntelliJ</name>
     <vendor email="support@saker.build"
             url="https://saker.build">saker.build
@@ -23,9 +24,15 @@
                   implements="saker.build.ide.intellij.extension.params.IEnvironmentUserParameterContributor"/>
         </extensionPoint>
         <extensionPoint name="params.execution.contributor"
-                        interface="saker.build.ide.intellij.extension.params.ExecutionUserParameterContributorProviderExtensionPointBean">
+                        beanClass="saker.build.ide.intellij.extension.params.ExecutionUserParameterContributorProviderExtensionPointBean">
             <with attribute="implementationClass"
                   implements="saker.build.ide.intellij.extension.params.IExecutionUserParameterContributor"/>
+        </extensionPoint>
+        <extensionPoint name="ide.configuration.typeHandler"
+                        beanClass="saker.build.ide.intellij.extension.ideconfig.IDEConfigurationTypeHandlerExtensionPointBean"
+                        dynamic="true">
+            <with attribute="implementationClass"
+                  implements="saker.build.ide.intellij.extension.ideconfig.IIDEConfigurationTypeHandler"/>
         </extensionPoint>
     </extensionPoints>
 

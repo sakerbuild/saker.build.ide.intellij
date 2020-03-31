@@ -3,6 +3,7 @@ package saker.build.ide.intellij.impl;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.options.Configurable;
+import com.intellij.openapi.progress.EmptyProgressIndicator;
 import com.intellij.openapi.progress.ProcessCanceledException;
 import com.intellij.openapi.progress.ProgressIndicator;
 import com.intellij.openapi.progress.ProgressManager;
@@ -71,10 +72,6 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
         sakerPlugin = new SakerIDEPlugin();
     }
 
-    public static IntellijSakerIDEPlugin getInstance() {
-        return (IntellijSakerIDEPlugin) SakerBuildPlugin.getPluginImpl();
-    }
-
     public void initialize(ImplementationStartArguments args) {
         Path sakerJarPath = args.sakerJarPath;
         Path plugindirectory = args.pluginDirectory;
@@ -122,7 +119,7 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
             sakerPlugin.initialize(sakerJarPath, plugindirectory);
             sakerPlugin.start(sakerPlugin.createDaemonLaunchParameters(
                     getIDEPluginPropertiesWithEnvironmentParameterContributions(sakerPlugin.getIDEPluginProperties(),
-                            null)));
+                            new EmptyProgressIndicator())));
         } catch (IOException e) {
             displayException(e);
         }
@@ -238,6 +235,9 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
             IDEPluginProperties properties, ProgressIndicator monitor) {
         if (environmentParameterContributors.isEmpty()) {
             return properties;
+        }
+        if (monitor == null) {
+            monitor = new EmptyProgressIndicator();
         }
         SimpleIDEPluginProperties.Builder builder = SimpleIDEPluginProperties.builder(properties);
         Map<String, String> propertiesuserparams = SakerIDEPlugin.entrySetToMap(properties.getUserParameters());
@@ -356,7 +356,7 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
     @Override
     public Configurable createApplicationConfigurable() {
-        return new SakerBuildApplicationConfigurable();
+        return new SakerBuildApplicationConfigurable(this);
     }
 
     private void closeProjects() throws IOException {

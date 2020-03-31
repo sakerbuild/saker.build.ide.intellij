@@ -11,5 +11,4 @@ public class ExecutionUserParameterContributorProviderExtensionPointBean extends
     public IExecutionUserParameterContributor createContributor(Project project) {
         return instantiateClass(implementationClass, project.getPicoContainer());
     }
-
 }

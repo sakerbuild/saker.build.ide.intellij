@@ -2,10 +2,10 @@ package saker.build.ide.intellij;
 
 public final class ContributedExtensionConfiguration<T> {
     private final T contributor;
-    private final ContributedExtension contributedExtension;
+    private final UserParameterContributorExtension contributedExtension;
     private final boolean enabled;
 
-    public ContributedExtensionConfiguration(T contributor, ContributedExtension configelem, boolean enabled) {
+    public ContributedExtensionConfiguration(T contributor, UserParameterContributorExtension configelem, boolean enabled) {
         this.contributor = contributor;
         this.contributedExtension = configelem;
         this.enabled = enabled;
@@ -15,7 +15,7 @@ public final class ContributedExtensionConfiguration<T> {
         return contributor;
     }
 
-    public ContributedExtension getContributedExtension() {
+    public UserParameterContributorExtension getContributedExtension() {
         return contributedExtension;
     }
 

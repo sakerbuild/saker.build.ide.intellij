@@ -28,7 +28,7 @@ public final class ExtensionDisablement {
         this.extensionId = Objects.requireNonNull(extensionId, "extension id");
     }
 
-    public ExtensionDisablement(ContributedExtension ext) {
+    public ExtensionDisablement(UserParameterContributorExtension ext) {
         this(ext.getPluginId(), ext.getId());
     }
 

@@ -6,6 +6,10 @@ import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.progress.EmptyProgressIndicator;
+import com.intellij.openapi.progress.ProgressIndicator;
+import com.intellij.openapi.progress.ProgressManager;
+import com.intellij.openapi.progress.Task;
+import com.intellij.openapi.project.Project;
 import com.intellij.ui.AddEditRemovePanel;
 import com.intellij.ui.AnActionButton;
 import com.intellij.ui.AnActionButtonRunnable;
@@ -19,13 +23,15 @@ import com.intellij.ui.table.JBTable;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
+import com.intellij.uiDesigner.core.Spacer;
 import com.intellij.util.IconUtil;
+import org.jdesktop.swingx.JXBusyLabel;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import saker.build.ide.intellij.ContributedExtension;
 import saker.build.ide.intellij.ContributedExtensionConfiguration;
 import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.SakerBuildPlugin;
+import saker.build.ide.intellij.UserParameterContributorExtension;
 import saker.build.ide.intellij.extension.params.IEnvironmentUserParameterContributor;
 import saker.build.ide.intellij.extension.params.IExecutionUserParameterContributor;
 import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
@@ -44,6 +50,7 @@ import javax.swing.JPanel;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTree;
+import javax.swing.SwingUtilities;
 import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.event.TableModelEvent;
@@ -81,6 +88,7 @@ public class UserParametersForm {
     private JPanel parametersPanel;
     private JBLabel parametersInfoLabel;
     private JPanel extensionsPanel;
+    private JXBusyLabel contributorsCalculatingBusyLabel;
 
     //    private AddEditRemovePanel<UserParameterEntry> parametersEditPanel;
     private String userParameterKind = "";
@@ -97,6 +105,11 @@ public class UserParametersForm {
     private RootTreeNode<ExtensionPropertyTreeNode> extensionsRootNode = new RootTreeNode<>();
 
     private BiFunction<Map<String, String>, List<? extends ContributedExtensionConfiguration<?>>, Map<String, String>> extensionApplier = (p, ed) -> p;
+
+    private Project project;
+
+    private final Object busyIndicatorAccessLock = new Object();
+    private int busyCounter = 0;
 
     private UserParametersForm() {
         $$$setupUI$$$();
@@ -129,15 +142,7 @@ public class UserParametersForm {
                     @Override
                     public void run(AnActionButton anActionButton) {
                         int[] selected = parametersTable.getSelectedRows();
-                        if (selected == null || selected.length == 0) {
-                            return;
-                        }
-
-                        Arrays.sort(selected);
-                        for (int i = selected.length - 1; i >= 0; i--) {
-                            int idx = selected[i];
-                            parametersTableModel.remove(idx);
-                        }
+                        parametersTableModel.remove(selected);
                     }
                 }).setEditAction(new AnActionButtonRunnable() {
                     @Override
@@ -198,7 +203,7 @@ public class UserParametersForm {
             }
         });
         extensionsTree.setRootVisible(false);
-        extensionsTree.getEmptyText().clear().appendText("No extensions available.");
+        extensionsTree.getEmptyText().clear().appendText("No user parameter contributor extensions installed.");
         extensionsTree.getSelectionModel().setSelectionMode(TreeSelectionModel.SINGLE_TREE_SELECTION);
 
         extensionsDecorator = ToolbarDecorator.createDecorator(extensionsTree).disableUpDownActions()
@@ -299,6 +304,7 @@ public class UserParametersForm {
 
     public UserParametersForm(ExecutionUserParametersConfigurable configurable) {
         this();
+        this.project = configurable.getParent().getProject().getProject();
         parametersTableModel.addTableModelListener(new TableModelListener() {
             @Override
             public void tableChanged(TableModelEvent e) {
@@ -379,10 +385,66 @@ public class UserParametersForm {
             return data;
         }
 
+        private void recalculateGeneratedParams(List<UserParameterEntry> input) {
+            List<ContributedExtensionConfiguration<?>> extensions = getCurrentExtensions();
+            if (ObjectUtils.isNullOrEmpty(extensions)) {
+                return;
+            }
+            List<UserParameterEntry> datainput = ImmutableUtils.makeImmutableList(input);
+            Set<Map.Entry<String, String>> entries = new LinkedHashSet<>();
+            for (UserParameterEntry entry : input) {
+                entries.add(entry.toEntry());
+            }
+            Map<String, String> userentries = SakerIDEPlugin.entrySetToMap(entries);
+
+            synchronized (busyIndicatorAccessLock) {
+                ++busyCounter;
+                contributorsCalculatingBusyLabel.setBusy(true);
+                contributorsCalculatingBusyLabel.setVisible(true);
+            }
+
+            ProgressManager progmanager = ProgressManager.getInstance();
+            progmanager.run(new Task.Backgroundable(project, "Calculating user parameters", true) {
+                @Override
+                public void run(@NotNull ProgressIndicator indicator) {
+                    try {
+                        Map<String, String> currententries = extensionApplier.apply(userentries, extensions);
+                        List<UserParameterEntry> result = new ArrayList<>();
+                        for (Map.Entry<String, String> entry : currententries.entrySet()) {
+                            if (Objects.equals(userentries.get(entry.getKey()), entry.getValue())) {
+                                //the contributors haven't changed the given entry.
+                                continue;
+                            }
+                            result.add(new UserParameterEntry(entry.getKey(), entry.getValue(), true));
+                        }
+                        SwingUtilities.invokeLater(() -> {
+                            if (!Objects.equals(ParametersTableModel.this.data, datainput) || !extensions
+                                    .equals(getCurrentExtensions())) {
+                                //calculated output not applicable, model was modified
+                                return;
+                            }
+                            ParametersTableModel.this.generatedParams = result;
+                            int size = input.size();
+                            fireTableRowsInserted(size, size);
+                        });
+                    } finally {
+                        SwingUtilities.invokeLater(() -> {
+                            synchronized (busyIndicatorAccessLock) {
+                                boolean busy = --busyCounter > 0;
+                                contributorsCalculatingBusyLabel.setBusy(busy);
+                                contributorsCalculatingBusyLabel.setVisible(busy);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
         public void setData(List<UserParameterEntry> data) {
             this.data = data;
-            this.generatedParams = getCurrentExtensionEntries();
+            this.generatedParams = Collections.emptyList();
             fireTableDataChanged();
+            recalculateGeneratedParams(data);
         }
 
         @Override
@@ -423,18 +485,27 @@ public class UserParametersForm {
             int size = data.size();
             clearNotifyGeneratedParams(size);
             fireTableRowsInserted(size, size);
-            generateNotifyGeneratedParams(size);
+            recalculateGeneratedParams(data);
         }
 
-        public void remove(int idx) {
-            int size = data.size();
-            if (idx < size) {
-                clearNotifyGeneratedParams(size);
-                data.remove(idx);
-                --size;
-                fireTableRowsDeleted(idx, idx);
-                generateNotifyGeneratedParams(size);
+        public void remove(int[] indices) {
+            if (ObjectUtils.isNullOrEmpty(indices)) {
+                return;
             }
+            indices = indices.clone();
+
+            Arrays.sort(indices);
+            int size = data.size();
+            if (indices[0] >= size) {
+                return;
+            }
+            clearNotifyGeneratedParams(size);
+
+            for (int i = indices.length - 1; i >= 0; i--) {
+                int idx = indices[i];
+                data.remove(idx);
+            }
+            recalculateGeneratedParams(data);
         }
 
         public void setDataAtIndex(int idx, UserParameterEntry edited) {
@@ -442,7 +513,7 @@ public class UserParametersForm {
             clearNotifyGeneratedParams(size);
             data.set(idx, edited);
             fireTableRowsUpdated(idx, idx);
-            generateNotifyGeneratedParams(size);
+            recalculateGeneratedParams(data);
         }
 
         private void clearNotifyGeneratedParams(int size) {
@@ -453,17 +524,10 @@ public class UserParametersForm {
             }
         }
 
-        private void generateNotifyGeneratedParams(int size) {
-            this.generatedParams = getCurrentExtensionEntries();
-            if (!generatedParams.isEmpty()) {
-                fireTableRowsInserted(size, size + generatedParams.size());
-            }
-        }
-
         public void updateExtensions() {
             int size = data.size();
             clearNotifyGeneratedParams(size);
-            generateNotifyGeneratedParams(size);
+            recalculateGeneratedParams(data);
         }
     }
 
@@ -492,7 +556,8 @@ public class UserParametersForm {
     }
 
     private List<UserParameterEntry> getCurrentExtensionEntries() {
-        Map<String, String> userentries = SakerIDEPlugin.entrySetToMap(getCurrentValues());
+        Set<Map.Entry<String, String>> values = getCurrentValues();
+        Map<String, String> userentries = SakerIDEPlugin.entrySetToMap(values);
         Map<String, String> currententries = extensionApplier.apply(userentries, getCurrentExtensions());
         List<UserParameterEntry> result = new ArrayList<>();
         for (Map.Entry<String, String> entry : currententries.entrySet()) {
@@ -538,10 +603,10 @@ public class UserParametersForm {
             data.add(UserParameterEntry.valueOf(entry));
         }
 
-        parametersTableModel.setData(data);
         List<ContributedExtensionConfiguration<Object>> nextensions = SakerBuildPlugin
                 .applyExtensionDisablements(getCurrentExtensions(), extensionDisablements);
         setExtensionsTreeContents(nextensions);
+        parametersTableModel.setData(data);
     }
 
     public JPanel getParametersPanel() {
@@ -609,26 +674,38 @@ public class UserParametersForm {
         createUIComponents();
         rootPanel = new JPanel();
         rootPanel.setLayout(new GridLayoutManager(1, 1, new Insets(0, 0, 0, 0), -1, -1));
+        tabbedPane.setVisible(true);
         rootPanel.add(tabbedPane,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null,
                         new Dimension(200, 200), null, 0, false));
         final JPanel panel1 = new JPanel();
-        panel1.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
+        panel1.setLayout(new GridLayoutManager(2, 3, new Insets(0, 0, 0, 0), -1, -1));
         tabbedPane.addTab("Parameters", panel1);
         parametersInfoLabel = new JBLabel();
         panel1.add(parametersInfoLabel,
-                new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
-                        GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
-                        false));
+                new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_SOUTHWEST, GridConstraints.FILL_NONE,
+                        GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, new Dimension(-1, 30),
+                        new Dimension(-1, 30), null, 0, false));
         parametersPanel = new JPanel();
         parametersPanel.setLayout(new CardLayout(0, 0));
         panel1.add(parametersPanel,
-                new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                new GridConstraints(1, 0, 1, 3, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
                         0, false));
+        contributorsCalculatingBusyLabel = new JXBusyLabel();
+        contributorsCalculatingBusyLabel.setToolTipText("Calculating user parameters...");
+        contributorsCalculatingBusyLabel.setVisible(false);
+        panel1.add(contributorsCalculatingBusyLabel,
+                new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null,
+                        new Dimension(15, 15), null, 0, false));
+        final Spacer spacer1 = new Spacer();
+        panel1.add(spacer1,
+                new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                        GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
         final JPanel panel2 = new JPanel();
         panel2.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
         tabbedPane.addTab("Extensions", panel2);
@@ -717,6 +794,24 @@ public class UserParametersForm {
         public Map.Entry<String, String> toEntry() {
             return ImmutableUtils.makeImmutableMapEntry(key, value);
         }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
+            UserParameterEntry that = (UserParameterEntry) o;
+            return extensionModified == that.extensionModified && Objects.equals(key, that.key) && Objects
+                    .equals(value, that.value);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(key, value, extensionModified);
+        }
     }
 
     private static class ExtensionPropertyTreeNode extends PropertyTreeNode<ContributedExtensionConfiguration<?>> {
@@ -728,7 +823,7 @@ public class UserParametersForm {
         public void setProperty(ContributedExtensionConfiguration<?> property) {
             this.children = new ArrayList<>();
 
-            ContributedExtension ext = property.getContributedExtension();
+            UserParameterContributorExtension ext = property.getContributedExtension();
             String id = ext.getId();
             PluginId pluginId = ext.getPluginId();
             String implementationClass = ext.getImplementationClass();
@@ -742,7 +837,7 @@ public class UserParametersForm {
         @Override
         public String toString() {
             final String result;
-            ContributedExtension ext = property.getContributedExtension();
+            UserParameterContributorExtension ext = property.getContributedExtension();
             String displayname = ext.getDisplayName();
             if (!ObjectUtils.isNullOrEmpty(displayname)) {
                 result = displayname;

@@ -33,9 +33,6 @@ public class SakerBuildActionGroup extends ActionGroup {
             return EMPTY_ANACTION_ARRAY;
         }
         ISakerBuildPluginImpl pluginimpl = SakerBuildPlugin.getPluginImpl();
-        if (pluginimpl == null) {
-            return EMPTY_ANACTION_ARRAY;
-        }
         ISakerBuildProjectImpl intellijideproject = pluginimpl.getOrCreateProject(project);
         if (intellijideproject == null) {
             return EMPTY_ANACTION_ARRAY;

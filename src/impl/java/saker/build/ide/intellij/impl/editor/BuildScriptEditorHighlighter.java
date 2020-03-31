@@ -77,14 +77,18 @@ import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
 public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildScriptEditorHighlighter {
     private static final IElementType TOKEN_ELEMENT_TYPE = new IElementType("SAKER_SCRIPT_TOKEN",
             BuildScriptLanguage.INSTANCE);
 
+    private static final AtomicReferenceFieldUpdater<BuildScriptEditorHighlighter, HighlighterClient> ARFU_editor = AtomicReferenceFieldUpdater
+            .newUpdater(BuildScriptEditorHighlighter.class, HighlighterClient.class, "editor");
+
     private final IntellijSakerIDEProject project;
 
-    private HighlighterClient editor;
+    private volatile HighlighterClient editor;
 
     private List<TextRegionChange> buildRegionChanges = null;
 
@@ -111,11 +115,16 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     //  As listeners are weakly referenced by the model, keep this as a field.
     private final ScriptEditorModel.ModelUpdateListener modelUpdateListener = model -> {
         HighlighterClient editor = BuildScriptEditorHighlighter.this.editor;
-        if (editor != null) {
-            SwingUtilities.invokeLater(() -> {
-                editor.repaint(0, Integer.MAX_VALUE);
-            });
+        if (editor == null) {
+            return;
         }
+        SwingUtilities.invokeLater(() -> {
+            HighlighterClient currenteditor = BuildScriptEditorHighlighter.this.editor;
+            if (editor != currenteditor) {
+                return;
+            }
+            currenteditor.repaint(0, Integer.MAX_VALUE);
+        });
     };
 
     public BuildScriptEditorHighlighter(IntellijSakerIDEProject project, SakerPath scriptpath,
@@ -422,6 +431,10 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
             @Override
             public Document getDocument() {
+                HighlighterClient editor = BuildScriptEditorHighlighter.this.editor;
+                if (editor == null) {
+                    return null;
+                }
                 return editor.getDocument();
             }
 
@@ -497,7 +510,12 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         editorfactory.addEditorFactoryListener(new EditorFactoryListener() {
             @Override
             public void editorReleased(@NotNull EditorFactoryEvent event) {
-                if (event.getEditor() == editor) {
+                Editor eventeditor = event.getEditor();
+                if (!(eventeditor instanceof HighlighterClient)) {
+                    return;
+                }
+                if (ARFU_editor
+                        .compareAndSet(BuildScriptEditorHighlighter.this, (HighlighterClient) eventeditor, null)) {
                     System.out.println("BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER " + editorModel
                             .getScriptExecutionPath());
 
@@ -618,6 +636,10 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
         @Override
         public Document getDocument() {
+            HighlighterClient editor = BuildScriptEditorHighlighter.this.editor;
+            if (editor == null) {
+                return null;
+            }
             return editor.getDocument();
         }
     }

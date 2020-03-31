@@ -11,5 +11,4 @@ public class EnvironmentUserParameterContributorProviderExtensionPointBean exten
     public IEnvironmentUserParameterContributor createContributor() {
         return instantiateClass(implementationClass, ApplicationManager.getApplication().getPicoContainer());
     }
-
 }

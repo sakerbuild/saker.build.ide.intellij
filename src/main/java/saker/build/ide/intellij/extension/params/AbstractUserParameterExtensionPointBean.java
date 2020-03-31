@@ -3,9 +3,9 @@ package saker.build.ide.intellij.extension.params;
 import com.intellij.openapi.extensions.AbstractExtensionPointBean;
 import com.intellij.util.xmlb.annotations.Attribute;
 import org.jetbrains.annotations.Nls;
-import saker.build.ide.intellij.ContributedExtension;
+import saker.build.ide.intellij.UserParameterContributorExtension;
 
-public class AbstractUserParameterExtensionPointBean extends AbstractExtensionPointBean implements ContributedExtension {
+public class AbstractUserParameterExtensionPointBean extends AbstractExtensionPointBean implements UserParameterContributorExtension {
     @Attribute("id")
     public String id;
 

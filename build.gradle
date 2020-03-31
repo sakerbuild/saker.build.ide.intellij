@@ -1,16 +1,32 @@
 plugins {
     id 'java'
     id 'org.jetbrains.intellij' version '0.4.16'
+    id 'maven-publish'
 }
 
+intellij {
+    sandboxDirectory "${ System.properties['user.home'] }/.idea-sandbox"
+}
+
+compileJava {
+    options.compilerArgs << '-parameters'
+}
 
 group 'saker.build'
 version '0.8.0-SNAPSHOT'
 
 sourceCompatibility = 1.8
 
-repositories {
-    mavenCentral()
+publishing {
+    repositories {
+        mavenCentral()
+        mavenLocal()
+    }
+    publications {
+        mavenJava(MavenPublication) {
+            from components.java
+        }
+    }
 }
 sourceSets {
     main {

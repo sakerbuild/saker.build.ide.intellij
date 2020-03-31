@@ -29,16 +29,10 @@ public class BuildScriptFileType extends LanguageFileType implements FileTypeIde
             }
             ProjectManager pm = ProjectManager.getInstance();
             for (Project project : pm.getOpenProjects()) {
-                if (project.isDisposed()) {
-                    continue;
-                }
                 if (!SakerBuildPlugin.isSakerBuildProjectNatureEnabled(project)) {
                     continue;
                 }
                 ISakerBuildPluginImpl pluginimpl = SakerBuildPlugin.getPluginImpl();
-                if (pluginimpl == null) {
-                    return false;
-                }
                 ISakerBuildProjectImpl sakerproject = pluginimpl.getOrCreateProject(project);
                 if (sakerproject.isScriptModellingConfigurationAppliesTo(file.getPath())) {
                     return true;

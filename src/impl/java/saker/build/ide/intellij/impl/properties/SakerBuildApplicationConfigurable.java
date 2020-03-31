@@ -17,8 +17,8 @@ public class SakerBuildApplicationConfigurable implements Configurable, Configur
     private final IntellijSakerIDEPlugin plugin;
     private Configurable[] configurables;
 
-    public SakerBuildApplicationConfigurable() {
-        this.plugin = IntellijSakerIDEPlugin.getInstance();
+    public SakerBuildApplicationConfigurable(IntellijSakerIDEPlugin plugin) {
+        this.plugin = plugin;
         this.configurables = new Configurable[] { new EnvironmentUserParametersConfigurable(this) };
     }
 

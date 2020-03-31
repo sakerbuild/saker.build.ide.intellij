@@ -4,6 +4,7 @@ import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurableProvider;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.Nullable;
+import saker.build.ide.intellij.ISakerBuildPluginImpl;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.SakerBuildPlugin;
 
@@ -17,7 +18,8 @@ public class SakerBuildProjectConfigurableProvider extends ConfigurableProvider 
     @Nullable
     @Override
     public Configurable createConfigurable() {
-        ISakerBuildProjectImpl ideproject = SakerBuildPlugin.getPluginImpl().getOrCreateProject(project);
+        ISakerBuildPluginImpl pluginimpl = SakerBuildPlugin.getPluginImpl();
+        ISakerBuildProjectImpl ideproject = pluginimpl.getOrCreateProject(project);
         if (ideproject == null) {
             //TODO return an error configurable
             return null;
