@@ -1,12 +1,13 @@
 package saker.build.ide.intellij.impl.editor;
 
+import saker.build.ide.intellij.extension.script.information.IScriptInformationRoot;
 import saker.build.ide.support.ui.BaseScriptInformationRoot;
 import saker.build.scripting.model.PartitionedTextContent;
 import saker.build.scripting.model.ScriptCompletionProposal;
 import saker.build.scripting.model.ScriptTokenInformation;
 import saker.build.scripting.model.TextPartition;
 
-public class IntellijScriptInformationRoot extends BaseScriptInformationRoot<IntellijScriptInformationEntry> {
+public class IntellijScriptInformationRoot extends BaseScriptInformationRoot<IntellijScriptInformationEntry> implements IScriptInformationRoot {
     protected IntellijScriptInformationRoot() {
     }
 

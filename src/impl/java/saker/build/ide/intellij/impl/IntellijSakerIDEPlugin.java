@@ -10,6 +10,7 @@ import com.intellij.openapi.progress.ProgressManager;
 import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.ContributedExtensionConfiguration;
 import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.ISakerBuildPluginImpl;
@@ -18,6 +19,15 @@ import saker.build.ide.intellij.SakerBuildPlugin;
 import saker.build.ide.intellij.extension.params.EnvironmentUserParameterContributorProviderExtensionPointBean;
 import saker.build.ide.intellij.extension.params.IEnvironmentUserParameterContributor;
 import saker.build.ide.intellij.extension.params.UserParameterModification;
+import saker.build.ide.intellij.extension.script.information.IScriptInformationDesigner;
+import saker.build.ide.intellij.extension.script.information.ScriptInformationDesignerExtensionPointBean;
+import saker.build.ide.intellij.extension.script.outline.IScriptOutlineDesigner;
+import saker.build.ide.intellij.extension.script.outline.ScriptOutlineDesignerExtensionPointBean;
+import saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigner;
+import saker.build.ide.intellij.extension.script.proposal.ScriptProposalDesignerExtensionPointBean;
+import saker.build.ide.intellij.impl.editor.MultiScriptInformationDesigner;
+import saker.build.ide.intellij.impl.editor.MultiScriptOutlineDesigner;
+import saker.build.ide.intellij.impl.editor.MultiScriptProposalDesigner;
 import saker.build.ide.intellij.impl.properties.SakerBuildApplicationConfigurable;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
@@ -47,6 +57,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
@@ -127,6 +138,88 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
     public List<ContributedExtensionConfiguration<IEnvironmentUserParameterContributor>> getEnvironmentParameterContributors() {
         return environmentParameterContributors;
+    }
+
+    public IScriptInformationDesigner getScriptInformationDesignerForSchemaIdentifier(String schemaid,
+            @Nullable Project project) {
+        List<IScriptInformationDesigner> designers = new ArrayList<>();
+        for (ScriptInformationDesignerExtensionPointBean ext : ScriptInformationDesignerExtensionPointBean.EP_NAME
+                .getExtensionList()) {
+            String configschemaid = ext.getSchemaId();
+            if (configschemaid != null && !configschemaid.equals(schemaid)) {
+                continue;
+            }
+            try {
+                IScriptInformationDesigner designer = ext.createContributor(project);
+                designers.add(designer);
+            } catch (Exception e) {
+                displayException(e);
+                continue;
+            }
+        }
+        if (designers.isEmpty()) {
+            return null;
+        }
+        if (designers.size() == 1) {
+            return designers.get(0);
+        }
+        return new MultiScriptInformationDesigner(designers);
+    }
+
+    public IScriptOutlineDesigner getScriptOutlineDesignerForSchemaIdentifier(String schemaid,
+            @Nullable Project project) {
+        List<IScriptOutlineDesigner> designers = new ArrayList<>();
+        for (ScriptOutlineDesignerExtensionPointBean ext : ScriptOutlineDesignerExtensionPointBean.EP_NAME
+                .getExtensionList()) {
+            String configschemaid = ext.getSchemaId();
+            if (configschemaid != null && !configschemaid.equals(schemaid)) {
+                //can't use
+                continue;
+            }
+            try {
+                IScriptOutlineDesigner designer = ext.createContributor(project);
+                designers.add(designer);
+            } catch (Exception e) {
+                displayException(e);
+                continue;
+            }
+        }
+
+        if (designers.isEmpty()) {
+            return null;
+        }
+        if (designers.size() == 1) {
+            return designers.get(0);
+        }
+        return new MultiScriptOutlineDesigner(designers);
+    }
+
+    public IScriptProposalDesigner getScriptProposalDesignerForSchemaIdentifiers(Set<String> schemaidentifiers,
+            @Nullable Project project) {
+        Objects.requireNonNull(schemaidentifiers, "schema identifiers");
+        List<IScriptProposalDesigner> designers = new ArrayList<>();
+        for (ScriptProposalDesignerExtensionPointBean ext : ScriptProposalDesignerExtensionPointBean.EP_NAME
+                .getExtensionList()) {
+            String configschemaid = ext.getSchemaId();
+            if (configschemaid != null && !schemaidentifiers.contains(configschemaid)) {
+                continue;
+            }
+            try {
+                IScriptProposalDesigner designer = ext.createContributor(project);
+                designers.add(designer);
+            } catch (Exception e) {
+                displayException(e);
+                continue;
+            }
+        }
+
+        if (designers.isEmpty()) {
+            return null;
+        }
+        if (designers.size() == 1) {
+            return designers.get(0);
+        }
+        return new MultiScriptProposalDesigner(designers);
     }
 
     @Override

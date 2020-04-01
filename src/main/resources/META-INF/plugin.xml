@@ -34,6 +34,25 @@
             <with attribute="implementationClass"
                   implements="saker.build.ide.intellij.extension.ideconfig.IIDEConfigurationTypeHandler"/>
         </extensionPoint>
+
+        <extensionPoint name="designer.script.information"
+                        beanClass="saker.build.ide.intellij.extension.script.information.ScriptInformationDesignerExtensionPointBean"
+                        dynamic="true">
+            <with attribute="implementationClass"
+                  implements="saker.build.ide.intellij.extension.script.information.IScriptInformationDesigner"/>
+        </extensionPoint>
+        <extensionPoint name="designer.script.proposal"
+                        beanClass="saker.build.ide.intellij.extension.script.proposal.ScriptProposalDesignerExtensionPointBean"
+                        dynamic="true">
+            <with attribute="implementationClass"
+                  implements="saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigner"/>
+        </extensionPoint>
+        <extensionPoint name="designer.script.outline"
+                        beanClass="saker.build.ide.intellij.extension.script.outline.ScriptOutlineDesignerExtensionPointBean"
+                        dynamic="true">
+            <with attribute="implementationClass"
+                  implements="saker.build.ide.intellij.extension.script.outline.IScriptOutlineDesigner"/>
+        </extensionPoint>
     </extensionPoints>
 
     <extensions defaultExtensionNs="com.intellij">

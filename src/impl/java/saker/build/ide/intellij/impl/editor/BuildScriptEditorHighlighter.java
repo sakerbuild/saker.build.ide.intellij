@@ -48,6 +48,9 @@ import saker.build.file.path.SakerPath;
 import saker.build.ide.intellij.BuildScriptLanguage;
 import saker.build.ide.intellij.DocumentationHolder;
 import saker.build.ide.intellij.IBuildScriptEditorHighlighter;
+import saker.build.ide.intellij.extension.script.information.IScriptInformationDesigner;
+import saker.build.ide.intellij.extension.script.outline.IScriptOutlineDesigner;
+import saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.ui.BaseScriptInformationRoot;
@@ -65,6 +68,7 @@ import saker.build.scripting.model.TextRegionChange;
 import saker.build.scripting.model.TokenStyle;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
+import javax.swing.Icon;
 import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Font;
@@ -167,13 +171,21 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             return;
         }
         List<? extends ScriptCompletionProposal> proposals = model.getCompletionProposals(parameters.getOffset());
-        for (ScriptCompletionProposal proposal : proposals) {
+        IntellijScriptProposalRoot proposalroot = IntellijScriptProposalRoot.create(proposals);
+        IScriptProposalDesigner designer = project
+                .getScriptProposalDesignerForSchemaIdentifiers(proposalroot.getSchemaIdentifiers());
+        if (designer != null) {
+            designer.process(proposalroot);
+        }
+        for (IntellijScriptProposalEntry proposal : proposalroot.getProposals()) {
             addIntellijProposal(parameters, result, proposal);
         }
+
     }
 
     private void addIntellijProposal(CompletionParameters parameters, @NotNull CompletionResultSet result,
-            ScriptCompletionProposal proposal) {
+            IntellijScriptProposalEntry intellijproposal) {
+        ScriptCompletionProposal proposal = intellijproposal.getProposal();
         List<? extends CompletionProposalEdit> changes = proposal.getTextChanges();
         if (ObjectUtils.isNullOrEmpty(changes)) {
             return;
@@ -206,9 +218,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         LookupElementBuilder builder = LookupElementBuilder.create(new DocumentationHolder() {
             @Override
             public String getDocumentation() {
-                IntellijScriptInformationRoot inforoot = IntellijScriptInformationRoot.create(proposal);
-                //TODO designer
-                return generateDocumentation(inforoot.getEntries());
+                return generateDocumentation(intellijproposal.getInformationEntries());
             }
         }, edit.getText());
         builder = builder.withPresentableText(proposal.getDisplayString());
@@ -217,6 +227,10 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
         if (!ObjectUtils.isNullOrEmpty(proposal.getDisplayType())) {
             builder = builder.withTypeText(proposal.getDisplayType());
+        }
+        Icon proposalicon = intellijproposal.getProposalIcon();
+        if (proposalicon != null) {
+            builder = builder.withIcon(proposalicon);
         }
         builder = builder.withInsertHandler(new InsertHandler<LookupElement>() {
             @Override
@@ -238,7 +252,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             return null;
         }
         IntellijScriptInformationRoot inforoot = IntellijScriptInformationRoot.create(tokeninfo);
-        //TODO designer
+        IScriptInformationDesigner designer = project
+                .getScriptInformationDesignerForSchemaIdentifier(inforoot.getSchemaIdentifier());
+        if (designer != null) {
+            designer.process(inforoot);
+        }
         return generateDocumentation(inforoot.getEntries());
     }
 
@@ -766,13 +784,13 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
     }
 
-    private static OutlineEntryElement[] createOutlineEntries(List<? extends StructureOutlineEntry> roots,
+    private static OutlineEntryElement[] createOutlineEntries(List<? extends IntellijScriptOutlineEntry> outlineentries,
             Editor editor) {
-        if (roots == null) {
+        if (outlineentries == null) {
             return EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY;
         }
         List<OutlineEntryElement> entries = new ArrayList<>();
-        for (StructureOutlineEntry entry : roots) {
+        for (IntellijScriptOutlineEntry entry : outlineentries) {
             if (entry == null) {
                 continue;
             }
@@ -784,12 +802,12 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     private static class OutlineEntryElement implements StructureViewTreeElement {
         private final Editor editor;
-        private final StructureOutlineEntry entry;
+        private final IntellijScriptOutlineEntry entry;
         private final OutlineEntryElement[] children;
 
         private transient ItemPresentation presentation;
 
-        public OutlineEntryElement(StructureOutlineEntry entry, Editor editor) {
+        public OutlineEntryElement(IntellijScriptOutlineEntry entry, Editor editor) {
             this.entry = entry;
             this.editor = editor;
             this.children = createOutlineEntries(entry.getChildren(), editor);
@@ -817,6 +835,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
         @Override
         public void navigate(boolean requestFocus) {
+            StructureOutlineEntry entry = this.entry.getEntry();
             int offset = entry.getSelectionOffset();
             int selectionlen = entry.getSelectionLength();
             editor.getSelectionModel().setSelection(offset, offset + selectionlen);
@@ -839,6 +858,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
 
         public boolean isInside(int offset) {
+            StructureOutlineEntry entry = this.entry.getEntry();
             int entryoffset = entry.getOffset();
             return offset >= entryoffset && offset < entryoffset + entry.getLength();
         }
@@ -857,7 +877,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
     }
 
-    private static class OutlineRootElement implements StructureViewTreeElement {
+    private class OutlineRootElement implements StructureViewTreeElement {
         private OutlineEntryElement[] children = EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY;
         private Editor editor;
 
@@ -873,7 +893,13 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             if (outline == null) {
                 this.children = EMPTY_OUTLINE_ENTRY_ELEMENT_ARRAY;
             } else {
-                this.children = createOutlineEntries(outline.getRootEntries(), editor);
+                IntellijScriptOutlineRoot outlineroot = IntellijScriptOutlineRoot.create(outline);
+                IScriptOutlineDesigner designer = project
+                        .getScriptOutlineDesignerForSchemaIdentifier(outlineroot.getSchemaIdentifier());
+                if (designer != null) {
+                    designer.process(outlineroot);
+                }
+                this.children = createOutlineEntries(outlineroot.getRootEntries(), editor);
             }
         }
 

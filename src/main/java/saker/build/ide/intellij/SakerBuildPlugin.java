@@ -49,7 +49,6 @@ public class SakerBuildPlugin {
     public static final String ID = "saker.build.ide.intellij";
     private static final String NATURE_KEY_NAME = "saker.build.project.nature";
     public static final Key<Boolean> SAKER_BUILD_NATURE_KEY = new Key<>(NATURE_KEY_NAME);
-    private static IdeaPluginDescriptor implementationPluginDescriptor;
 
     private static volatile ISakerBuildPluginImpl pluginImpl;
 
@@ -161,6 +160,7 @@ public class SakerBuildPlugin {
     }
 
     public static void init() {
+        //TODO the plugin should be initialized asynchronously, and on demand
         //cause plugin initialization
         getPluginImpl();
     }
@@ -176,17 +176,17 @@ public class SakerBuildPlugin {
             if (pluginimpl != null) {
                 return pluginimpl;
             }
-            PluginClassLoader plugincl = (PluginClassLoader) SakerBuildPlugin.class.getClassLoader();
-
-            IdeaPluginDescriptor plugindescriptor = PluginManager.getPlugin(plugincl.getPluginId());
 
             try {
+                PluginClassLoader plugincl = (PluginClassLoader) SakerBuildPlugin.class.getClassLoader();
+
+                @NotNull
+                IdeaPluginDescriptor plugindescriptor = PluginManager.getPlugin(plugincl.getPluginId());
+
                 Path sakerbuildjarpath = exportEmbeddedJar("saker.build.jar");
                 JarFile sbjf = createMultiReleaseJarFile(sakerbuildjarpath);
                 JarFile sbide = createMultiReleaseJarFile(exportEmbeddedJar("saker.build-ide.jar"));
                 ClassLoader jarcl = new ImplementationClassLoader(Arrays.asList(sbjf, sbide));
-
-                implementationPluginDescriptor = new ForwardingImplementationPluginDescriptor(plugindescriptor, jarcl);
 
                 Class<? extends ISakerBuildPluginImpl> pluginimplclass = Class
                         .forName("saker.build.ide.intellij.impl.IntellijSakerIDEPlugin", false, jarcl)
@@ -194,7 +194,7 @@ public class SakerBuildPlugin {
                 ISakerBuildPluginImpl plugininstance = pluginimplclass.getConstructor().newInstance();
 
                 ImplementationStartArguments initargs = new ImplementationStartArguments(sakerbuildjarpath,
-                        Paths.get(PathManager.getHomePath()));
+                        plugindescriptor.getPath().toPath());
                 pluginimplclass.getMethod("initialize", ImplementationStartArguments.class)
                         .invoke(plugininstance, initargs);
                 SakerBuildPlugin.pluginImpl = plugininstance;

@@ -50,6 +50,9 @@ import saker.build.ide.intellij.extension.ideconfig.IIDEConfigurationTypeHandler
 import saker.build.ide.intellij.extension.ideconfig.IIDEProjectConfigurationRootEntry;
 import saker.build.ide.intellij.extension.params.ExecutionUserParameterContributorProviderExtensionPointBean;
 import saker.build.ide.intellij.extension.params.IExecutionUserParameterContributor;
+import saker.build.ide.intellij.extension.script.information.IScriptInformationDesigner;
+import saker.build.ide.intellij.extension.script.outline.IScriptOutlineDesigner;
+import saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.intellij.impl.dialog.BuildTargetChooserDialog;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
@@ -322,6 +325,18 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         }
         return LocalFileSystem.getInstance()
                 .findFileByPath(SakerPath.valueOf(project.getBasePath()).resolve(relpath).toString());
+    }
+
+    public IScriptInformationDesigner getScriptInformationDesignerForSchemaIdentifier(String schemaid) {
+        return plugin.getScriptInformationDesignerForSchemaIdentifier(schemaid, project);
+    }
+
+    public IScriptProposalDesigner getScriptProposalDesignerForSchemaIdentifiers(Set<String> schemaidentifiers) {
+        return plugin.getScriptProposalDesignerForSchemaIdentifiers(schemaidentifiers, project);
+    }
+
+    public IScriptOutlineDesigner getScriptOutlineDesignerForSchemaIdentifier(String schemaid) {
+        return plugin.getScriptOutlineDesignerForSchemaIdentifier(schemaid, project);
     }
 
     @Override
