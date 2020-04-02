@@ -7,9 +7,10 @@ import com.intellij.codeInsight.completion.CompletionResultSet;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
+import com.intellij.openapi.project.DumbAware;
 import org.jetbrains.annotations.NotNull;
 
-public class BuildScriptCompletionContributor extends CompletionContributor {
+public class BuildScriptCompletionContributor extends CompletionContributor implements DumbAware {
 
     public BuildScriptCompletionContributor() {
     }

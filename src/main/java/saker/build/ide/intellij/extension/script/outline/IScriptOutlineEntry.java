@@ -28,13 +28,9 @@ public interface IScriptOutlineEntry {
 
     public String getType();
 
-    public Icon getWidgetIcon();
+    public ItemPresentation getEntryPresentation();
 
-    public void setWidgetIcon(Icon icon);
-
-    public ItemPresentation getWidgetLabel();
-
-    public void setWidgetLabel(ItemPresentation label);
+    public void setEntryPresentation(ItemPresentation presentation);
 
     public void setLabel(String label);
 

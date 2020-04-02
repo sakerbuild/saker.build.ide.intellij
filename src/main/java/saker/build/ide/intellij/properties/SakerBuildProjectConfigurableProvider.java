@@ -2,13 +2,14 @@ package saker.build.ide.intellij.properties;
 
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurableProvider;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.ISakerBuildPluginImpl;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.SakerBuildPlugin;
 
-public class SakerBuildProjectConfigurableProvider extends ConfigurableProvider {
+public class SakerBuildProjectConfigurableProvider extends ConfigurableProvider implements DumbAware {
     private Project project;
 
     public SakerBuildProjectConfigurableProvider(Project project) {

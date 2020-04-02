@@ -2,8 +2,10 @@ package saker.build.ide.intellij.impl.editor;
 
 import com.intellij.codeInsight.completion.CompletionParameters;
 import com.intellij.codeInsight.completion.CompletionResultSet;
+import com.intellij.codeInsight.completion.CompletionSorter;
 import com.intellij.codeInsight.completion.InsertHandler;
 import com.intellij.codeInsight.completion.InsertionContext;
+import com.intellij.codeInsight.completion.PrefixMatcher;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
 import com.intellij.ide.projectView.PresentationData;
@@ -36,6 +38,7 @@ import com.intellij.openapi.editor.highlighter.HighlighterIterator;
 import com.intellij.openapi.editor.markup.EffectType;
 import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.fileEditor.FileEditor;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.tree.IElementType;
@@ -83,14 +86,18 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildScriptEditorHighlighter {
+public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildScriptEditorHighlighter, DumbAware {
     private static final IElementType TOKEN_ELEMENT_TYPE = new IElementType("SAKER_SCRIPT_TOKEN",
             BuildScriptLanguage.INSTANCE);
 
     private static final AtomicReferenceFieldUpdater<BuildScriptEditorHighlighter, HighlighterClient> ARFU_editor = AtomicReferenceFieldUpdater
             .newUpdater(BuildScriptEditorHighlighter.class, HighlighterClient.class, "editor");
+    private static final AtomicReferenceFieldUpdater<BuildScriptEditorHighlighter, IntellijScriptEditorModel> ARFU_editorModel = AtomicReferenceFieldUpdater
+            .newUpdater(BuildScriptEditorHighlighter.class, IntellijScriptEditorModel.class, "editorModel");
 
     private final IntellijSakerIDEProject project;
+    private SakerPath scriptExecutionPath;
+    private EditorColorsScheme currentColorScheme;
 
     private volatile HighlighterClient editor;
 
@@ -100,7 +107,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     private final ConcurrentHashMap<TokenStyle, TextAttributes> tokenStyleAttributes = new ConcurrentHashMap<>();
 
-    private final ScriptEditorModel editorModel = new ScriptEditorModel();
+    private volatile IntellijScriptEditorModel editorModel;
 
     private final StructureViewBuilder structureViewBuilder = new TreeBasedStructureViewBuilder() {
         @NotNull
@@ -130,33 +137,37 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             currenteditor.repaint(0, Integer.MAX_VALUE);
         });
     };
+    private CharSequence currentText;
 
     public BuildScriptEditorHighlighter(IntellijSakerIDEProject project, SakerPath scriptpath,
             EditorColorsScheme colors) {
         this.project = project;
-        editorModel.setEnvironment(project.getSakerProject());
-        editorModel.setScriptExecutionPath(scriptpath);
-        editorModel.setTokenTheme(colorSchemeToTokenTheme(colors));
-
-        editorModel.addModelListener(modelUpdateListener);
+        this.scriptExecutionPath = scriptpath;
+        this.currentColorScheme = colors;
     }
 
     public ScriptSyntaxModel getModelMaybeOutOfDate() {
         try {
-            return editorModel.getModelMaybeOutOfDate();
+            ScriptEditorModel emodel = this.editorModel;
+            if (emodel != null) {
+                return emodel.getModelMaybeOutOfDate();
+            }
         } catch (Exception e) {
             project.displayException(e);
-            return null;
         }
+        return null;
     }
 
     public ScriptSyntaxModel getModel() {
         try {
-            return editorModel.getUpToDateModel();
+            ScriptEditorModel emodel = this.editorModel;
+            if (emodel != null) {
+                return emodel.getUpToDateModel();
+            }
         } catch (Exception e) {
             project.displayException(e);
-            return null;
         }
+        return null;
     }
 
     @Override
@@ -170,6 +181,8 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         if (model == null) {
             return;
         }
+        result = result.withPrefixMatcher(PrefixMatcher.ALWAYS_TRUE)
+                .withRelevanceSorter(CompletionSorter.emptySorter());
         List<? extends ScriptCompletionProposal> proposals = model.getCompletionProposals(parameters.getOffset());
         IntellijScriptProposalRoot proposalroot = IntellijScriptProposalRoot.create(proposals);
         IScriptProposalDesigner designer = project
@@ -247,7 +260,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     @Override
     public String getDocumentationAtOffset(int offset) {
-        ScriptTokenInformation tokeninfo = editorModel.getTokenInformationAtPosition(offset, 0);
+        ScriptEditorModel emodel = this.editorModel;
+        if (emodel == null) {
+            return null;
+        }
+        ScriptTokenInformation tokeninfo = emodel.getTokenInformationAtPosition(offset, 0);
         if (tokeninfo == null) {
             return null;
         }
@@ -263,11 +280,9 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     private static void appendHtmlHeader(StringBuilder contentsb, Color bgcol) {
         contentsb.append("<!DOCTYPE html><html><head><style>\r\n");
         contentsb.append("html { font-family: 'Segoe UI',sans-serif; font-style: normal; font-weight: normal; }\r\n");
-        contentsb
-                .append("body, h1, h2, h3, h4, h5, h6, p, table, td, caption, th, ul, ol, dl, li, dd, dt { font-size: 1em; }\r\n");
+        contentsb.append("body, h1, h2, h3, h4, h5, h6, p, table, td, caption, th, ul, ol, dl, li, dd, dt {  }\r\n");
         contentsb.append(".ptitle { font-weight: bold; }\r\n");
-        contentsb
-                .append(".ptitle>img { display: inline-block; height: 1.3em; width: auto; margin-right: 0.2em; vertical-align: text-bottom; }\r\n");
+        contentsb.append(".ptitle>img { margin-right: 0.2em; }\r\n");
         contentsb.append(".psubtitle { font-weight: normal; font-style: italic; margin-left: 6px; }\r\n");
         contentsb.append(".pcontent { margin-top: 5px; margin-left: 6px; }\r\n");
         contentsb.append("hr { opacity: 0.5; }\r\n");
@@ -336,11 +351,12 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             return;
         }
         sectionsb.append("<div class=\"ptitle\">");
-        if (!ObjectUtils.isNullOrEmpty(iconimgsrc)) {
-            sectionsb.append("<img src=\"");
-            sectionsb.append(iconimgsrc);
-            sectionsb.append("\">");
-        }
+        //TODO reimplement script information icons
+//        if (!ObjectUtils.isNullOrEmpty(iconimgsrc)) {
+//            sectionsb.append("<img src=\"");
+//            sectionsb.append(iconimgsrc);
+//            sectionsb.append("\" width=\"14\" align=\"middle\">");
+//        }
         sectionsb.append(escapeHtml(title));
         sectionsb.append("</div>");
         if (!ObjectUtils.isNullOrEmpty(subtitle)) {
@@ -392,7 +408,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     @NotNull
     @Override
     public HighlighterIterator createIterator(int startOffset) {
-        List<ScriptEditorModel.TokenState> tokenstateiterable = editorModel.getCurrentTokenState();
+        ScriptEditorModel emodel = this.editorModel;
+        if (emodel == null) {
+            return new EmptyNoTokensHighlighterIterator(startOffset);
+        }
+        List<ScriptEditorModel.TokenState> tokenstateiterable = emodel.getCurrentTokenState();
         if (tokenstateiterable.isEmpty()) {
             return new EmptyNoTokensHighlighterIterator(startOffset);
         }
@@ -514,15 +534,37 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     @Override
     public void setText(@NotNull CharSequence text) {
         System.out.println("BuildScriptEditorHighlighter.setText " + text.length());
-        editorModel.resetInput(text);
+        this.currentText = text;
+        ScriptEditorModel emodel = this.editorModel;
+        if (emodel != null) {
+            emodel.resetInput(text);
+        }
     }
 
     @Override
     public void setEditor(@NotNull HighlighterClient editor) {
-        System.out.println("BuildScriptEditorHighlighter.setEditor " + editorModel.getScriptExecutionPath());
+        System.out.println(
+                "BuildScriptEditorHighlighter.setEditor " + System.identityHashCode(this) + " to editor " + System
+                        .identityHashCode(editor) + " with " + editor.getClass().getName());
         this.editor = editor;
 
         installListener();
+
+        IntellijScriptEditorModel thiseditormodel = project.getScriptEditorModel(scriptExecutionPath);
+        thiseditormodel.setOwner(this);
+        System.out.println("BuildScriptEditorHighlighter.setEditor " + scriptExecutionPath);
+
+        thiseditormodel.setEnvironment(project.getSakerProject());
+        thiseditormodel.setScriptExecutionPath(scriptExecutionPath);
+        thiseditormodel.setTokenTheme(colorSchemeToTokenTheme(this.currentColorScheme));
+
+        thiseditormodel.addModelListener(modelUpdateListener);
+        CharSequence currenttext = this.currentText;
+        if (currenttext != null) {
+            thiseditormodel.resetInput(currenttext);
+        }
+
+        this.editorModel = thiseditormodel;
 
         EditorFactory editorfactory = EditorFactory.getInstance();
         editorfactory.addEditorFactoryListener(new EditorFactoryListener() {
@@ -534,11 +576,12 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                 }
                 if (ARFU_editor
                         .compareAndSet(BuildScriptEditorHighlighter.this, (HighlighterClient) eventeditor, null)) {
-                    System.out.println("BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER " + editorModel
-                            .getScriptExecutionPath());
+                    System.out.println(
+                            "BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER " + scriptExecutionPath + " editor " + System
+                                    .identityHashCode(editor) + " with " + editor.getClass().getName());
 
-                    project.disposeHighlighter(editorModel.getScriptExecutionPath(), BuildScriptEditorHighlighter.this);
-                    editorModel.close();
+                    ARFU_editorModel.compareAndSet(BuildScriptEditorHighlighter.this, thiseditormodel, null);
+                    project.disposeScriptEditorModel(thiseditormodel);
                     editorfactory.removeEditorFactoryListener(this);
                     uninstallListener();
                 }
@@ -546,9 +589,19 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }, editor.getProject());
     }
 
+    public void disown(IntellijScriptEditorModel emodel) {
+        if (ARFU_editorModel.compareAndSet(this, emodel, null)) {
+            uninstallListener();
+        }
+    }
+
     @Override
     public void setColorScheme(@NotNull EditorColorsScheme scheme) {
-        editorModel.setTokenTheme(colorSchemeToTokenTheme(scheme));
+        this.currentColorScheme = scheme;
+        ScriptEditorModel editormodel = this.editorModel;
+        if (editormodel != null) {
+            editormodel.setTokenTheme(colorSchemeToTokenTheme(scheme));
+        }
     }
 
     private static int colorSchemeToTokenTheme(@NotNull EditorColorsScheme scheme) {
@@ -565,7 +618,10 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         if (buildRegionChanges != null) {
             buildRegionChanges.add(regionchange);
         } else {
-            editorModel.textChange(regionchange);
+            ScriptEditorModel emodel = this.editorModel;
+            if (emodel != null) {
+                emodel.textChange(regionchange);
+            }
         }
     }
 
@@ -576,7 +632,10 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     @Override
     public void bulkUpdateFinished(@NotNull Document document) {
-        editorModel.textChange(buildRegionChanges);
+        ScriptEditorModel emodel = this.editorModel;
+        if (emodel != null) {
+            emodel.textChange(buildRegionChanges);
+        }
         buildRegionChanges = null;
     }
 
@@ -600,12 +659,18 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
         @Override
         public void projectPropertiesChanging() {
-            editorModel.clearModel();
+            ScriptEditorModel emodel = BuildScriptEditorHighlighter.this.editorModel;
+            if (emodel != null) {
+                emodel.clearModel();
+            }
         }
 
         @Override
         public void projectPropertiesChanged() {
-            editorModel.initModel();
+            ScriptEditorModel emodel = BuildScriptEditorHighlighter.this.editorModel;
+            if (emodel != null) {
+                emodel.initModel();
+            }
         }
     }
 
@@ -685,6 +750,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         };
 
         private final OutlineRootElement rootNode;
+        private final ScriptEditorModel editorModel = BuildScriptEditorHighlighter.this.editorModel;
 
         public BuildScriptStructureViewModel(Editor editor) {
             this.editor = editor;
@@ -805,8 +871,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         private final IntellijScriptOutlineEntry entry;
         private final OutlineEntryElement[] children;
 
-        private transient ItemPresentation presentation;
-
         public OutlineEntryElement(IntellijScriptOutlineEntry entry, Editor editor) {
             this.entry = entry;
             this.editor = editor;
@@ -821,10 +885,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         @NotNull
         @Override
         public ItemPresentation getPresentation() {
-            if (presentation == null) {
-                presentation = new PresentationData(entry.getLabel(), entry.getType(), null, null);
+            ItemPresentation entrypresentation = entry.getEntryPresentation();
+            if (entrypresentation != null) {
+                return entrypresentation;
             }
-            return presentation;
+            return new PresentationData(entry.getLabel(), entry.getType(), null, null);
         }
 
         @NotNull

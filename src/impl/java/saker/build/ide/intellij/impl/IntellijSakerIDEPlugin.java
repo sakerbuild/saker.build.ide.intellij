@@ -238,6 +238,9 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
     @Override
     public IntellijSakerIDEProject getOrCreateProject(Project project) {
+        if (project == null) {
+            return null;
+        }
         synchronized (projectsLock) {
             if (closed) {
                 throw new IllegalStateException("closed");

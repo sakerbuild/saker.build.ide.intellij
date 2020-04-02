@@ -20,12 +20,9 @@ import saker.build.ide.intellij.extension.script.outline.IScriptOutlineEntry;
 import saker.build.ide.support.ui.BaseScriptOutlineEntry;
 import saker.build.scripting.model.StructureOutlineEntry;
 
-import javax.swing.Icon;
-
 public class IntellijScriptOutlineEntry extends BaseScriptOutlineEntry<IntellijScriptOutlineEntry> implements IScriptOutlineEntry {
-    private ItemPresentation widgetLabel;
+    private ItemPresentation entryPresentation;
     private StructureOutlineEntry entry;
-    private Icon widgetIcon;
 
     IntellijScriptOutlineEntry(IntellijScriptOutlineRoot root, StructureOutlineEntry entry) {
         super(root, entry);
@@ -38,22 +35,12 @@ public class IntellijScriptOutlineEntry extends BaseScriptOutlineEntry<IntellijS
     }
 
     @Override
-    public void setWidgetIcon(Icon icon) {
-        this.widgetIcon = icon;
+    public void setEntryPresentation(ItemPresentation presentation) {
+        this.entryPresentation = presentation;
     }
 
     @Override
-    public void setWidgetLabel(ItemPresentation label) {
-        this.widgetLabel = label;
-    }
-
-    @Override
-    public Icon getWidgetIcon() {
-        return widgetIcon;
-    }
-
-    @Override
-    public ItemPresentation getWidgetLabel() {
-        return widgetLabel;
+    public ItemPresentation getEntryPresentation() {
+        return entryPresentation;
     }
 }

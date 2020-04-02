@@ -3,6 +3,7 @@ package saker.build.ide.intellij;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -10,7 +11,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SakerBuildActionGroup extends ActionGroup {
+public class SakerBuildActionGroup extends ActionGroup implements DumbAware {
     public static final AnAction[] EMPTY_ANACTION_ARRAY = new AnAction[0];
 
     public SakerBuildActionGroup() {

@@ -3,6 +3,7 @@ package saker.build.ide.intellij.console;
 import com.intellij.execution.filters.TextConsoleBuilder;
 import com.intellij.execution.filters.TextConsoleBuilderFactory;
 import com.intellij.execution.ui.ConsoleView;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
@@ -11,7 +12,7 @@ import com.intellij.ui.content.ContentManager;
 import org.jetbrains.annotations.NotNull;
 import saker.build.ide.intellij.SakerBuildPlugin;
 
-public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory {
+public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, DumbAware {
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
         ContentManager contentManager = toolWindow.getContentManager();

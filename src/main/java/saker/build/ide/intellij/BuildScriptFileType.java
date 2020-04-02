@@ -2,6 +2,7 @@ package saker.build.ide.intellij;
 
 import com.intellij.openapi.fileTypes.LanguageFileType;
 import com.intellij.openapi.fileTypes.ex.FileTypeIdentifiableByVirtualFile;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.project.ProjectManager;
 import com.intellij.openapi.vfs.LocalFileSystem;
@@ -12,7 +13,7 @@ import org.jetbrains.annotations.Nullable;
 
 import javax.swing.Icon;
 
-public class BuildScriptFileType extends LanguageFileType implements FileTypeIdentifiableByVirtualFile {
+public class BuildScriptFileType extends LanguageFileType implements FileTypeIdentifiableByVirtualFile, DumbAware {
     public static final BuildScriptFileType INSTANCE = new BuildScriptFileType();
 
     public BuildScriptFileType() {

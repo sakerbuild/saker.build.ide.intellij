@@ -26,9 +26,10 @@ public interface IScriptInformationEntry {
 
 	public void setSubTitle(String subtitle);
 
+	//TODO unimplemented as icon display doesn't work properly. will be readded as it is solved
 	//doc: for <img src tag>, must not contain quotes
 	//     probably something like "data:image/png;base64, "
-	public void setIconSource(String sourceurl) throws IllegalArgumentException;
+//	public void setIconSource(String sourceurl) throws IllegalArgumentException;
 
 	public String getSchemaIdentifier();
 

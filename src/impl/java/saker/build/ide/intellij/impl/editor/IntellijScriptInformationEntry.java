@@ -16,17 +16,17 @@ public class IntellijScriptInformationEntry extends BaseScriptInformationEntry i
         super(title, subTitle, content);
     }
 
-    @Override
-    public void setIconSource(String sourceurl) {
-        if (sourceurl == null) {
-            this.iconSource = null;
-            return;
-        }
-        if (sourceurl.indexOf('\"') >= 0) {
-            throw new IllegalArgumentException("Cannot contain quotes: " + sourceurl);
-        }
-        this.iconSource = sourceurl;
-    }
+//    @Override
+//    public void setIconSource(String sourceurl) {
+//        if (sourceurl == null) {
+//            this.iconSource = null;
+//            return;
+//        }
+//        if (sourceurl.indexOf('\"') >= 0) {
+//            throw new IllegalArgumentException("Cannot contain quotes: " + sourceurl);
+//        }
+//        this.iconSource = sourceurl;
+//    }
 
     public String getIconSource() {
         return iconSource;

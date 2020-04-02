@@ -14,6 +14,7 @@ import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.fileEditor.FileEditor;
 import com.intellij.openapi.fileEditor.TextEditor;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.PsiFile;
 import com.intellij.uiDesigner.core.GridConstraints;
@@ -25,7 +26,7 @@ import javax.swing.JComponent;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 
-public class BuildScriptStructureViewFactory implements PsiStructureViewFactory {
+public class BuildScriptStructureViewFactory implements PsiStructureViewFactory, DumbAware {
     @Nullable
     @Override
     public StructureViewBuilder getStructureViewBuilder(@NotNull PsiFile psiFile) {

@@ -10,6 +10,7 @@ import com.intellij.lang.PsiParser;
 import com.intellij.lexer.DummyLexer;
 import com.intellij.lexer.Lexer;
 import com.intellij.openapi.fileTypes.FileType;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.FileViewProvider;
@@ -23,7 +24,7 @@ import com.intellij.psi.tree.TokenSet;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-public class BuildScriptParserDefinition implements ParserDefinition {
+public class BuildScriptParserDefinition implements ParserDefinition, DumbAware {
     private static final IFileElementType FILE_NODE_TYPE = new IFileElementType(BuildScriptLanguage.INSTANCE);
     private static final SimpleTokenType TOKEN_TYPE = new SimpleTokenType();
 

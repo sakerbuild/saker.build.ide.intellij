@@ -55,6 +55,7 @@ import saker.build.ide.intellij.extension.script.outline.IScriptOutlineDesigner;
 import saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.intellij.impl.dialog.BuildTargetChooserDialog;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
+import saker.build.ide.intellij.impl.editor.IntellijScriptEditorModel;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.intellij.impl.ui.IDEConfigurationSelectorDialog;
 import saker.build.ide.intellij.impl.ui.ProjectPropertiesValidationDialog;
@@ -72,6 +73,7 @@ import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.PropertiesValidationException;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
+import saker.build.ide.support.ui.ScriptEditorModel;
 import saker.build.runtime.environment.BuildTaskExecutionResult;
 import saker.build.runtime.environment.BuildTaskExecutionResultImpl;
 import saker.build.runtime.execution.BuildUserPromptHandler;
@@ -124,6 +126,8 @@ import java.util.Set;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
@@ -356,20 +360,33 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         return SakerIDESupportUtils.isScriptModellingConfigurationAppliesTo(execpath, getIDEProjectProperties());
     }
 
-    private ConcurrentHashMap<SakerPath, BuildScriptEditorHighlighter> highlighters = new ConcurrentHashMap<>();
-
     @Override
     public EditorHighlighter getEditorHighlighter(VirtualFile file, EditorColorsScheme colors) {
         SakerPath execpath = projectPathToExecutionPath(SakerPath.valueOf(file.getPath()));
-        return highlighters.computeIfAbsent(execpath, ep -> new BuildScriptEditorHighlighter(this, ep, colors));
-//        return new BuildScriptEditorHighlighter(this, execpath, colors);
+        if (execpath == null) {
+            return null;
+        }
+        return new BuildScriptEditorHighlighter(this, execpath, colors);
     }
 
-    public void disposeHighlighter(SakerPath scriptPath, BuildScriptEditorHighlighter highlighter) {
-        if (scriptPath == null) {
+    private final ConcurrentSkipListMap<SakerPath, IntellijScriptEditorModel> scriptEditorModels = new ConcurrentSkipListMap<>();
+
+    public IntellijScriptEditorModel getScriptEditorModel(SakerPath path) {
+        if (path == null) {
+            return null;
+        }
+        return scriptEditorModels.computeIfAbsent(path, IntellijScriptEditorModel::new);
+    }
+
+    public void disposeScriptEditorModel(@Nullable IntellijScriptEditorModel model) {
+        if (model == null) {
             return;
         }
-        highlighters.remove(scriptPath, highlighter);
+        SakerPath scriptpath = model.getScriptExecutionPath();
+        if (scriptpath != null) {
+            scriptEditorModels.remove(scriptpath, model);
+        }
+        model.close();
     }
 
     private static final String CONSOLE_MARKER_STR_PATTERN = "[ \t]*(\\[(?:.*?)\\])?[ \t]*(((.*?)(:(-?[0-9]+)(:([0-9]*)(-([0-9]+))?)?)?):)?[ ]*([wW]arning|[eE]rror|[iI]nfo|[sS]uccess|[fF]atal [eE]rror):[ ]*(.*)";
@@ -1157,6 +1174,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                         public void actionPerformed(@NotNull AnActionEvent e) {
                             buildAsync();
                         }
+
+                        @Override
+                        public boolean isDumbAware() {
+                            return true;
+                        }
                     } };
                 }
                 Map<String, Set<String>> idetypetypenames = new TreeMap<>();
@@ -1316,6 +1338,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                         displayException(ex);
                     }
                 }
+
+                @Override
+                public boolean isDumbAware() {
+                    return true;
+                }
             });
         } else {
             SakerPath workingdirpath = getWorkingDirectoryExecutionPath();
@@ -1337,6 +1364,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                             @Override
                             public void actionPerformed(@NotNull AnActionEvent e) {
                                 openEditor();
+                            }
+
+                            @Override
+                            public boolean isDumbAware() {
+                                return true;
                             }
                         });
                         return targetresult.toArray(SakerBuildActionGroup.EMPTY_ANACTION_ARRAY);
@@ -1361,6 +1393,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                                 public void actionPerformed(@NotNull AnActionEvent e) {
                                     openEditor();
                                 }
+
+                                @Override
+                                public boolean isDumbAware() {
+                                    return true;
+                                }
                             });
                             return;
                         } catch (IOException ex) {
@@ -1369,6 +1406,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                                 @Override
                                 public void actionPerformed(@NotNull AnActionEvent e) {
                                     openEditor();
+                                }
+
+                                @Override
+                                public boolean isDumbAware() {
+                                    return true;
                                 }
                             });
                             return;
@@ -1379,6 +1421,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                                 public void actionPerformed(@NotNull AnActionEvent e) {
                                     openEditor();
                                 }
+
+                                @Override
+                                public boolean isDumbAware() {
+                                    return true;
+                                }
                             });
                             return;
                         }
@@ -1388,6 +1435,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                                 public void actionPerformed(@NotNull AnActionEvent e) {
                                     openEditor();
                                 }
+
+                                @Override
+                                public boolean isDumbAware() {
+                                    return true;
+                                }
                             });
                             return;
                         }
@@ -1396,6 +1448,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                                 @Override
                                 public void actionPerformed(@NotNull AnActionEvent e) {
                                     buildAsync(buildfilepath, target);
+                                }
+
+                                @Override
+                                public boolean isDumbAware() {
+                                    return true;
                                 }
                             });
                         }
@@ -1549,6 +1606,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         public void actionPerformed(@NotNull AnActionEvent e) {
             applyIDEConfiguration(ideconfig);
         }
+
+        @Override
+        public boolean isDumbAware() {
+            return true;
+        }
     }
 
     private class ApplyIDEConfigurationActionGroup extends ActionGroup {
@@ -1568,6 +1630,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             }
 
             return ideactionresults.toArray(SakerBuildActionGroup.EMPTY_ANACTION_ARRAY);
+        }
+
+        @Override
+        public boolean isDumbAware() {
+            return true;
         }
     }
 }

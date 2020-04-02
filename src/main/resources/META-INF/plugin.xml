@@ -99,6 +99,18 @@
                                 id="SAKER_BUILD_SCRIPT_COMPLETION_CONTRIBUTOR"/>
     </extensions>
 
+    <extensions defaultExtensionNs="saker.build.ide.intellij">
+        <designer.script.information implementationClass="saker.build.ide.intellij.designer.SakerScriptInformationDesigner"
+                                     schemaId="saker.script"
+                                     displayName="SakerScript Information Designer"/>
+        <designer.script.outline implementationClass="saker.build.ide.intellij.designer.SakerScriptOutlineDesigner"
+                                 schemaId="saker.script"
+                                 displayName="SakerScript Outline Designer"/>
+        <designer.script.proposal implementationClass="saker.build.ide.intellij.designer.SakerScriptProposalDesigner"
+                                  schemaId="saker.script"
+                                  displayName="SakerScript Completion Proposal Designer"/>
+    </extensions>
+
     <actions>
         <action class="saker.build.ide.intellij.ConfigureSakerBuildProjectAction"
                 text="Add saker.build support">

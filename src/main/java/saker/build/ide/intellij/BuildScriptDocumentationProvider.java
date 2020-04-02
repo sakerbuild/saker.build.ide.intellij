@@ -4,6 +4,7 @@ import com.intellij.lang.documentation.DocumentationProviderEx;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.EditorEx;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.util.Key;
 import com.intellij.psi.PsiElement;
 import com.intellij.psi.PsiFile;
@@ -14,7 +15,7 @@ import org.jetbrains.annotations.Nullable;
 import java.awt.Image;
 import java.util.List;
 
-public class BuildScriptDocumentationProvider extends DocumentationProviderEx {
+public class BuildScriptDocumentationProvider extends DocumentationProviderEx implements DumbAware {
     private static final Key<DocumentationHolder> KEY_DOCUMENTATION_HOLDER = Key.create("SAKER_DOCUMENTATION_HOLDER");
 
     @Nullable

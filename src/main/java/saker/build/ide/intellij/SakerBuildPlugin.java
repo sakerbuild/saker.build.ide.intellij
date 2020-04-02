@@ -8,6 +8,7 @@ import com.intellij.openapi.application.PathManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
+import com.intellij.openapi.extensions.PluginDescriptor;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -51,6 +52,13 @@ public class SakerBuildPlugin {
     public static final Key<Boolean> SAKER_BUILD_NATURE_KEY = new Key<>(NATURE_KEY_NAME);
 
     private static volatile ISakerBuildPluginImpl pluginImpl;
+    private static final IdeaPluginDescriptor pluginDescriptor;
+
+    static {
+        PluginClassLoader plugincl = (PluginClassLoader) SakerBuildPlugin.class.getClassLoader();
+
+        pluginDescriptor = PluginManager.getPlugin(plugincl.getPluginId());
+    }
 
     public static synchronized void setSakerBuildProjectNatureEnabled(Project project, boolean enabled) {
         if (project.isDisposed()) {
@@ -130,12 +138,18 @@ public class SakerBuildPlugin {
     }
 
     public static EditorHighlighter getEditorHighlighter(Project project, VirtualFile file, EditorColorsScheme colors) {
+        if (project == null) {
+            return null;
+        }
         VirtualFileSystem fs = file.getFileSystem();
         if (!(fs instanceof LocalFileSystem)) {
             return null;
         }
         ISakerBuildPluginImpl pluginimpl = getPluginImpl();
         ISakerBuildProjectImpl sakerproject = pluginimpl.getOrCreateProject(project);
+        if (sakerproject == null) {
+            return null;
+        }
         if (!sakerproject.isScriptModellingConfigurationAppliesTo(file.getPath())) {
             return null;
         }
@@ -178,14 +192,9 @@ public class SakerBuildPlugin {
             }
 
             try {
-                PluginClassLoader plugincl = (PluginClassLoader) SakerBuildPlugin.class.getClassLoader();
-
-                @NotNull
-                IdeaPluginDescriptor plugindescriptor = PluginManager.getPlugin(plugincl.getPluginId());
-
-                Path sakerbuildjarpath = exportEmbeddedJar("saker.build.jar");
+                Path sakerbuildjarpath = requireEmbeddedFile("saker.build.jar");
                 JarFile sbjf = createMultiReleaseJarFile(sakerbuildjarpath);
-                JarFile sbide = createMultiReleaseJarFile(exportEmbeddedJar("saker.build-ide.jar"));
+                JarFile sbide = createMultiReleaseJarFile(requireEmbeddedFile("saker.build-ide.jar"));
                 ClassLoader jarcl = new ImplementationClassLoader(Arrays.asList(sbjf, sbide));
 
                 Class<? extends ISakerBuildPluginImpl> pluginimplclass = Class
@@ -194,7 +203,7 @@ public class SakerBuildPlugin {
                 ISakerBuildPluginImpl plugininstance = pluginimplclass.getConstructor().newInstance();
 
                 ImplementationStartArguments initargs = new ImplementationStartArguments(sakerbuildjarpath,
-                        plugindescriptor.getPath().toPath());
+                        pluginDescriptor.getPath().toPath());
                 pluginimplclass.getMethod("initialize", ImplementationStartArguments.class)
                         .invoke(plugininstance, initargs);
                 SakerBuildPlugin.pluginImpl = plugininstance;
@@ -207,22 +216,36 @@ public class SakerBuildPlugin {
         return SakerBuildPlugin.pluginImpl;
     }
 
-    private static Path exportEmbeddedJar(String jarname) throws IOException {
-        URL jarentry = SakerBuildPlugin.class.getClassLoader().getResource(jarname);
-        if (jarentry == null) {
-            throw new FileNotFoundException("Embedded " + jarname + " not found.");
+    public static Path requireEmbeddedFile(String file) throws FileNotFoundException {
+        Path path = exportEmbeddedFile(file);
+        if (path == null) {
+            throw new FileNotFoundException("Failed to load: " + path);
         }
-        URLConnection conn = jarentry.openConnection();
-        Path result = Paths.get(PathManager.getHomePath()).resolve(jarname);
-        Long existinglast = getLastModifiedTimeOrNull(result);
-        try (InputStream is = conn.getInputStream()) {
-            long lastmodified = conn.getLastModified();
-            if (existinglast == null || existinglast.longValue() != lastmodified) {
-                Files.copy(is, result, StandardCopyOption.REPLACE_EXISTING);
-                Files.setLastModifiedTime(result, FileTime.fromMillis(lastmodified));
+        return path;
+    }
+
+    public static Path exportEmbeddedFile(String file) {
+        URL entryurl = SakerBuildPlugin.class.getClassLoader().getResource(file);
+        if (entryurl == null) {
+            return null;
+        }
+        try {
+            URLConnection conn = entryurl.openConnection();
+            Path result = pluginDescriptor.getPath().toPath().resolve("extract").resolve(file);
+            Long existinglast = getLastModifiedTimeOrNull(result);
+            try (InputStream is = conn.getInputStream()) {
+                long lastmodified = conn.getLastModified();
+                if (existinglast == null || existinglast.longValue() != lastmodified) {
+                    Files.createDirectories(result.getParent());
+                    Files.copy(is, result, StandardCopyOption.REPLACE_EXISTING);
+                    Files.setLastModifiedTime(result, FileTime.fromMillis(lastmodified));
+                }
             }
+            return result;
+        } catch (IOException e) {
+            Logger.getInstance(SakerBuildPlugin.class).error("Failed to load embedded file: " + file, e);
+            return null;
         }
-        return result;
     }
 
     private static Long getLastModifiedTimeOrNull(Path result) {

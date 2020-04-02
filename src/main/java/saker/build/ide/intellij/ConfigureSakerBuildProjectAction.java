@@ -2,10 +2,11 @@ package saker.build.ide.intellij;
 
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 
-public class ConfigureSakerBuildProjectAction extends AnAction {
+public class ConfigureSakerBuildProjectAction extends AnAction implements DumbAware {
     public static final String ID = "SAKER_BUILD_REMOVE_NATURE";
 
     @Override
