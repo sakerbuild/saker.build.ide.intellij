@@ -5,7 +5,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-- script: sh gradlew --no-daemon assemble
+- script: sh gradlew --no-daemon jar
   displayName: 'Run Gradle build'
 - task: PublishBuildArtifacts@1
   displayName: 'Publish artifacts'
