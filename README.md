@@ -1,5 +1,7 @@
 # saker.build.ide.intellij
 
+![Build status](https://img.shields.io/azure-devops/build/sakerbuild/1098ca22-fb60-4d81-bac8-5bb82054d156/25/master)
+
 The IntelliJ IDE plugin for the [saker.build system](https://saker.build). The plugin embeds the saker.build runtime and provides support for invoking it from the IDE.
 
 ## Build instructions
