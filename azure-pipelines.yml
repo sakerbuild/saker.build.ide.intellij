@@ -5,7 +5,7 @@ pool:
   vmImage: 'ubuntu-latest'
 
 steps:
-- script: ./gradlew assemple
+- script: sh gradlew assemple
 - task: PublishBuildArtifacts@1
   displayName: 'Publish artifacts'
   inputs:
