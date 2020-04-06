@@ -6,6 +6,9 @@ import com.intellij.execution.filters.HyperlinkInfo;
 import com.intellij.execution.ui.ConsoleView;
 import com.intellij.execution.ui.ConsoleViewContentType;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.notification.NotificationDisplayType;
+import com.intellij.notification.NotificationGroup;
+import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
@@ -1225,15 +1228,22 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         });
     }
 
+    private final NotificationGroup IDE_CONFIGURATION_NOTIFICATION_GROUP = new NotificationGroup(
+            "Saker.build IDE configuration errors", NotificationDisplayType.BALLOON, false);
+
     private void applyIDEConfiguration(IDEConfiguration ideconfig) {
         System.out.println("EclipseSakerIDEProject.applyIDEConfiguration() " + ideconfig);
         if (ideconfig == null) {
             //shouldn't really happen
+            IDE_CONFIGURATION_NOTIFICATION_GROUP
+                    .createNotification("Missing IDE configuration", NotificationType.WARNING);
             return;
         }
         String ideconfigtype = ideconfig.getType();
         if (ideconfigtype == null) {
-            //TODO message
+            IDE_CONFIGURATION_NOTIFICATION_GROUP
+                    .createNotification("Unrecognized IDE configuration type", NotificationType.WARNING)
+                    .notify(project);
             return;
         }
         NavigableMap<String, Object> configfieldmap = new TreeMap<>();
@@ -1247,7 +1257,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             }
             configfieldmap.put(fn, fval);
         }
-        configfieldmap = ImmutableUtils.unmodifiableNavigableMap(configfieldmap);
+        boolean recognizedtype = false;
         List<IIDEConfigurationTypeHandler> parsers = new ArrayList<>();
         for (IDEConfigurationTypeHandlerExtensionPointBean extbean : IDEConfigurationTypeHandlerExtensionPointBean.EP_NAME
                 .getExtensionList()) {
@@ -1255,63 +1265,82 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             if (!ideconfigtype.equals(type)) {
                 continue;
             }
+            recognizedtype = true;
             try {
                 IIDEConfigurationTypeHandler typehandler = extbean.createTypeHandler(project);
                 parsers.add(typehandler);
             } catch (Exception e) {
                 displayException(e);
+                IDE_CONFIGURATION_NOTIFICATION_GROUP.createNotification("Extension error", extbean.implementationClass,
+                        "Failed to load IDE configuration handler extension. (" + e + ")", NotificationType.ERROR)
+                        .notify(project);
             }
         }
         if (parsers.isEmpty()) {
-            //TODO message
+            if (!recognizedtype) {
+                IDE_CONFIGURATION_NOTIFICATION_GROUP
+                        .createNotification("Unrecognized IDE configuration type", NotificationType.WARNING)
+                        .notify(project);
+            }
             return;
         }
 
-        //TODO some real monitor
-        ProgressIndicator monitor = new EmptyProgressIndicator();
-
-        List<IIDEProjectConfigurationRootEntry> rootentries = new ArrayList<>();
-        boolean hadsuccess = false;
-        for (IIDEConfigurationTypeHandler parser : parsers) {
-            IIDEProjectConfigurationRootEntry[] entries;
-            try {
-                entries = parser.parseConfiguration(this, configfieldmap, monitor);
-            } catch (Exception e) {
-                displayException(e);
-                continue;
-            }
-            if (ObjectUtils.isNullOrEmpty(entries)) {
-                continue;
-            }
-            for (IIDEProjectConfigurationRootEntry roote : entries) {
-                if (roote == null) {
-                    continue;
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Apply IDE Configuration", true) {
+            @Override
+            public void run(@NotNull ProgressIndicator monitor) {
+                List<IIDEProjectConfigurationRootEntry> rootentries = new ArrayList<>();
+                boolean hadsuccess = false;
+                NavigableMap<String, Object> immutableconfigfieldmap = ImmutableUtils
+                        .unmodifiableNavigableMap(configfieldmap);
+                for (IIDEConfigurationTypeHandler parser : parsers) {
+                    IIDEProjectConfigurationRootEntry[] entries;
+                    try {
+                        entries = parser
+                                .parseConfiguration(IntellijSakerIDEProject.this, immutableconfigfieldmap, monitor);
+                    } catch (Exception e) {
+                        displayException(e);
+                        IDE_CONFIGURATION_NOTIFICATION_GROUP
+                                .createNotification("Extension error", parser.getClass().getName(),
+                                        "Failed to analyze IDE configuration. (" + e + ")", NotificationType.ERROR)
+                                .notify(project);
+                        continue;
+                    }
+                    if (ObjectUtils.isNullOrEmpty(entries)) {
+                        continue;
+                    }
+                    for (IIDEProjectConfigurationRootEntry roote : entries) {
+                        if (roote == null) {
+                            continue;
+                        }
+                        rootentries.add(roote);
+                    }
+                    hadsuccess = true;
                 }
-                rootentries.add(roote);
-            }
-            hadsuccess = true;
-        }
-        if (!hadsuccess) {
-            //TODO message
-            return;
-        }
-        IDEConfigurationSelectorDialog dialog = new IDEConfigurationSelectorDialog(this, rootentries,
-                ideconfig.getIdentifier());
-        dialog.setVisible(true);
-        if (dialog.isOk()) {
-            for (IIDEProjectConfigurationRootEntry rootentry : rootentries) {
-                if (!rootentry.isSelected()) {
-                    continue;
-                }
-                try {
-                    rootentry.apply(monitor);
-                } catch (Exception e) {
-                    displayException(e);
-                    //TODO message
+                if (!hadsuccess) {
                     return;
                 }
+                IDEConfigurationSelectorDialog dialog = new IDEConfigurationSelectorDialog(IntellijSakerIDEProject.this,
+                        rootentries, ideconfig.getIdentifier());
+                dialog.setVisible(true);
+                if (dialog.isOk()) {
+                    for (IIDEProjectConfigurationRootEntry rootentry : rootentries) {
+                        if (!rootentry.isSelected()) {
+                            continue;
+                        }
+                        try {
+                            rootentry.apply(monitor);
+                        } catch (Exception e) {
+                            displayException(e);
+                            IDE_CONFIGURATION_NOTIFICATION_GROUP
+                                    .createNotification("Extension error", rootentry.getClass().getName(),
+                                            "Failed to apply IDE configuration. (" + e + ")", NotificationType.ERROR)
+                                    .notify(project);
+                            return;
+                        }
+                    }
+                }
             }
-        }
+        });
     }
 
     private void addBuildFilesToTargetsMenu(List<AnAction> result) {

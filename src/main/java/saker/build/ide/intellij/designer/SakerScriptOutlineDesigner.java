@@ -38,7 +38,6 @@ public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner, DumbA
         }
         String entryschema = entry.getSchemaIdentifier();
         if (entryschema != null) {
-            //TODO process entry
             switch (entryschema) {
                 case "saker.script.literal.null": {
                     //TODO null script outline image

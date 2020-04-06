@@ -33,9 +33,6 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner, Dum
     @Override
     public void process(IScriptProposalsRoot proposalsroot) {
         System.out.println("SakerScriptProposalDesigner.process");
-        ApplicationInfo version = ApplicationInfo.getInstance();
-        Version fullversion = Version.parseVersion(version.getMajorVersion() + "." + version.getMinorVersion());
-        System.out.println("SakerScriptProposalDesigner.process " + fullversion);
         for (IScriptProposalEntry proposal : proposalsroot.getProposals()) {
             if (proposal == null) {
                 continue;

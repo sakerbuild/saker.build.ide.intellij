@@ -17,6 +17,9 @@ public class BuildScriptCompletionContributor extends CompletionContributor impl
 
     @Override
     public void fillCompletionVariants(@NotNull CompletionParameters parameters, @NotNull CompletionResultSet result) {
+        if (parameters.isAutoPopup()) {
+            return;
+        }
         Editor editor = parameters.getEditor();
         if (editor instanceof EditorEx) {
             EditorHighlighter highlighter = ((EditorEx) editor).getHighlighter();
