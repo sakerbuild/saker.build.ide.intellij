@@ -1,5 +1,6 @@
 package saker.build.ide.intellij.designer;
 
+import com.intellij.icons.AllIcons;
 import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.util.Version;
@@ -28,11 +29,11 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner, Dum
 
     private static final String PROPOSAL_META_DATA_FILE_TYPE = "file_type";
     private static final String PROPOSAL_META_DATA_FILE_TYPE_FILE = "file";
+    private static final String PROPOSAL_META_DATA_FILE_TYPE_BUILD_SCRIPT = "build_script";
     private static final String PROPOSAL_META_DATA_FILE_TYPE_DIRECTORY = "dir";
 
     @Override
     public void process(IScriptProposalsRoot proposalsroot) {
-        System.out.println("SakerScriptProposalDesigner.process");
         for (IScriptProposalEntry proposal : proposalsroot.getProposals()) {
             if (proposal == null) {
                 continue;
@@ -58,6 +59,25 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner, Dum
                     }
                     case PROPOSAL_META_DATA_TYPE_TASK: {
                         proposal.setProposalIcon(PluginIcons.ICON_TASK);
+                        break;
+                    }
+                    case PROPOSAL_META_DATA_TYPE_FILE: {
+                        switch (schememeta
+                                .getOrDefault(PROPOSAL_META_DATA_FILE_TYPE, PROPOSAL_META_DATA_FILE_TYPE_FILE)) {
+                            case PROPOSAL_META_DATA_FILE_TYPE_DIRECTORY: {
+                                proposal.setProposalIcon(AllIcons.Nodes.Folder);
+                                break;
+                            }
+                            case PROPOSAL_META_DATA_FILE_TYPE_BUILD_SCRIPT: {
+                                proposal.setProposalIcon(PluginIcons.SCRIPT_FILE);
+                                break;
+                            }
+                            case PROPOSAL_META_DATA_FILE_TYPE_FILE:
+                            default: {
+                                proposal.setProposalIcon(AllIcons.FileTypes.Any_type);
+                                break;
+                            }
+                        }
                         break;
                     }
                     default: {

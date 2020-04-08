@@ -550,7 +550,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
         IntellijScriptEditorModel thiseditormodel = project.getScriptEditorModel(scriptExecutionPath);
         thiseditormodel.setOwner(this);
-        System.out.println("BuildScriptEditorHighlighter.setEditor " + scriptExecutionPath);
 
         thiseditormodel.setEnvironment(project.getSakerProject());
         thiseditormodel.setScriptExecutionPath(scriptExecutionPath);
@@ -574,10 +573,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                 }
                 if (ARFU_editor
                         .compareAndSet(BuildScriptEditorHighlighter.this, (HighlighterClient) eventeditor, null)) {
-                    System.out.println(
-                            "BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER " + scriptExecutionPath + " editor " + System
-                                    .identityHashCode(editor) + " with " + editor.getClass().getName());
-
                     if (ARFU_editorModel.compareAndSet(BuildScriptEditorHighlighter.this, thiseditormodel, null)) {
                         project.disposeScriptEditorModel(thiseditormodel);
                     }

@@ -14,7 +14,6 @@ import java.util.Map;
 public class SakerScriptOutlineDesigner implements IScriptOutlineDesigner, DumbAware {
     @Override
     public void process(IScriptOutlineRoot outlineroot) {
-        System.out.println("SakerScriptOutlineDesigner.process");
         List<? extends IScriptOutlineEntry> roots = outlineroot.getRootEntries();
         processEntries(roots);
     }

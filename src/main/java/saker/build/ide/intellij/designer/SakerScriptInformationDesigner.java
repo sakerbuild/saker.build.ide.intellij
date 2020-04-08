@@ -15,18 +15,27 @@ public class SakerScriptInformationDesigner implements IScriptInformationDesigne
     private static final String ICON_SOURCE_TARGET_OUTPUT_PARAMETER = createIconSource("icons/outparam@2x.png");
     private static final String ICON_SOURCE_BUILD_TARGET = createIconSource("icons/target@2x.png");
 
-    public static final String INFORMATION_SCHEMA_IDENTIFIER = "saker.script";
-    private static final String INFORMATION_SCHEMA_TASK = INFORMATION_SCHEMA_IDENTIFIER + ".task";
-    private static final String INFORMATION_SCHEMA_TASK_PARAMETER = INFORMATION_SCHEMA_IDENTIFIER + ".task_parameter";
-    private static final String INFORMATION_SCHEMA_ENUM = INFORMATION_SCHEMA_IDENTIFIER + ".enum";
-    private static final String INFORMATION_SCHEMA_VARIABLE = INFORMATION_SCHEMA_IDENTIFIER + ".var";
-    private static final String INFORMATION_SCHEMA_TARGET_INPUT_PARAMETER = INFORMATION_SCHEMA_IDENTIFIER + ".target.input_parameter";
-    private static final String INFORMATION_SCHEMA_TARGET_OUTPUT_PARAMETER = INFORMATION_SCHEMA_IDENTIFIER + ".target.output_parameter";
-    private static final String INFORMATION_SCHEMA_BUILD_TARGET = INFORMATION_SCHEMA_IDENTIFIER + ".target";
+    public static final String INFORMATION_SCHEMA = "saker.script";
+    public static final String INFORMATION_SCHEMA_TASK = INFORMATION_SCHEMA + ".task";
+    public static final String INFORMATION_SCHEMA_TASK_PARAMETER = INFORMATION_SCHEMA + ".task_parameter";
+    public static final String INFORMATION_SCHEMA_ENUM = INFORMATION_SCHEMA + ".enum";
+    public static final String INFORMATION_SCHEMA_VARIABLE = INFORMATION_SCHEMA + ".var";
+    public static final String INFORMATION_SCHEMA_FOREACH_VARIABLE = INFORMATION_SCHEMA + ".foreach_var";
+    public static final String INFORMATION_SCHEMA_TARGET_INPUT_PARAMETER = INFORMATION_SCHEMA + ".target.input_parameter";
+    public static final String INFORMATION_SCHEMA_TARGET_OUTPUT_PARAMETER = INFORMATION_SCHEMA + ".target.output_parameter";
+    public static final String INFORMATION_SCHEMA_BUILD_TARGET = INFORMATION_SCHEMA + ".target";
+    public static final String INFORMATION_SCHEMA_FILE = INFORMATION_SCHEMA + ".file";
+    public static final String INFORMATION_SCHEMA_USER_PARAMETER = INFORMATION_SCHEMA + ".user_parameter";
+    public static final String INFORMATION_SCHEMA_ENVIRONMENT_PARAMETER = INFORMATION_SCHEMA + ".environment_parameter";
+    public static final String INFORMATION_SCHEMA_EXTERNAL_LITERAL = INFORMATION_SCHEMA + ".external_literal";
+
+    public static final String INFORMATION_META_DATA_FILE_TYPE = "file_type";
+    public static final String INFORMATION_META_DATA_FILE_TYPE_FILE = "file";
+    public static final String INFORMATION_META_DATA_FILE_TYPE_BUILD_SCRIPT = "build_script";
+    public static final String INFORMATION_META_DATA_FILE_TYPE_DIRECTORY = "dir";
 
     @Override
     public void process(IScriptInformationRoot informationroot) {
-        System.out.println("SakerScriptInformationDesigner.process");
         processEntries(informationroot.getEntries());
     }
 
