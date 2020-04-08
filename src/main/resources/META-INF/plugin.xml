@@ -3,13 +3,12 @@
     <version>0.8.0</version>
     <name>Saker.build system plug-in for IntelliJ</name>
     <vendor email="support@saker.build"
-            url="https://saker.build">saker.build
+            url="https://saker.build">
+        saker.build
     </vendor>
 
     <description>Plug-in for saker.build system integration</description>
 
-    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
-         on how to target different products -->
     <depends>com.intellij.modules.platform</depends>
 
     <applicationListeners>

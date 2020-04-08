@@ -193,7 +193,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         for (IntellijScriptProposalEntry proposal : proposalroot.getProposals()) {
             addIntellijProposal(parameters, result, proposal);
         }
-
     }
 
     private void addIntellijProposal(CompletionParameters parameters, @NotNull CompletionResultSet result,
@@ -533,7 +532,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     @Override
     public void setText(@NotNull CharSequence text) {
-        System.out.println("BuildScriptEditorHighlighter.setText " + text.length());
         this.currentText = text;
         ScriptEditorModel emodel = this.editorModel;
         if (emodel != null) {
@@ -580,8 +578,9 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                             "BuildScriptEditorHighlighter.editorReleased DISPOSE HIGHLIGHTER " + scriptExecutionPath + " editor " + System
                                     .identityHashCode(editor) + " with " + editor.getClass().getName());
 
-                    ARFU_editorModel.compareAndSet(BuildScriptEditorHighlighter.this, thiseditormodel, null);
-                    project.disposeScriptEditorModel(thiseditormodel);
+                    if (ARFU_editorModel.compareAndSet(BuildScriptEditorHighlighter.this, thiseditormodel, null)) {
+                        project.disposeScriptEditorModel(thiseditormodel);
+                    }
                     editorfactory.removeEditorFactoryListener(this);
                     uninstallListener();
                 }
