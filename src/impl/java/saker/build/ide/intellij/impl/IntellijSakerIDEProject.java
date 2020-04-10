@@ -1,6 +1,5 @@
 package saker.build.ide.intellij.impl;
 
-import com.intellij.codeInsight.documentation.DocumentationManager;
 import com.intellij.execution.filters.BrowserHyperlinkInfo;
 import com.intellij.execution.filters.FileHyperlinkInfo;
 import com.intellij.execution.filters.HyperlinkInfo;
@@ -23,6 +22,7 @@ import com.intellij.openapi.editor.ScrollType;
 import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
+import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
@@ -37,6 +37,7 @@ import com.intellij.openapi.vfs.LocalFileSystem;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
+import com.intellij.ui.JBColor;
 import org.apache.commons.io.output.WriterOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -51,6 +52,7 @@ import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.SakerBuildActionGroup;
 import saker.build.ide.intellij.SakerBuildPlugin;
+import saker.build.ide.intellij.console.ColoredHyperlinkInfo;
 import saker.build.ide.intellij.extension.ideconfig.IDEConfigurationTypeHandlerExtensionPointBean;
 import saker.build.ide.intellij.extension.ideconfig.IIDEConfigurationTypeHandler;
 import saker.build.ide.intellij.extension.ideconfig.IIDEProjectConfigurationRootEntry;
@@ -62,7 +64,6 @@ import saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigne
 import saker.build.ide.intellij.impl.dialog.BuildTargetChooserDialog;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorStateManager;
-import saker.build.ide.intellij.impl.editor.IntellijScriptEditorModel;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.intellij.impl.ui.IDEConfigurationSelectorDialog;
 import saker.build.ide.intellij.impl.ui.ProjectPropertiesValidationDialog;
@@ -81,7 +82,6 @@ import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.PropertiesValidationException;
 import saker.build.ide.support.properties.ProviderMountIDEProperty;
 import saker.build.ide.support.properties.SimpleIDEProjectProperties;
-import saker.build.ide.support.ui.ScriptEditorModel;
 import saker.build.runtime.environment.BuildTaskExecutionResult;
 import saker.build.runtime.environment.BuildTaskExecutionResultImpl;
 import saker.build.runtime.execution.BuildUserPromptHandler;
@@ -108,6 +108,7 @@ import saker.build.thirdparty.saker.util.io.StreamUtils;
 import saker.build.util.exc.ExceptionView;
 
 import javax.swing.SwingUtilities;
+import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -134,9 +135,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 import java.util.WeakHashMap;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
-import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiConsumer;
@@ -430,10 +429,22 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             String::compareToIgnoreCase);
 
     static {
-        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP.put("error", ConsoleViewContentType.LOG_ERROR_OUTPUT);
-        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP.put("fatal error", ConsoleViewContentType.ERROR_OUTPUT);
-        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP.put("info", ConsoleViewContentType.LOG_INFO_OUTPUT);
-        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP.put("warning", ConsoleViewContentType.LOG_WARNING_OUTPUT);
+        TextAttributes errattr = new TextAttributes();
+        TextAttributes warnattr = new TextAttributes();
+        TextAttributes successattr = new TextAttributes();
+        TextAttributes infoattr = new TextAttributes();
+        errattr.setBackgroundColor(new JBColor(new Color(254, 231, 224), new Color(81, 38, 39)));
+        warnattr.setBackgroundColor(new JBColor(new Color(254, 243, 218), new Color(80, 77, 22)));
+        successattr.setBackgroundColor(new JBColor(new Color(217, 242, 221), new Color(28, 74, 23)));
+        infoattr.setBackgroundColor(new JBColor(new Color(227, 235, 253), new Color(37, 50, 82)));
+        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP.put("error", new ConsoleViewContentType("SAKER_BUILD_ERROR", errattr));
+        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP
+                .put("fatal error", new ConsoleViewContentType("SAKER_BUILD_ERROR", errattr));
+        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP.put("info", new ConsoleViewContentType("SAKER_BUILD_INFO", infoattr));
+        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP
+                .put("warning", new ConsoleViewContentType("SAKER_BUILD_WARNING", warnattr));
+        SEVERITY_CONSOLE_VIEW_CONTENT_TYPE_MAP
+                .put("success", new ConsoleViewContentType("SAKER_BUILD_SUCCESS", successattr));
     }
 
     private class ConsoleViewOutputStream extends OutputStream {
@@ -520,12 +531,14 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         }
     }
 
-    private static class SelectionOpenFileHyperlinkInfo implements FileHyperlinkInfo {
+    private static class SelectionOpenFileHyperlinkInfo implements FileHyperlinkInfo, ColoredHyperlinkInfo {
         private Project project;
         private VirtualFile file;
         private int line;
         private int column;
         private int length;
+
+        private Color backgroundColor;
 
         public SelectionOpenFileHyperlinkInfo(Project project, VirtualFile file, int line, int column, int length) {
             this.project = project;
@@ -533,6 +546,15 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             this.line = line;
             this.column = column;
             this.length = length;
+        }
+
+        public void setBackgroundColor(Color backgroundColor) {
+            this.backgroundColor = backgroundColor;
+        }
+
+        @Override
+        public Color getBackgroundColor() {
+            return backgroundColor;
         }
 
         @Override
@@ -612,9 +634,11 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 err = new ErrorConsoleViewOutputStream(console[0]);
 
                 executionLock.lockInterruptibly();
-                console[0].clear();
-                SwingUtilities.invokeLater(() -> tw[0].activate(null, false));
-                WriteAction.runAndWait(() -> FileDocumentManager.getInstance().saveAllDocuments());
+                WriteAction.runAndWait(() -> {
+                    console[0].clear();
+                    tw[0].activate(null, false);
+                    FileDocumentManager.getInstance().saveAllDocuments();
+                });
                 if (monitorwrapper.isCancelled()) {
                     out.write(("Build cancelled." + LINE_SEPARATOR).getBytes());
                     return;
@@ -1587,8 +1611,9 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                         }
                         int pathstartidx = matcher.start(AT_BUILD_FILE_ERROR_GROUP_PATH);
                         console.print(line.substring(0, pathstartidx), defaultContentType);
-                        console.printHyperlink(line.substring(pathstartidx) + LINE_SEPARATOR,
+                        console.printHyperlink(line.substring(pathstartidx),
                                 new SelectionOpenFileHyperlinkInfo(project, vfile, linenumber, linestartnumber, len));
+                        console.print(LINE_SEPARATOR, defaultContentType);
                         return;
                     }
                 }
@@ -1640,9 +1665,12 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                         }
                         int pathandlocstart = matcher.start(CONSOLE_MARKER_GROUP_PATHANDLOCATION);
                         int pathandlocend = matcher.end(CONSOLE_MARKER_GROUP_PATHANDLOCATION);
+                        SelectionOpenFileHyperlinkInfo hyperlinkinfo = new SelectionOpenFileHyperlinkInfo(project,
+                                vfile, linenumber, linestartnumber, len);
+                        hyperlinkinfo.setBackgroundColor(contenttype.getAttributes().getBackgroundColor());
+
                         console.print(line.substring(0, pathandlocstart), contenttype);
-                        console.printHyperlink(line.substring(pathandlocstart, pathandlocend),
-                                new SelectionOpenFileHyperlinkInfo(project, vfile, linenumber, linestartnumber, len));
+                        console.printHyperlink(line.substring(pathandlocstart, pathandlocend), hyperlinkinfo);
                         console.print(line.substring(pathandlocend) + LINE_SEPARATOR, contenttype);
                         return;
                     }
