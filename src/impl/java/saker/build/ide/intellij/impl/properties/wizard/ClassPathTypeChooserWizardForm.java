@@ -1,10 +1,7 @@
 package saker.build.ide.intellij.impl.properties.wizard;
 
-import com.intellij.ui.ColorUtil;
-import com.intellij.ui.Colors;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.IdeBorderFactory;
-import com.intellij.ui.JBColor;
 import com.intellij.ui.components.JBList;
 import saker.build.ide.support.ui.wizard.BaseSakerWizardManager;
 import saker.build.ide.support.ui.wizard.ClassPathTypeChooserSakerWizardPage;

@@ -17,7 +17,6 @@ package saker.build.ide.intellij.extension.script.outline;
 
 import com.intellij.navigation.ItemPresentation;
 
-import javax.swing.Icon;
 import java.util.List;
 import java.util.Map;
 

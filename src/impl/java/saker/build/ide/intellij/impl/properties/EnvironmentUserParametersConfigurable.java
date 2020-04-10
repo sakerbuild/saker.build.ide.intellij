@@ -3,19 +3,11 @@ package saker.build.ide.intellij.impl.properties;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import org.jetbrains.annotations.Nls;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
-import saker.build.ide.intellij.ExtensionDisablement;
-import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
-import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
-import saker.build.ide.support.properties.IDEProjectProperties;
 
 import javax.swing.JComponent;
-import java.util.Collections;
-import java.util.Map;
 import java.util.Objects;
-import java.util.Set;
 
 public class EnvironmentUserParametersConfigurable implements Configurable, Configurable.NoScroll {
 

@@ -7,7 +7,6 @@ import com.intellij.openapi.project.Project;
 import com.intellij.util.xmlb.annotations.Attribute;
 import org.jetbrains.annotations.Nls;
 import saker.build.ide.intellij.SakerBuildPlugin;
-import saker.build.ide.intellij.extension.script.information.IScriptInformationDesigner;
 
 public class ScriptOutlineDesignerExtensionPointBean extends AbstractExtensionPointBean {
     public static final ExtensionPointName<ScriptOutlineDesignerExtensionPointBean> EP_NAME = ExtensionPointName

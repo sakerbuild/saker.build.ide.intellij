@@ -1,9 +1,9 @@
 package saker.build.ide.intellij.impl.editor;
 
-import java.util.List;
-
 import saker.build.ide.intellij.extension.script.information.IScriptInformationDesigner;
 import saker.build.ide.intellij.extension.script.information.IScriptInformationRoot;
+
+import java.util.List;
 
 public final class MultiScriptInformationDesigner implements IScriptInformationDesigner {
     private final List<IScriptInformationDesigner> designers;

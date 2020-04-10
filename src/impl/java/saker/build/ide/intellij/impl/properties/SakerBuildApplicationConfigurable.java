@@ -11,7 +11,6 @@ import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
-import saker.build.ide.support.properties.SimpleIDEProjectProperties;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
 
 import javax.swing.JComponent;

@@ -23,7 +23,6 @@ import saker.build.ide.support.ui.ExecutionDaemonSelector;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.DefaultComboBoxModel;
-import javax.swing.JComboBox;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
 import javax.swing.event.TreeModelEvent;

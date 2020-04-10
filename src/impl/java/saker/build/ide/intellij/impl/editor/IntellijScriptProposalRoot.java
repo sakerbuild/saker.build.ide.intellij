@@ -15,13 +15,13 @@
  */
 package saker.build.ide.intellij.impl.editor;
 
-import java.util.List;
-import java.util.Set;
-import java.util.TreeSet;
-
 import saker.build.ide.intellij.extension.script.proposal.IScriptProposalsRoot;
 import saker.build.ide.support.ui.BaseScriptProposalRoot;
 import saker.build.scripting.model.ScriptCompletionProposal;
+
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 public class IntellijScriptProposalRoot extends BaseScriptProposalRoot<IntellijScriptProposalEntry>
 		implements IScriptProposalsRoot {
