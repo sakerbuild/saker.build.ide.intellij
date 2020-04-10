@@ -9,6 +9,7 @@ import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
+import saker.build.ide.support.properties.IDEProjectProperties;
 
 import javax.swing.JComponent;
 import java.util.Collections;
@@ -17,9 +18,6 @@ import java.util.Objects;
 import java.util.Set;
 
 public class EnvironmentUserParametersConfigurable implements Configurable, Configurable.NoScroll {
-
-    private Set<? extends Map.Entry<String, String>> userParameters = null;
-    private Set<ExtensionDisablement> extensionDisablements = null;
 
     private final UserParametersForm form;
     private SakerBuildApplicationConfigurable parent;
@@ -49,35 +47,17 @@ public class EnvironmentUserParametersConfigurable implements Configurable, Conf
 
     @Override
     public void reset() {
-        this.userParameters = null;
-
-        IDEPluginProperties props = parent.getPlugin().getIDEPluginProperties();
-        if (props != null) {
-            this.userParameters = props.getUserParameters();
-        }
-        if (this.userParameters == null) {
-            this.userParameters = Collections.emptySet();
-        }
-        this.extensionDisablements = parent.getPlugin().getExtensionDisablements();
-        form.setUserParameters(this.userParameters, this.extensionDisablements);
-    }
-
-    @NotNull
-    private Set<Map.Entry<String, String>> getCurrentValues() {
-        return form.getCurrentValues();
-    }
-
-    @NotNull
-    private Set<ExtensionDisablement> getCurrentExtensionDisablements() {
-        return form.getCurrentExtensionDisablements();
+        form.setUserParameters(parent.getProperties().getUserParameters(), parent.getExtensionDisablements());
     }
 
     @Override
     public boolean isModified() {
-        if (!Objects.equals(this.userParameters, getCurrentValues())) {
+        IDEPluginProperties currentprops = parent.getCurrentPluginProperties();
+        IDEPluginProperties properties = parent.getProperties();
+        if (!Objects.equals(currentprops.getUserParameters(), properties.getUserParameters())) {
             return true;
         }
-        if (!Objects.equals(this.extensionDisablements, getCurrentExtensionDisablements())) {
+        if (!Objects.equals(parent.getCurrentExtensionDisablements(), parent.getExtensionDisablements())) {
             return true;
         }
         return false;
@@ -85,15 +65,7 @@ public class EnvironmentUserParametersConfigurable implements Configurable, Conf
 
     @Override
     public void apply() throws ConfigurationException {
-        IntellijSakerIDEPlugin plugin = parent.getPlugin();
-
-        Set<Map.Entry<String, String>> vals = getCurrentValues();
-        Set<ExtensionDisablement> disablements = getCurrentExtensionDisablements();
-
-        plugin.setIDEPluginProperties(
-                SimpleIDEPluginProperties.builder(plugin.getIDEPluginProperties()).setUserParameters(vals).build(),
-                disablements);
-        this.userParameters = vals;
+        parent.apply();
     }
 
 }

@@ -289,8 +289,8 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
         progmanager.run(new Task.Backgroundable(null, "Updating saker.build plugin properties", true) {
             @Override
             public void run(@NotNull ProgressIndicator indicator) {
-                sakerPlugin.updateForPluginProperties(
-                        getIDEPluginPropertiesWithEnvironmentParameterContributions(properties, indicator));
+                sakerPlugin.updateForPluginProperties(getIDEPluginPropertiesWithEnvironmentParameterContributions(
+                        sakerPlugin.getIDEPluginProperties(), indicator));
             }
         });
     }

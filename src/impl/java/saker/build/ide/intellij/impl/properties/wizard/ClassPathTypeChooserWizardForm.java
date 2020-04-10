@@ -1,6 +1,11 @@
 package saker.build.ide.intellij.impl.properties.wizard;
 
+import com.intellij.ui.ColorUtil;
+import com.intellij.ui.Colors;
 import com.intellij.ui.DoubleClickListener;
+import com.intellij.ui.IdeBorderFactory;
+import com.intellij.ui.JBColor;
+import com.intellij.ui.components.JBList;
 import saker.build.ide.support.ui.wizard.BaseSakerWizardManager;
 import saker.build.ide.support.ui.wizard.ClassPathTypeChooserSakerWizardPage;
 import saker.build.ide.support.ui.wizard.SakerWizardPage;
@@ -17,7 +22,7 @@ public class ClassPathTypeChooserWizardForm {
     public static final String WIZARD_CONFIGURATION_WITH_SCRIPT_CLASSPATH = "classpath.type.chooser.with.script";
     public static final String WIZARD_CONFIGURATION_WITH_REPOSITORY_CLASSPATH = "classpath.type.chooser.with.repository";
 
-    private JList<String> typeList;
+    private JBList<String> typeList;
     private JPanel rootPanel;
     private ClassPathTypeChooserWizardStep wizardStep;
 
@@ -28,6 +33,7 @@ public class ClassPathTypeChooserWizardForm {
         DefaultListModel<String> items = createItems(
                 Boolean.TRUE.equals(wizardmanager.getConfiguration(WIZARD_CONFIGURATION_WITH_REPOSITORY_CLASSPATH)),
                 Boolean.TRUE.equals(wizardmanager.getConfiguration(WIZARD_CONFIGURATION_WITH_SCRIPT_CLASSPATH)));
+        typeList.setBorder(IdeBorderFactory.createBorder());
         typeList.setModel(items);
         typeList.addListSelectionListener(e -> {
             String selected = typeList.getSelectedValue();
@@ -131,7 +137,7 @@ public class ClassPathTypeChooserWizardForm {
         rootPanel = new JPanel();
         rootPanel.setLayout(new CardLayout(0, 0));
         rootPanel.setMinimumSize(new Dimension(400, 400));
-        typeList = new JList();
+        typeList = new JBList();
         typeList.setMinimumSize(new Dimension(0, 300));
         typeList.setSelectionMode(0);
         typeList.setVisibleRowCount(12);

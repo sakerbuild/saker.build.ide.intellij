@@ -1,9 +1,7 @@
 package saker.build.ide.intellij.designer;
 
 import com.intellij.icons.AllIcons;
-import com.intellij.openapi.application.ApplicationInfo;
 import com.intellij.openapi.project.DumbAware;
-import com.intellij.openapi.util.Version;
 import saker.build.ide.intellij.PluginIcons;
 import saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.intellij.extension.script.proposal.IScriptProposalEntry;
@@ -12,7 +10,7 @@ import saker.build.ide.intellij.extension.script.proposal.IScriptProposalsRoot;
 import java.util.Map;
 
 public class SakerScriptProposalDesigner implements IScriptProposalDesigner, DumbAware {
-    public static final String PROPOSAL_SCHEMA_IDENTIFIER = "saker.script";
+    public static final String PROPOSAL_SCHEMA = "saker.script";
     private static final String PROPOSAL_META_DATA_TYPE = "type";
     private static final String PROPOSAL_META_DATA_TYPE_FILE = "file";
     private static final String PROPOSAL_META_DATA_TYPE_ENUM = "enum";
@@ -23,9 +21,12 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner, Dum
     private static final String PROPOSAL_META_DATA_TYPE_USER_PARAMETER = "user_parameter";
     private static final String PROPOSAL_META_DATA_TYPE_ENVIRONMENT_PARAMETER = "environment_parameter";
     private static final String PROPOSAL_META_DATA_TYPE_VARIABLE = "variable";
+    private static final String PROPOSAL_META_DATA_TYPE_FOREACH_VARIABLE = "foreach_variable";
     private static final String PROPOSAL_META_DATA_TYPE_STATIC_VARIABLE = "static_variable";
     private static final String PROPOSAL_META_DATA_TYPE_GLOBAL_VARIABLE = "global_variable";
     private static final String PROPOSAL_META_DATA_TYPE_TASK_QUALIFIER = "task_qualifier";
+    private static final String PROPOSAL_META_DATA_TYPE_LITERAL = "literal";
+    private static final String PROPOSAL_META_DATA_TYPE_BUILD_TARGET = "build_target";
 
     private static final String PROPOSAL_META_DATA_FILE_TYPE = "file_type";
     private static final String PROPOSAL_META_DATA_FILE_TYPE_FILE = "file";
@@ -38,7 +39,7 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner, Dum
             if (proposal == null) {
                 continue;
             }
-            if (!PROPOSAL_SCHEMA_IDENTIFIER.equals(proposal.getSchemaIdentifier())) {
+            if (!PROPOSAL_SCHEMA.equals(proposal.getSchemaIdentifier())) {
                 continue;
             }
             processProposal(proposal);
@@ -51,6 +52,14 @@ public class SakerScriptProposalDesigner implements IScriptProposalDesigner, Dum
             String type = schememeta.get(PROPOSAL_META_DATA_TYPE);
             if (type != null) {
                 switch (type) {
+                    case PROPOSAL_META_DATA_TYPE_BUILD_TARGET: {
+                        proposal.setProposalIcon(PluginIcons.ICON_TARGET);
+                        break;
+                    }
+                    case PROPOSAL_META_DATA_TYPE_LITERAL: {
+                        proposal.setProposalIcon(PluginIcons.ICON_STRINGLITERAL);
+                        break;
+                    }
                     case PROPOSAL_META_DATA_TYPE_VARIABLE:
                     case PROPOSAL_META_DATA_TYPE_STATIC_VARIABLE:
                     case PROPOSAL_META_DATA_TYPE_GLOBAL_VARIABLE: {

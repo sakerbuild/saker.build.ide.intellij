@@ -100,15 +100,12 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
         if (!Objects.equals(currentprops.getBuildTraceOutput(), this.properties.getBuildTraceOutput())) {
             return true;
         }
-        if (!Objects.equals(this.pendingExtensionDisablements, this.extensionDisablements)) {
-            return true;
-        }
         return false;
     }
 
     @Override
     public void apply() throws ConfigurationException {
-        IDEProjectProperties properties = this.builder.buildReuse();
+        IDEProjectProperties properties = getCurrentProjectProperties();
         if (!this.properties.equals(properties) || !this.extensionDisablements
                 .equals(this.pendingExtensionDisablements)) {
             project.setIDEProjectProperties(properties, this.pendingExtensionDisablements);

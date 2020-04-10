@@ -9,7 +9,7 @@
     </properties>
     <border type="none"/>
     <children>
-      <component id="91777" class="javax.swing.JList" binding="typeList">
+      <component id="89bcf" class="com.intellij.ui.components.JBList" binding="typeList">
         <constraints>
           <card name="Card1"/>
         </constraints>

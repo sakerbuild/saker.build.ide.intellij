@@ -39,6 +39,7 @@ import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
 import saker.build.ide.intellij.impl.ui.PropertyAttributeTreeNode;
 import saker.build.ide.intellij.impl.ui.PropertyTreeNode;
 import saker.build.ide.intellij.impl.ui.RootTreeNode;
+import saker.build.ide.intellij.impl.ui.TreeModelAdapter;
 import saker.build.ide.intellij.impl.ui.UIUtils;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
@@ -311,29 +312,10 @@ public class UserParametersForm {
                 configurable.getParent().getBuilder().setUserParameters(getCurrentValues());
             }
         });
-        extensionsTree.getModel().addTreeModelListener(new TreeModelListener() {
-            private void update() {
+        extensionsTree.getModel().addTreeModelListener(new TreeModelAdapter() {
+            @Override
+            protected void update(TreeModelEvent e) {
                 configurable.getParent().setExtensionDisablements(getCurrentExtensionDisablements());
-            }
-
-            @Override
-            public void treeNodesChanged(TreeModelEvent e) {
-                update();
-            }
-
-            @Override
-            public void treeNodesInserted(TreeModelEvent e) {
-                update();
-            }
-
-            @Override
-            public void treeNodesRemoved(TreeModelEvent e) {
-                update();
-            }
-
-            @Override
-            public void treeStructureChanged(TreeModelEvent e) {
-                update();
             }
         });
 
@@ -351,6 +333,19 @@ public class UserParametersForm {
 
     public UserParametersForm(EnvironmentUserParametersConfigurable configurable) {
         this();
+        parametersTableModel.addTableModelListener(new TableModelListener() {
+            @Override
+            public void tableChanged(TableModelEvent e) {
+                configurable.getParent().getBuilder().setUserParameters(getCurrentValues());
+            }
+        });
+        extensionsTree.getModel().addTreeModelListener(new TreeModelAdapter() {
+            @Override
+            protected void update(TreeModelEvent e) {
+                configurable.getParent().setExtensionDisablements(getCurrentExtensionDisablements());
+            }
+        });
+
         IntellijSakerIDEPlugin plugin = configurable.getParent().getPlugin();
         List<ContributedExtensionConfiguration<IEnvironmentUserParameterContributor>> extensions = plugin
                 .getEnvironmentParameterContributors();
@@ -467,6 +462,11 @@ public class UserParametersForm {
                 return elem.getKey();
             }
             return elem.getValue();
+        }
+
+        @Override
+        public String getColumnName(int column) {
+            return COLUMN_NAMES[column];
         }
 
         public UserParameterEntry getEntryAtRow(int rowIndex) {
@@ -599,8 +599,10 @@ public class UserParametersForm {
     public void setUserParameters(Set<? extends Map.Entry<String, String>> parameters,
             Set<ExtensionDisablement> extensionDisablements) {
         ArrayList<UserParameterEntry> data = ObjectUtils.newArrayList();
-        for (Map.Entry<String, String> entry : parameters) {
-            data.add(UserParameterEntry.valueOf(entry));
+        if (parameters != null) {
+            for (Map.Entry<String, String> entry : parameters) {
+                data.add(UserParameterEntry.valueOf(entry));
+            }
         }
 
         List<ContributedExtensionConfiguration<Object>> nextensions = SakerBuildPlugin
@@ -685,7 +687,7 @@ public class UserParametersForm {
         tabbedPane.addTab("Parameters", panel1);
         parametersInfoLabel = new JBLabel();
         panel1.add(parametersInfoLabel,
-                new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_SOUTHWEST, GridConstraints.FILL_NONE,
+                new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                         GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, new Dimension(-1, 30),
                         new Dimension(-1, 30), null, 0, false));
         parametersPanel = new JPanel();
@@ -712,8 +714,8 @@ public class UserParametersForm {
         final JBLabel jBLabel1 = new JBLabel();
         jBLabel1.setText("The following extension contribute to user parameters:");
         panel2.add(jBLabel1, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
-                GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null, null, 0,
-                false));
+                GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, new Dimension(-1, 30),
+                new Dimension(-1, 30), null, 0, false));
         extensionsPanel = new JPanel();
         extensionsPanel.setLayout(new CardLayout(0, 0));
         panel2.add(extensionsPanel,

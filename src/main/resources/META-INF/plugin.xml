@@ -96,6 +96,8 @@
         <completion.contributor implementationClass="saker.build.ide.intellij.BuildScriptCompletionContributor"
                                 language="SAKER_BUILD_SCRIPT_LANGUAGE"
                                 id="SAKER_BUILD_SCRIPT_COMPLETION_CONTRIBUTOR"/>
+        <lookup.charFilter implementation="saker.build.ide.intellij.BuildScriptEditorCharFilter"
+                           id="SAKER_BUILD_SCRIPT_EDITOR_CHAR_FILTER"/>
     </extensions>
 
     <extensions defaultExtensionNs="saker.build.ide.intellij">

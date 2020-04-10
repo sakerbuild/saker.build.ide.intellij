@@ -1,5 +1,6 @@
 package saker.build.ide.intellij.impl;
 
+import com.intellij.codeInsight.documentation.DocumentationManager;
 import com.intellij.execution.filters.BrowserHyperlinkInfo;
 import com.intellij.execution.filters.FileHyperlinkInfo;
 import com.intellij.execution.filters.HyperlinkInfo;
@@ -14,6 +15,7 @@ import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.Separator;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.application.WriteAction;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Document;
 import com.intellij.openapi.editor.Editor;
@@ -21,6 +23,7 @@ import com.intellij.openapi.editor.ScrollType;
 import com.intellij.openapi.editor.SelectionModel;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
+import com.intellij.openapi.fileEditor.FileDocumentManager;
 import com.intellij.openapi.fileEditor.FileEditorManager;
 import com.intellij.openapi.fileEditor.OpenFileDescriptor;
 import com.intellij.openapi.options.Configurable;
@@ -58,6 +61,7 @@ import saker.build.ide.intellij.extension.script.outline.IScriptOutlineDesigner;
 import saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.intellij.impl.dialog.BuildTargetChooserDialog;
 import saker.build.ide.intellij.impl.editor.BuildScriptEditorHighlighter;
+import saker.build.ide.intellij.impl.editor.BuildScriptEditorStateManager;
 import saker.build.ide.intellij.impl.editor.IntellijScriptEditorModel;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.intellij.impl.ui.IDEConfigurationSelectorDialog;
@@ -71,6 +75,7 @@ import saker.build.ide.support.persist.StructuredObjectInput;
 import saker.build.ide.support.persist.StructuredObjectOutput;
 import saker.build.ide.support.persist.XMLStructuredReader;
 import saker.build.ide.support.persist.XMLStructuredWriter;
+import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.properties.PropertiesValidationErrorResult;
 import saker.build.ide.support.properties.PropertiesValidationException;
@@ -121,6 +126,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.NavigableMap;
 import java.util.NavigableSet;
@@ -372,24 +378,33 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         return new BuildScriptEditorHighlighter(this, execpath, colors);
     }
 
-    private final ConcurrentSkipListMap<SakerPath, IntellijScriptEditorModel> scriptEditorModels = new ConcurrentSkipListMap<>();
+    private final NavigableMap<SakerPath, BuildScriptEditorStateManager> scriptEditorStateManagers = new TreeMap<>();
+    private final NavigableMap<SakerPath, Object> scriptEditorStateManagerLocks = new ConcurrentSkipListMap<>();
 
-    public IntellijScriptEditorModel getScriptEditorModel(SakerPath path) {
-        if (path == null) {
+    public BuildScriptEditorStateManager subscribeScriptEditorStateManager(SakerPath path, Document document) {
+        if (path == null || document == null) {
             return null;
         }
-        return scriptEditorModels.computeIfAbsent(path, IntellijScriptEditorModel::new);
+        synchronized (scriptEditorStateManagerLocks.computeIfAbsent(path, Functionals.objectComputer())) {
+            BuildScriptEditorStateManager result = scriptEditorStateManagers.computeIfAbsent(path, p -> {
+                return new BuildScriptEditorStateManager(document, this, p);
+            });
+            result.subscribe();
+            return result;
+        }
     }
 
-    public void disposeScriptEditorModel(@Nullable IntellijScriptEditorModel model) {
-        if (model == null) {
+    public void unsubscribeScriptEditorStateManager(BuildScriptEditorStateManager statemanager) {
+        if (statemanager == null) {
             return;
         }
-        SakerPath scriptpath = model.getScriptExecutionPath();
-        if (scriptpath != null) {
-            scriptEditorModels.remove(scriptpath, model);
+        SakerPath scriptpath = statemanager.getScriptExecutionPath();
+        synchronized (scriptEditorStateManagerLocks.computeIfAbsent(scriptpath, Functionals.objectComputer())) {
+            statemanager.unsubscribe();
+            if (!statemanager.isAlive()) {
+                scriptEditorStateManagers.remove(scriptpath, statemanager);
+            }
         }
-        model.close();
     }
 
     private static final String CONSOLE_MARKER_STR_PATTERN = "[ \t]*(\\[(?:.*?)\\])?[ \t]*(((.*?)(:(-?[0-9]+)(:([0-9]*)(-([0-9]+))?)?)?):)?[ ]*([wW]arning|[eE]rror|[iI]nfo|[sS]uccess|[fF]atal [eE]rror):[ ]*(.*)";
@@ -599,6 +614,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 executionLock.lockInterruptibly();
                 console[0].clear();
                 SwingUtilities.invokeLater(() -> tw[0].activate(null, false));
+                WriteAction.runAndWait(() -> FileDocumentManager.getInstance().saveAllDocuments());
                 if (monitorwrapper.isCancelled()) {
                     out.write(("Build cancelled." + LINE_SEPARATOR).getBytes());
                     return;
@@ -779,11 +795,24 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 if (result != null) {
                     ScriptPositionedExceptionView posexcview = result.getPositionedExceptionView();
                     if (posexcview != null) {
-                        //TODO make exception format configureable
                         if (err != null) {
+                            SakerLog.ExceptionFormat exceptionformat = SakerLog.CommonExceptionFormat.DEFAULT_FORMAT;
+                            IDEPluginProperties pluginprops = plugin.getIDEPluginProperties();
+                            if (pluginprops != null) {
+                                String propexcformat = pluginprops.getExceptionFormat();
+                                if (propexcformat != null) {
+                                    //convert to upper case to attempt to handle possible case differences
+                                    try {
+                                        exceptionformat = SakerLog.CommonExceptionFormat
+                                                .valueOf(propexcformat.toUpperCase(Locale.ENGLISH));
+                                    } catch (IllegalArgumentException ignored) {
+                                    }
+                                }
+                            }
+
                             try (PrintStream errps = new PrintStream(err)) {
                                 TaskUtils.printTaskExceptionsOmitTransitive(posexcview, errps, executionworkingdir,
-                                        SakerLog.CommonExceptionFormat.DEFAULT_FORMAT);
+                                        exceptionformat);
                             }
                             if (isBuildTargetNotFoundExceptionResult(result)) {
                                 console[0].printHyperlink("Choose a different build target\n", new HyperlinkInfo() {
@@ -796,7 +825,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                                     }
                                 });
                             }
-                            console[0].printHyperlink("Show full stacktrace\n", new HyperlinkInfo() {
+                            console[0].printHyperlink("Show complete stacktrace\n", new HyperlinkInfo() {
                                 private boolean printed = false;
 
                                 @Override

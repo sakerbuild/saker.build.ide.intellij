@@ -1,6 +1,7 @@
 package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.actionSystem.ActionToolbarPosition;
+import com.intellij.openapi.ui.ComboBox;
 import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
@@ -39,7 +40,7 @@ import java.util.Set;
 
 public class DaemonConnectionsForm {
     private JPanel panel1;
-    private JComboBox<String> executionDaemonComboBox;
+    private ComboBox<String> executionDaemonComboBox;
     private JPanel treeContainer;
     private JPanel rootPanel;
 
@@ -295,7 +296,7 @@ public class DaemonConnectionsForm {
         jBLabel1.setText("Execution daemon:");
         rootPanel.add(jBLabel1, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
-        executionDaemonComboBox = new JComboBox();
+        executionDaemonComboBox = new ComboBox();
         rootPanel.add(executionDaemonComboBox,
                 new GridConstraints(2, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
