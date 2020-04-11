@@ -10,6 +10,7 @@ import com.intellij.codeInsight.completion.PrefixMatcher;
 import com.intellij.codeInsight.lookup.AutoCompletionPolicy;
 import com.intellij.codeInsight.lookup.LookupElement;
 import com.intellij.codeInsight.lookup.LookupElementBuilder;
+import com.intellij.codeInsight.lookup.LookupElementWeigher;
 import com.intellij.ide.projectView.PresentationData;
 import com.intellij.ide.structureView.FileEditorPositionListener;
 import com.intellij.ide.structureView.ModelListener;
@@ -173,7 +174,14 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         result = result.withPrefixMatcher(PrefixMatcher.ALWAYS_TRUE);
 
         //result.restartCompletionWhenNothingMatches();
-        result = result.withRelevanceSorter(CompletionSorter.emptySorter());
+        result = result.withRelevanceSorter(
+                CompletionSorter.emptySorter().weigh(new LookupElementWeigher("SAKER_SCRIPT_PROPOSAL_WEIGHER") {
+                    @Nullable
+                    @Override
+                    public Comparable weigh(@NotNull LookupElement element) {
+                        return ((IntellijProposalLookupObject)element.getObject()).getIndex();
+                    }
+                }));
         List<? extends ScriptCompletionProposal> proposals = model.getCompletionProposals(parameters.getOffset());
         IntellijScriptProposalRoot proposalroot = IntellijScriptProposalRoot.create(proposals);
         IScriptProposalDesigner designer = project
@@ -181,13 +189,14 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         if (designer != null) {
             designer.process(proposalroot);
         }
+        int i = 0;
         for (IntellijScriptProposalEntry proposal : proposalroot.getProposals()) {
-            addIntellijProposal(parameters, result, proposal);
+            addIntellijProposal(parameters, result, proposal, i++);
         }
     }
 
     private void addIntellijProposal(CompletionParameters parameters, @NotNull CompletionResultSet result,
-            IntellijScriptProposalEntry intellijproposal) {
+            IntellijScriptProposalEntry intellijproposal, int index) {
         ScriptCompletionProposal proposal = intellijproposal.getProposal();
         List<? extends CompletionProposalEdit> changes = proposal.getTextChanges();
         if (ObjectUtils.isNullOrEmpty(changes)) {
@@ -227,12 +236,8 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                 result = result.withPrefixMatcher(new PlainPrefixMatcher(prefix));
             }
         }
-        LookupElementBuilder builder = LookupElementBuilder.create(new DocumentationHolder() {
-            @Override
-            public String getDocumentation() {
-                return generateDocumentation(intellijproposal.getInformationEntries());
-            }
-        }, edit.getText());
+        LookupElementBuilder builder = LookupElementBuilder
+                .create(new IntellijProposalLookupObject(intellijproposal, index), edit.getText());
         builder = builder.withPresentableText(proposal.getDisplayString());
         if (!ObjectUtils.isNullOrEmpty(proposal.getDisplayRelation())) {
             builder = builder.withTailText(" : " + proposal.getDisplayRelation());
@@ -623,6 +628,29 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     }
 
     private static final TextAttributes DEFAULT_TOKEN_STYLE = new TextAttributes();
+
+    private static class IntellijProposalLookupObject implements DocumentationHolder {
+        private final IntellijScriptProposalEntry intellijProposal;
+        private final int index;
+
+        public IntellijProposalLookupObject(IntellijScriptProposalEntry intellijproposal, int index) {
+            this.intellijProposal = intellijproposal;
+            this.index = index;
+        }
+
+        @Override
+        public String getDocumentation() {
+            return generateDocumentation(intellijProposal.getInformationEntries());
+        }
+
+        public IntellijScriptProposalEntry getIntellijProposal() {
+            return intellijProposal;
+        }
+
+        public int getIndex() {
+            return index;
+        }
+    }
 
     private class EmptyNoTokensHighlighterIterator implements HighlighterIterator {
 

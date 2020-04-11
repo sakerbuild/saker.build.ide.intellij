@@ -40,6 +40,7 @@ public class PluginIcons {
     public static final Icon ICON_OUTPARAM = loadPng("/icons/outparam");
     public static final Icon ICON_FOR = loadPng("/icons/foreach");
     public static final Icon ICON_VAR = loadPng("/icons/var");
+    public static final Icon ICON_STOP_INTERRUPT = loadSvgOrPng("/icons/stop_interrupt");
 
     private static final Icon loadSvgOrPng(String path) {
         if (SVG_ICON_SUPPORTED) {

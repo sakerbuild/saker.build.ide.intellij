@@ -38,6 +38,7 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.ui.JBColor;
+import com.intellij.ui.content.Content;
 import org.apache.commons.io.output.WriterOutputStream;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -53,6 +54,7 @@ import saker.build.ide.intellij.ISakerBuildProjectImpl;
 import saker.build.ide.intellij.SakerBuildActionGroup;
 import saker.build.ide.intellij.SakerBuildPlugin;
 import saker.build.ide.intellij.console.ColoredHyperlinkInfo;
+import saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory;
 import saker.build.ide.intellij.extension.ideconfig.IDEConfigurationTypeHandlerExtensionPointBean;
 import saker.build.ide.intellij.extension.ideconfig.IIDEConfigurationTypeHandler;
 import saker.build.ide.intellij.extension.ideconfig.IIDEProjectConfigurationRootEntry;
@@ -615,27 +617,32 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         ProgressMonitorWrapper monitorwrapper = new ProgressMonitorWrapper(monitor);
 
         boolean wasinterrupted = false;
+        final Object buildidentity = new Object();
 
+        Thread buildThread = Thread.currentThread();
         try {
             BuildTaskExecutionResult result = null;
             SakerPath executionworkingdir = null;
 
-            OutputStream out = null;
-            OutputStream err = null;
+            OutputStream out = StreamUtils.nullOutputStream();
+            OutputStream err = StreamUtils.nullOutputStream();
+            SakerBuildConsoleToolWindowFactory.CancelBuildAnAction[] cancelbuildaction = { null };
             ToolWindow[] tw = { null };
             ConsoleView[] console = { null };
             try {
-                SwingUtilities.invokeAndWait(() -> {
-                    tw[0] = ToolWindowManager.getInstance(project).getToolWindow("saker.build");
-                    console[0] = (ConsoleView) tw[0].getContentManager().getContent(0).getComponent();
-                });
-
-                out = new StandardConsoleViewOutputStream(console[0]);
-                err = new ErrorConsoleViewOutputStream(console[0]);
 
                 executionLock.lockInterruptibly();
                 WriteAction.runAndWait(() -> {
+                    tw[0] = ToolWindowManager.getInstance(project).getToolWindow("saker.build");
+                    Content toolwindowcontent = tw[0].getContentManager().getContent(0);
+                    console[0] = SakerBuildConsoleToolWindowFactory.getConsoleViewFromContent(toolwindowcontent);
                     console[0].clear();
+                    cancelbuildaction[0] = SakerBuildConsoleToolWindowFactory
+                            .getConsoleViewCancelBuildAction(toolwindowcontent);
+                    if (cancelbuildaction[0] != null) {
+                        cancelbuildaction[0].setCancellationActions(buildidentity, monitorwrapper::setCancelled,
+                                buildThread::interrupt);
+                    }
                     tw[0].activate(null, false);
                     FileDocumentManager.getInstance().saveAllDocuments();
                 });
@@ -643,6 +650,8 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                     out.write(("Build cancelled." + LINE_SEPARATOR).getBytes());
                     return;
                 }
+                out = new StandardConsoleViewOutputStream(console[0]);
+                err = new ErrorConsoleViewOutputStream(console[0]);
                 ExecutionParametersImpl params;
                 IDEProjectProperties projectproperties;
                 try {
@@ -816,6 +825,9 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 }
                 return;
             } finally {
+                if (cancelbuildaction[0] != null) {
+                    SwingUtilities.invokeLater(() -> cancelbuildaction[0].clear(buildidentity));
+                }
                 if (result != null) {
                     ScriptPositionedExceptionView posexcview = result.getPositionedExceptionView();
                     if (posexcview != null) {
@@ -838,34 +850,37 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                                 TaskUtils.printTaskExceptionsOmitTransitive(posexcview, errps, executionworkingdir,
                                         exceptionformat);
                             }
-                            if (isBuildTargetNotFoundExceptionResult(result)) {
-                                console[0].printHyperlink("Choose a different build target\n", new HyperlinkInfo() {
+                            if (console[0] != null) {
+                                if (isBuildTargetNotFoundExceptionResult(result)) {
+                                    console[0].printHyperlink("Choose a different build target\n", new HyperlinkInfo() {
+                                        @Override
+                                        public void navigate(Project project) {
+                                            BuildTargetChooserDialog.BuildTargetItem item = askBuildTarget();
+                                            if (item != null) {
+                                                buildAsync(item.getScriptPath(), item.getTarget());
+                                            }
+                                        }
+                                    });
+                                }
+                                console[0].printHyperlink("Show complete stacktrace\n", new HyperlinkInfo() {
+                                    private boolean printed = false;
+
                                     @Override
-                                    public void navigate(Project project) {
-                                        BuildTargetChooserDialog.BuildTargetItem item = askBuildTarget();
-                                        if (item != null) {
-                                            buildAsync(item.getScriptPath(), item.getTarget());
+                                    public synchronized void navigate(Project project) {
+                                        if (!printed) {
+                                            printed = true;
+                                            ConsoleViewOutputStream cvout = new ErrorConsoleViewOutputStream(
+                                                    console[0]);
+                                            try (PrintStream ps = new PrintStream(cvout)) {
+                                                ps.println();
+                                                ps.println("Complete build exception stacktrace:");
+                                                SakerLog.printFormatException(posexcview, ps,
+                                                        SakerLog.CommonExceptionFormat.FULL);
+                                            }
                                         }
                                     }
                                 });
                             }
-                            console[0].printHyperlink("Show complete stacktrace\n", new HyperlinkInfo() {
-                                private boolean printed = false;
-
-                                @Override
-                                public synchronized void navigate(Project project) {
-                                    if (!printed) {
-                                        printed = true;
-                                        ConsoleViewOutputStream cvout = new ErrorConsoleViewOutputStream(console[0]);
-                                        try (PrintStream ps = new PrintStream(cvout)) {
-                                            ps.println();
-                                            ps.println("Complete build exception stacktrace:");
-                                            SakerLog.printFormatException(posexcview, ps,
-                                                    SakerLog.CommonExceptionFormat.FULL);
-                                        }
-                                    }
-                                }
-                            });
                         }
                     }
                 }
@@ -877,7 +892,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             }
         } finally {
             if (wasinterrupted) {
-                Thread.currentThread().interrupt();
+                buildThread.interrupt();
             }
         }
     }
@@ -1563,6 +1578,10 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 return true;
             }
             return false;
+        }
+
+        public void setCancelled() {
+            this.cancelled = true;
         }
 
         @Override
