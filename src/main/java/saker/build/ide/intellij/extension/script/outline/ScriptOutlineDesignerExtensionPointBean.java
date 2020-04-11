@@ -1,14 +1,14 @@
 package saker.build.ide.intellij.extension.script.outline;
 
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.extensions.AbstractExtensionPointBean;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.xmlb.annotations.Attribute;
 import org.jetbrains.annotations.Nls;
 import saker.build.ide.intellij.SakerBuildPlugin;
+import saker.build.ide.intellij.extension.params.AbstractSakerExtensionPointBean;
 
-public class ScriptOutlineDesignerExtensionPointBean extends AbstractExtensionPointBean {
+public class ScriptOutlineDesignerExtensionPointBean extends AbstractSakerExtensionPointBean {
     public static final ExtensionPointName<ScriptOutlineDesignerExtensionPointBean> EP_NAME = ExtensionPointName
             .create(SakerBuildPlugin.ID + ".designer.script.outline");
 
@@ -26,7 +26,7 @@ public class ScriptOutlineDesignerExtensionPointBean extends AbstractExtensionPo
     public String schemaId;
 
     public IScriptOutlineDesigner createContributor(Project project) {
-        return instantiateClass(implementationClass,
+        return instantiateClassSaker(implementationClass,
                 project == null ? ApplicationManager.getApplication().getPicoContainer() : project.getPicoContainer());
     }
 

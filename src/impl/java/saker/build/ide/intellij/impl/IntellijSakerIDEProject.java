@@ -69,6 +69,7 @@ import saker.build.ide.intellij.impl.editor.BuildScriptEditorStateManager;
 import saker.build.ide.intellij.impl.properties.SakerBuildProjectConfigurable;
 import saker.build.ide.intellij.impl.ui.IDEConfigurationSelectorDialog;
 import saker.build.ide.intellij.impl.ui.ProjectPropertiesValidationDialog;
+import saker.build.ide.intellij.util.PluginCompatUtil;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
@@ -205,8 +206,8 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         }
 
         executionParameterContributors = new ArrayList<>();
-        for (ExecutionUserParameterContributorProviderExtensionPointBean extbean : ExecutionUserParameterContributorProviderExtensionPointBean.EP_NAME
-                .getExtensionList()) {
+        for (ExecutionUserParameterContributorProviderExtensionPointBean extbean : PluginCompatUtil
+                .getExtensionList(ExecutionUserParameterContributorProviderExtensionPointBean.EP_NAME)) {
             if (extbean.getId() == null) {
                 Logger.getInstance(IntellijSakerIDEProject.class)
                         .warn("No id attribute specified for extension: " + extbean);
@@ -1254,8 +1255,8 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 }
                 Map<String, Set<String>> idetypetypenames = new TreeMap<>();
 
-                for (IDEConfigurationTypeHandlerExtensionPointBean extbean : IDEConfigurationTypeHandlerExtensionPointBean.EP_NAME
-                        .getExtensionList()) {
+                for (IDEConfigurationTypeHandlerExtensionPointBean extbean : PluginCompatUtil
+                        .getExtensionList(IDEConfigurationTypeHandlerExtensionPointBean.EP_NAME)) {
                     String typename = extbean.getTypeName();
                     if (ObjectUtils.isNullOrEmpty(typename)) {
                         continue;
@@ -1326,8 +1327,8 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         }
         boolean recognizedtype = false;
         List<IIDEConfigurationTypeHandler> parsers = new ArrayList<>();
-        for (IDEConfigurationTypeHandlerExtensionPointBean extbean : IDEConfigurationTypeHandlerExtensionPointBean.EP_NAME
-                .getExtensionList()) {
+        for (IDEConfigurationTypeHandlerExtensionPointBean extbean : PluginCompatUtil
+                .getExtensionList(IDEConfigurationTypeHandlerExtensionPointBean.EP_NAME)) {
             String type = extbean.getType();
             if (!ideconfigtype.equals(type)) {
                 continue;

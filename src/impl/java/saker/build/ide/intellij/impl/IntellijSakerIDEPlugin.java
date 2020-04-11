@@ -29,6 +29,7 @@ import saker.build.ide.intellij.impl.editor.MultiScriptInformationDesigner;
 import saker.build.ide.intellij.impl.editor.MultiScriptOutlineDesigner;
 import saker.build.ide.intellij.impl.editor.MultiScriptProposalDesigner;
 import saker.build.ide.intellij.impl.properties.SakerBuildApplicationConfigurable;
+import saker.build.ide.intellij.util.PluginCompatUtil;
 import saker.build.ide.support.ExceptionDisplayer;
 import saker.build.ide.support.SakerIDEPlugin;
 import saker.build.ide.support.SakerIDEProject;
@@ -105,8 +106,8 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
         environmentParameterContributors = new ArrayList<>();
 
-        for (EnvironmentUserParameterContributorProviderExtensionPointBean extbean : EnvironmentUserParameterContributorProviderExtensionPointBean.EP_NAME
-                .getExtensionList()) {
+        for (EnvironmentUserParameterContributorProviderExtensionPointBean extbean : PluginCompatUtil
+                .getExtensionList(EnvironmentUserParameterContributorProviderExtensionPointBean.EP_NAME)) {
             if (extbean.getId() == null) {
                 Logger.getInstance(IntellijSakerIDEPlugin.class)
                         .warn("No id attribute specified for extension: " + extbean);
@@ -143,8 +144,8 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
     public IScriptInformationDesigner getScriptInformationDesignerForSchemaIdentifier(String schemaid,
             @Nullable Project project) {
         List<IScriptInformationDesigner> designers = new ArrayList<>();
-        for (ScriptInformationDesignerExtensionPointBean ext : ScriptInformationDesignerExtensionPointBean.EP_NAME
-                .getExtensionList()) {
+        for (ScriptInformationDesignerExtensionPointBean ext : PluginCompatUtil
+                .getExtensionList(ScriptInformationDesignerExtensionPointBean.EP_NAME)) {
             String configschemaid = ext.getSchemaId();
             if (configschemaid != null && !configschemaid.equals(schemaid)) {
                 continue;
@@ -169,8 +170,8 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
     public IScriptOutlineDesigner getScriptOutlineDesignerForSchemaIdentifier(String schemaid,
             @Nullable Project project) {
         List<IScriptOutlineDesigner> designers = new ArrayList<>();
-        for (ScriptOutlineDesignerExtensionPointBean ext : ScriptOutlineDesignerExtensionPointBean.EP_NAME
-                .getExtensionList()) {
+        for (ScriptOutlineDesignerExtensionPointBean ext : PluginCompatUtil
+                .getExtensionList(ScriptOutlineDesignerExtensionPointBean.EP_NAME)) {
             String configschemaid = ext.getSchemaId();
             if (configschemaid != null && !configschemaid.equals(schemaid)) {
                 //can't use
@@ -198,8 +199,8 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
             @Nullable Project project) {
         Objects.requireNonNull(schemaidentifiers, "schema identifiers");
         List<IScriptProposalDesigner> designers = new ArrayList<>();
-        for (ScriptProposalDesignerExtensionPointBean ext : ScriptProposalDesignerExtensionPointBean.EP_NAME
-                .getExtensionList()) {
+        for (ScriptProposalDesignerExtensionPointBean ext : PluginCompatUtil
+                .getExtensionList(ScriptProposalDesignerExtensionPointBean.EP_NAME)) {
             String configschemaid = ext.getSchemaId();
             if (configschemaid != null && !schemaidentifiers.contains(configschemaid)) {
                 continue;

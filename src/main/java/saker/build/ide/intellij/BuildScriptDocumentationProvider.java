@@ -67,8 +67,9 @@ public class BuildScriptDocumentationProvider extends DocumentationProviderEx im
         return null;
     }
 
+
     @Nullable
-    @Override
+    //no @Override, as the method was introduced as a newer API
     public String generateHoverDoc(@NotNull PsiElement element, @Nullable PsiElement originalElement) {
         return generateDoc(element, originalElement);
     }

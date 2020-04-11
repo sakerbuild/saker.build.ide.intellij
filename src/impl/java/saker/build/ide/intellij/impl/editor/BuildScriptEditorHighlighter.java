@@ -58,6 +58,7 @@ import saker.build.ide.intellij.extension.script.information.IScriptInformationD
 import saker.build.ide.intellij.extension.script.outline.IScriptOutlineDesigner;
 import saker.build.ide.intellij.extension.script.proposal.IScriptProposalDesigner;
 import saker.build.ide.intellij.impl.IntellijSakerIDEProject;
+import saker.build.ide.intellij.util.PluginCompatUtil;
 import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.ui.BaseScriptInformationRoot;
 import saker.build.ide.support.ui.ScriptEditorModel;
@@ -77,6 +78,8 @@ import javax.swing.Icon;
 import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Font;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.Iterator;
@@ -419,23 +422,19 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         if (tokenstatelist == null || tokenstatelist.isEmpty()) {
             return new EmptyNoTokensHighlighterIterator(startOffset);
         }
-        ListIterator<ScriptEditorModel.TokenState> lit = tokenstatelist.listIterator();
+        ListIterator<ScriptEditorModel.TokenState> iter = tokenstatelist.listIterator();
         while (true) {
-            if (!lit.hasNext()) {
-                //no tokens after the start offset
-                return new EmptyNoTokensHighlighterIterator(startOffset);
+            if (!iter.hasNext()) {
+                break;
             }
-            ScriptEditorModel.TokenState ts = lit.next();
+            ScriptEditorModel.TokenState ts = iter.next();
             if (ts.getEndOffset() >= startOffset) {
-                tokenstatelist = tokenstatelist.subList(lit.previousIndex(), tokenstatelist.size());
+                //go back one for the starting token
+                iter.previous();
                 break;
             }
             //else continue
         }
-        if (tokenstatelist.isEmpty()) {
-            return new EmptyNoTokensHighlighterIterator(startOffset);
-        }
-        ListIterator<? extends ScriptEditorModel.TokenState> iter = tokenstatelist.listIterator();
         return new HighlighterIterator() {
             private ScriptEditorModel.TokenState token = iter.hasNext() ? iter.next() : null;
             private int offset = token == null ? startOffset : token.getOffset();
@@ -480,7 +479,9 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
             @Override
             public void retreat() {
-                token = iter.previous();
+                if (iter.hasPrevious()) {
+                    token = iter.previous();
+                }
             }
 
             @Override
@@ -503,6 +504,9 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             }
         };
     }
+
+    private static final Method METHOD_TEXTATTRIBUTES_WITHADDITIONALEFFECTS = PluginCompatUtil
+            .getMethod(TextAttributes.class, "withAdditionalEffects", Map.class);
 
     private TextAttributes getTokenStyleAttributes(TokenStyle style) {
         return tokenStyleAttributes.computeIfAbsent(style, k -> {
@@ -529,22 +533,28 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                 }
                 attrs.setFontType(fonttype);
                 if (((s & TokenStyle.STYLE_UNDERLINE) == TokenStyle.STYLE_UNDERLINE)) {
-                    if (effectsmap == null) {
-                        effectsmap = new EnumMap<>(EffectType.class);
+                    if (METHOD_TEXTATTRIBUTES_WITHADDITIONALEFFECTS != null) {
+                        if (effectsmap == null) {
+                            effectsmap = new EnumMap<>(EffectType.class);
+                        }
+                        effectsmap.put(EffectType.LINE_UNDERSCORE, JBColor.foreground());
                     }
-                    effectsmap.put(EffectType.LINE_UNDERSCORE, JBColor.foreground());
                 }
                 if (((s & TokenStyle.STYLE_STRIKETHROUGH) == TokenStyle.STYLE_STRIKETHROUGH)) {
-                    if (effectsmap == null) {
-                        effectsmap = new EnumMap<>(EffectType.class);
+                    if (METHOD_TEXTATTRIBUTES_WITHADDITIONALEFFECTS != null) {
+                        if (effectsmap == null) {
+                            effectsmap = new EnumMap<>(EffectType.class);
+                        }
+                        effectsmap.put(EffectType.STRIKEOUT, JBColor.foreground());
                     }
-                    effectsmap.put(EffectType.STRIKEOUT, JBColor.foreground());
                 }
                 if (effectsmap != null) {
-                    try {
-                        attrs.withAdditionalEffects(effectsmap);
-                    } catch (LinkageError ignored) {
-                        //calling unstable api
+                    if (METHOD_TEXTATTRIBUTES_WITHADDITIONALEFFECTS != null) {
+                        try {
+                            METHOD_TEXTATTRIBUTES_WITHADDITIONALEFFECTS.invoke(attrs, effectsmap);
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
                     }
                 }
             }
@@ -606,11 +616,11 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
     public void documentChanged(@NotNull DocumentEvent e) {
     }
 
-    @Override
+    //no @Override as it was introduced later
     public void bulkUpdateStarting(@NotNull Document document) {
     }
 
-    @Override
+    //no @Override as it was introduced later
     public void bulkUpdateFinished(@NotNull Document document) {
     }
 

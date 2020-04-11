@@ -84,6 +84,11 @@ public class BuildScriptParserDefinition implements ParserDefinition, DumbAware 
         return new BuildScriptPsiFile(viewProvider);
     }
 
+    @Override
+    public SpaceRequirements spaceExistanceTypeBetweenTokens(ASTNode left, ASTNode right) {
+        return SpaceRequirements.MAY;
+    }
+
     public static class BuildScriptPsiFile extends PsiFileBase {
         public BuildScriptPsiFile(@NotNull FileViewProvider viewProvider) {
             super(viewProvider, BuildScriptLanguage.INSTANCE);
@@ -102,11 +107,12 @@ public class BuildScriptParserDefinition implements ParserDefinition, DumbAware 
 
         @Override
         public PsiElement findElementAt(int elemoffset) {
-            PsiElement superfound = super.findElementAt(elemoffset);
-            if (superfound == null) {
-                return null;
-            }
-            return new OffsetHoldingASTDelegatePsiElement(elemoffset, superfound);
+            return new OffsetHoldingASTDelegatePsiElement(elemoffset, super.findElementAt(0));
+//            PsiElement superfound = super.findElementAt(elemoffset);
+//            if (superfound == null) {
+//                return null;
+//            }
+//            return new OffsetHoldingASTDelegatePsiElement(elemoffset, superfound);
         }
 
     }

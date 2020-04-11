@@ -124,6 +124,10 @@ public class SakerBuildPlugin {
                         }
                     }
                 }
+
+                @Override
+                public void before(@NotNull List<? extends VFileEvent> events) {
+                }
             });
         }
 

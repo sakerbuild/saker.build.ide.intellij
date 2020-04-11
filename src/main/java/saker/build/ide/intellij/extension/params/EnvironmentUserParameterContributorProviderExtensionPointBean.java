@@ -9,6 +9,6 @@ public class EnvironmentUserParameterContributorProviderExtensionPointBean exten
             .create(SakerBuildPlugin.ID + ".params.environment.contributor");
 
     public IEnvironmentUserParameterContributor createContributor() {
-        return instantiateClass(implementationClass, ApplicationManager.getApplication().getPicoContainer());
+        return instantiateClassSaker(implementationClass, ApplicationManager.getApplication().getPicoContainer());
     }
 }

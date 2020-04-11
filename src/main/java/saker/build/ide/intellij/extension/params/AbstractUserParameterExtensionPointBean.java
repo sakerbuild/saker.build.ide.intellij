@@ -1,11 +1,10 @@
 package saker.build.ide.intellij.extension.params;
 
-import com.intellij.openapi.extensions.AbstractExtensionPointBean;
 import com.intellij.util.xmlb.annotations.Attribute;
 import org.jetbrains.annotations.Nls;
 import saker.build.ide.intellij.UserParameterContributorExtension;
 
-public class AbstractUserParameterExtensionPointBean extends AbstractExtensionPointBean implements UserParameterContributorExtension {
+public abstract class AbstractUserParameterExtensionPointBean extends AbstractSakerExtensionPointBean implements UserParameterContributorExtension {
     @Attribute("id")
     public String id;
 

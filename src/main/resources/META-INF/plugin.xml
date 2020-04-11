@@ -140,5 +140,5 @@
             <add-to-group group-id="MainMenu"/>
         </group>
     </actions>
-    <idea-version since-build="193"/>
+    <idea-version since-build="183"/>
 </idea-plugin>

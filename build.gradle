@@ -13,7 +13,7 @@ compileJava {
 }
 
 group 'saker.build'
-version '0.8.0-SNAPSHOT'
+version '0.8.0'
 
 sourceCompatibility = 1.8
 
@@ -56,16 +56,17 @@ configurations {
 dependencies {
     pluginImplCompileOnly files('src/main/resources/saker.build.jar')
     pluginImplCompileOnly files('src/main/resources/saker.build-ide.jar')
-    testCompile group: 'junit', name: 'junit', version: '4.12'
+    //testCompile group: 'junit', name: 'junit', version: '4.12'
 }
 
 // See https://github.com/JetBrains/gradle-intellij-plugin/
 intellij {
-    version '2019.3.3'
+    version '2018.3'
 }
 patchPluginXml {
     changeNotes """
       Initial release
     """
-
+    untilBuild null
+    sinceBuild null
 }

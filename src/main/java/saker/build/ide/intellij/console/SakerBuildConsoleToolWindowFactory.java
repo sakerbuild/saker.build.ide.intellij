@@ -23,6 +23,7 @@ import com.intellij.openapi.editor.colors.CodeInsightColors;
 import com.intellij.openapi.editor.colors.EditorColorsManager;
 import com.intellij.openapi.editor.impl.softwrap.SoftWrapAppliancePlaces;
 import com.intellij.openapi.editor.markup.TextAttributes;
+import com.intellij.openapi.extensions.AbstractExtensionPointBean;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.SimpleToolWindowPanel;
@@ -30,18 +31,23 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowFactory;
+import com.intellij.ui.JBColor;
 import com.intellij.ui.content.Content;
 import com.intellij.ui.content.ContentManager;
 import com.intellij.util.ui.JBUI;
+import org.jetbrains.annotations.NonNls;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.picocontainer.PicoContainer;
 import saker.build.ide.intellij.PluginIcons;
 import saker.build.ide.intellij.SakerBuildPlugin;
-import saker.build.ide.intellij.StyledHyperlinkConsoleView;
+import saker.build.ide.intellij.util.PluginCompatUtil;
 
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
 import java.awt.Color;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 
 public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, DumbAware {
     private static final Key<ConsoleView> KEY_CONTENT_CONSOLE_VIEW = Key.create("consoleView");
@@ -106,7 +112,7 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, Du
         return SakerBuildPlugin.isSakerBuildProjectNatureEnabled(project);
     }
 
-    private static class StyledHyperlinkConsoleViewImpl extends ConsoleViewImpl implements StyledHyperlinkConsoleView {
+    private static class StyledHyperlinkConsoleViewImpl extends ConsoleViewImpl {
         private final Object lock = new Object();
         private Object clearState = new Object();
 
@@ -123,21 +129,16 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, Du
         }
 
         @Override
-        public void print(@NotNull String text, @NotNull ConsoleViewContentType contentType,
-                @Nullable HyperlinkInfo info) {
-            synchronized (lock) {
-                super.print(text, contentType, info);
-            }
-        }
-
-        @Override
         public void printHyperlink(@NotNull String hyperlinkText, @Nullable HyperlinkInfo info) {
             synchronized (lock) {
-                Object clstate = this.clearState;
                 if (info instanceof ColoredHyperlinkInfo) {
+                    Object clstate = this.clearState;
                     TextAttributes hyperlinkattrs = getHyperlinkAttributes();
-                    hyperlinkattrs.setForegroundColor(JBUI.CurrentTheme.Link.linkColor());
-                    hyperlinkattrs.setEffectColor(JBUI.CurrentTheme.Link.linkColor());
+                    Color linkcolor = linkColor();
+                    if (linkcolor != null) {
+                        hyperlinkattrs.setForegroundColor(linkcolor);
+                        hyperlinkattrs.setEffectColor(linkcolor);
+                    }
                     Color bgcol = ((ColoredHyperlinkInfo) info).getBackgroundColor();
                     if (bgcol != null) {
                         hyperlinkattrs = hyperlinkattrs.clone();
@@ -153,10 +154,22 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, Du
                             }
                             flushDeferredText();
 
-                            //TODO the hyperlink is still out of range sometimes.
+                            //in spite of our best effor to synchronize the text flusing
+                            //sometimes the hyperlink creation may throw
                             //java.lang.IllegalArgumentException: Wrong end: 363; document length=253; start=313
-                            getHyperlinks()
-                                    .createHyperlink(csize, csize + hyperlinkText.length(), fhyperlinkattrs, info);
+                            //don't know what causes it, so we will check the end offset against the current
+                            //size of the contents again.
+                            //also catch the exception instead of letting it reach the caller
+                            //so it's not displayed to the user, but printed for us during debugging
+                            try {
+                                int currentcs = getContentSize();
+                                int endoffset = csize + hyperlinkText.length();
+                                if (endoffset <= currentcs) {
+                                    getHyperlinks().createHyperlink(csize, endoffset, fhyperlinkattrs, info);
+                                }
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         }
                     });
                 } else {
@@ -192,6 +205,50 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, Du
     public static TextAttributes getHyperlinkAttributes() {
         return EditorColorsManager.getInstance().getGlobalScheme()
                 .getAttributes(CodeInsightColors.HYPERLINK_ATTRIBUTES);
+    }
+
+    private static final Method METHOD_JBCOLOR_NAMEDCOLOR_STRING_COLOR = PluginCompatUtil
+            .getMethod(JBColor.class, "namedColor", String.class, Color.class);
+    private static final Method METHOD_JBCOLOR_NAMEDCOLOR_STRING_INT = PluginCompatUtil
+            .getMethod(JBColor.class, "namedColor", String.class, int.class);
+
+    private static final Method METHOD_LINKCOLOR = PluginCompatUtil
+            .getMethod("com.intellij.util.ui.JBUI$CurrentTheme$Link", "linkColor");
+
+    public static Color namedColor(@NonNls @NotNull final String propertyName, @NotNull final Color defaultColor) {
+        //JBColor.namedColor is only available on later versions too
+        try {
+            if (METHOD_JBCOLOR_NAMEDCOLOR_STRING_COLOR != null) {
+                return (Color) METHOD_JBCOLOR_NAMEDCOLOR_STRING_COLOR.invoke(null, propertyName, defaultColor);
+            }
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+        return defaultColor;
+    }
+
+    public static Color namedColor(@NonNls @NotNull String propertyName, int defaultValueRGB) {
+        //JBColor.namedColor is only available on later versions too
+        try {
+            if (METHOD_JBCOLOR_NAMEDCOLOR_STRING_INT != null) {
+                return (Color) METHOD_JBCOLOR_NAMEDCOLOR_STRING_INT.invoke(null, propertyName, defaultValueRGB);
+            }
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+        return new Color(defaultValueRGB);
+    }
+
+    //copied here from JBUI.CurrentTheme.Link.linkColor() as it is not available on older releases
+    public static Color linkColor() {
+        try {
+            if (METHOD_LINKCOLOR != null) {
+                return (Color) METHOD_LINKCOLOR.invoke(null);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return namedColor("Link.activeForeground", namedColor("link.foreground", 0x589df6));
     }
 
     public static class CancelBuildAnAction extends AnAction {

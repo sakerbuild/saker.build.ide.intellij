@@ -9,6 +9,6 @@ public class ExecutionUserParameterContributorProviderExtensionPointBean extends
             .create(SakerBuildPlugin.ID + ".params.execution.contributor");
 
     public IExecutionUserParameterContributor createContributor(Project project) {
-        return instantiateClass(implementationClass, project.getPicoContainer());
+        return instantiateClassSaker(implementationClass, project.getPicoContainer());
     }
 }

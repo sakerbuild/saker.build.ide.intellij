@@ -155,12 +155,12 @@ public class BuildScriptEditorStateManager implements Disposable, DocumentListen
         }
     }
 
-    @Override
+    //no @Override, as it was introduced in newer version
     public void bulkUpdateStarting(@NotNull Document document) {
         bulkRegionChanges = new ArrayList<>();
     }
 
-    @Override
+    //no @Override, as it was introduced in newer version
     public void bulkUpdateFinished(@NotNull Document document) {
         ScriptEditorModel emodel = this.editorModel;
         if (emodel != null) {

@@ -1,14 +1,14 @@
 package saker.build.ide.intellij.extension.ideconfig;
 
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.extensions.AbstractExtensionPointBean;
 import com.intellij.openapi.extensions.ExtensionPointName;
 import com.intellij.openapi.project.Project;
 import com.intellij.util.xmlb.annotations.Attribute;
 import org.jetbrains.annotations.Nls;
 import saker.build.ide.intellij.SakerBuildPlugin;
+import saker.build.ide.intellij.extension.params.AbstractSakerExtensionPointBean;
 
-public class IDEConfigurationTypeHandlerExtensionPointBean extends AbstractExtensionPointBean {
+public class IDEConfigurationTypeHandlerExtensionPointBean extends AbstractSakerExtensionPointBean {
     public static final ExtensionPointName<IDEConfigurationTypeHandlerExtensionPointBean> EP_NAME = ExtensionPointName
             .create(SakerBuildPlugin.ID + ".ide.configuration.typeHandler");
 
@@ -37,7 +37,7 @@ public class IDEConfigurationTypeHandlerExtensionPointBean extends AbstractExten
     }
 
     public IIDEConfigurationTypeHandler createTypeHandler(Project project) {
-        return instantiateClass(implementationClass,
+        return instantiateClassSaker(implementationClass,
                 project == null ? ApplicationManager.getApplication().getPicoContainer() : project.getPicoContainer());
     }
 }
