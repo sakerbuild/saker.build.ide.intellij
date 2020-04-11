@@ -46,7 +46,6 @@ import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiFile;
 import com.intellij.psi.tree.IElementType;
-import com.intellij.ui.ColorUtil;
 import com.intellij.ui.JBColor;
 import com.intellij.util.containers.ContainerUtil;
 import org.jetbrains.annotations.NotNull;
@@ -71,7 +70,6 @@ import saker.build.scripting.model.ScriptStructureOutline;
 import saker.build.scripting.model.ScriptSyntaxModel;
 import saker.build.scripting.model.ScriptTokenInformation;
 import saker.build.scripting.model.StructureOutlineEntry;
-import saker.build.scripting.model.TextRegionChange;
 import saker.build.scripting.model.TokenStyle;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
@@ -179,7 +177,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
                     @Nullable
                     @Override
                     public Comparable weigh(@NotNull LookupElement element) {
-                        return ((IntellijProposalLookupObject)element.getObject()).getIndex();
+                        return ((IntellijProposalLookupObject) element.getObject()).getIndex();
                     }
                 }));
         List<? extends ScriptCompletionProposal> proposals = model.getCompletionProposals(parameters.getOffset());
@@ -568,9 +566,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
 
         this.editor = editor;
-        System.out.println(
-                "BuildScriptEditorHighlighter.setEditor " + System.identityHashCode(this) + " to editor " + System
-                        .identityHashCode(editor) + " with " + editor.getClass().getName());
 
         stateManager = project.subscribeScriptEditorStateManager(this.scriptExecutionPath, editor.getDocument());
         if (stateManager != null) {
@@ -603,10 +598,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         }
     }
 
-    private static int colorSchemeToTokenTheme(@NotNull EditorColorsScheme scheme) {
-        return ColorUtil.isDark(scheme.getDefaultBackground()) ? TokenStyle.THEME_DARK : TokenStyle.THEME_LIGHT;
-    }
-
     @Override
     public void beforeDocumentChange(@NotNull DocumentEvent event) {
     }
@@ -621,10 +612,6 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
     @Override
     public void bulkUpdateFinished(@NotNull Document document) {
-    }
-
-    private static TextRegionChange toTextRegionChange(DocumentEvent event) {
-        return new TextRegionChange(event.getOffset(), event.getOldLength(), event.getNewFragment().toString());
     }
 
     private static final TextAttributes DEFAULT_TOKEN_STYLE = new TextAttributes();

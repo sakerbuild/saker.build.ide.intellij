@@ -57,6 +57,8 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, Du
 
     @Override
     public void createToolWindowContent(@NotNull Project project, @NotNull ToolWindow toolWindow) {
+        toolWindow.setIcon(AllIcons.Debugger.Console);
+
         DefaultActionGroup actiongroup = new DefaultActionGroup();
 
         CancelBuildAnAction cancelbuildaction = new CancelBuildAnAction();
@@ -207,7 +209,6 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, Du
 
         @Override
         public void actionPerformed(@NotNull AnActionEvent e) {
-            System.out.println("SakerBuildConsoleToolWindowFactory.actionPerformed ");
             if (cancelAction != null) {
                 cancelAction.run();
                 cancelAction = null;

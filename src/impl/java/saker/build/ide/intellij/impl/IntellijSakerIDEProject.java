@@ -1300,7 +1300,6 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             "Saker.build IDE configuration errors", NotificationDisplayType.BALLOON, false);
 
     private void applyIDEConfiguration(IDEConfiguration ideconfig) {
-        System.out.println("EclipseSakerIDEProject.applyIDEConfiguration() " + ideconfig);
         if (ideconfig == null) {
             //shouldn't really happen
             IDE_CONFIGURATION_NOTIFICATION_GROUP

@@ -8,7 +8,6 @@ import saker.build.ide.intellij.extension.script.information.IScriptInformationR
 import java.util.List;
 
 public class SakerScriptInformationDesigner implements IScriptInformationDesigner, DumbAware {
-    //TODO handle dark icons
     private static final String ICON_SOURCE_TASK = createIconSource("icons/task@2x.png");
     private static final String ICON_SOURCE_VARIABLE = createIconSource("icons/var@2x.png");
     private static final String ICON_SOURCE_TARGET_INPUT_PARAMETER = createIconSource("icons/inparam@2x.png");
