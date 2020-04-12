@@ -1226,11 +1226,47 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         }
     }
 
+    public void clean(ProgressIndicator monitor) {
+        try {
+            PropertiesComponent propertiescomponent = PropertiesComponent.getInstance(project);
+            propertiescomponent.unsetValue(LAST_BUILD_SCRIPT_PATH);
+            propertiescomponent.unsetValue(LAST_BUILD_TARGET_NAME);
+
+            sakerProject.clean();
+            String projrelpath = executionPathToProjectRelativePath(getIDEProjectProperties().getBuildDirectory());
+            if (projrelpath != null) {
+                VirtualFile builddirfile = LocalFileSystem.getInstance()
+                        .findFileByPath(sakerProject.getProjectPath().resolve(projrelpath).toString());
+                if (builddirfile != null) {
+                    builddirfile.refresh(true, true);
+                }
+            }
+        } catch (Exception e) {
+            displayException(e);
+        }
+    }
+
     @Override
     public void addSakerBuildTargetsMenuActions(List<AnAction> result) {
         addBuildFilesToTargetsMenu(result);
         result.add(new Separator());
         addIDEConfigurationsToTargetsMenu(result);
+        result.add(new Separator());
+        result.add(new AnAction("Clean project") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e) {
+                cleanAsync();
+            }
+        });
+    }
+
+    private void cleanAsync() {
+        ProgressManager.getInstance().run(new Task.Backgroundable(project, "Clean saker.build project", true) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                clean(indicator);
+            }
+        });
     }
 
     private void addIDEConfigurationsToTargetsMenu(List<AnAction> result) {
