@@ -12,8 +12,11 @@ import saker.build.thirdparty.saker.util.function.Functionals;
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
+import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -95,8 +98,8 @@ public class FormValidator implements Disposable {
             textComponent.getDocument().addDocumentListener(new DocumentAdapter() {
                 @Override
                 protected void textChanged(@NotNull DocumentEvent e) {
-                    ComponentValidator.getInstance(textComponent)
-                            .ifPresent(ComponentValidator::revalidate); // Don't use 'this' to avoid cyclic references.
+                    // Don't use 'this' to avoid cyclic references.
+                    ComponentValidator.getInstance(textComponent).ifPresent(ComponentValidator::revalidate);
                 }
             });
         });
@@ -112,6 +115,23 @@ public class FormValidator implements Disposable {
 
     public <T> FormValidator add(JComboBox<T> combo, Supplier<? extends ValidationInfo> validator) {
         return add(combo, validator, 0);
+    }
+
+    public FormValidator add(JTable table, Supplier<? extends ValidationInfo> validator) {
+        return add(table, validator, 0);
+    }
+
+    public FormValidator add(JTable table, Supplier<? extends ValidationInfo> validator, int flags) {
+        return addForComponent(table, validator, flags, (v, t) -> {
+            t.getModel().addTableModelListener(new TableModelListener() {
+                @Override
+                public void tableChanged(TableModelEvent e) {
+                    v.revalidate();
+                    // Don't use 'this' to avoid cyclic references.
+                    ComponentValidator.getInstance(t).ifPresent(ComponentValidator::revalidate);
+                }
+            });
+        });
     }
 
     public boolean canPerformOkRevalidateRefocus() {
@@ -136,11 +156,13 @@ public class FormValidator implements Disposable {
         }
     }
 
-    public void revalidateComponent(JComponent component) {
-        for (UpdateCallerComponentValidator validator : validators) {
-            if (validator.component == component) {
-                validator.enabled = true;
-                validator.revalidate();
+    public void revalidateComponent(JComponent... components) {
+        for (JComponent c : components) {
+            for (UpdateCallerComponentValidator validator : validators) {
+                if (validator.component == c) {
+                    validator.enabled = true;
+                    validator.revalidate();
+                }
             }
         }
     }

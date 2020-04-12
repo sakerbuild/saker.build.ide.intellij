@@ -62,9 +62,6 @@ dependencies {
 }
 
 patchPluginXml {
-    changeNotes """
-      Initial release
-    """
     untilBuild null
     sinceBuild null
 }

@@ -175,12 +175,6 @@ public class SakerBuildPlugin {
         }
     }
 
-    public static void init() {
-        //TODO the plugin should be initialized asynchronously, and on demand
-        //cause plugin initialization
-        getPluginImpl();
-    }
-
     @NotNull
     public static ISakerBuildPluginImpl getPluginImpl() {
         ISakerBuildPluginImpl pluginimpl = SakerBuildPlugin.pluginImpl;

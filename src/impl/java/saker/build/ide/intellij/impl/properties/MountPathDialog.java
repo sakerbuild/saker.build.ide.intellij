@@ -202,7 +202,7 @@ public class MountPathDialog extends JDialog {
 
     public void setEditProperty(ProviderMountIDEProperty property) {
         this.executionRootTextField
-                .setText(ObjectUtils.nullDefault(SakerIDESupportUtils.tryNormalizePathRoot(property.getRoot()), ""));
+                .setText(ObjectUtils.nullDefault(SakerIDESupportUtils.normalizePathRoot(property.getRoot()), ""));
         this.mountedPathTextField.setText(ObjectUtils.nullDefault(property.getMountPath(), ""));
         resetEndpointSelector(property.getMountClientName());
         buttonOK.setEnabled(true);
@@ -321,7 +321,7 @@ public class MountPathDialog extends JDialog {
 
     private void onOK() {
         property = new ProviderMountIDEProperty(
-                SakerIDESupportUtils.tryNormalizePathRoot(executionRootTextField.getText()),
+                SakerIDESupportUtils.normalizePathRoot(executionRootTextField.getText()),
                 new MountPathIDEProperty(endpointSelector.getSelectedEndpointName(),
                         SakerIDESupportUtils.normalizePath(mountedPathTextField.getText())));
         dispose();

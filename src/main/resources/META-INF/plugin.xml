@@ -6,6 +6,9 @@
             url="https://saker.build">
         saker.build
     </vendor>
+    <change-notes>
+        Initial release
+    </change-notes>
 
     <description>Plug-in for saker.build system integration</description>
 

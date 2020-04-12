@@ -1,6 +1,7 @@
 package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.AddEditRemovePanel;
 import com.intellij.ui.IdeBorderFactory;
@@ -9,6 +10,7 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import org.jetbrains.annotations.Nullable;
 import saker.build.file.path.SakerPath;
+import saker.build.ide.intellij.impl.ui.FormValidator;
 import saker.build.ide.intellij.impl.ui.SakerPropertyPageAddEditRemovePanel;
 import saker.build.ide.support.SakerIDEProject;
 import saker.build.ide.support.SakerIDESupportUtils;
@@ -39,13 +41,15 @@ public class PathConfigurationForm {
     private JPanel tablePanel;
     private JPanel pathsPanel;
 
-    private Disposable myDisposable = Disposer.newDisposable();
-
     private AddEditRemovePanel<ProviderMountIDEProperty> mountsEditPanel;
     private PathConfigurationConfigurable configurable;
 
+    private FormValidator formValidator;
+
     public PathConfigurationForm(PathConfigurationConfigurable configurable) {
         this.configurable = configurable;
+
+        formValidator = new FormValidator();
 
         workingDirectoryTextField.getEmptyText().clear().appendText("Execution path");
         buildDirectoryTextField.getEmptyText().clear().appendText("Execution path");
@@ -86,12 +90,111 @@ public class PathConfigurationForm {
                 .addTextPropertyChangeListener(buildDirectoryTextField, propertiesbuilder::setBuildDirectory);
         SakerBuildProjectConfigurable
                 .addTextPropertyChangeListener(mirrorDirectoryTextField, propertiesbuilder::setMirrorDirectory);
+
+        formValidator.add(workingDirectoryTextField, this::validateWorkingDirectory);
+        formValidator.add(buildDirectoryTextField, this::validateBuildDirectory);
+        formValidator.add(mirrorDirectoryTextField, this::validateMirrorDirectory);
+        formValidator.add(mountsEditPanel.getTable(), this::validateMounts);
+        formValidator.revalidate();
+    }
+
+    private ValidationInfo validateMounts() {
+        formValidator.revalidateComponent(workingDirectoryTextField, buildDirectoryTextField, mirrorDirectoryTextField);
+        IDEProjectProperties props = configurable.getParent().getBuilder().buildReuse();
+        for (ProviderMountIDEProperty m : getMounts()) {
+            String rootstr = m.getRoot();
+            if (rootstr == null) {
+                return new ValidationInfo("Missing mount root.", mountsEditPanel.getTable());
+            }
+            String r = SakerIDESupportUtils.tryNormalizePathRoot(rootstr);
+            if (r == null) {
+                return new ValidationInfo("Invalid mount root: " + rootstr, mountsEditPanel.getTable());
+            }
+            String endpointname = m.getMountClientName();
+            if (ObjectUtils.isNullOrEmpty(endpointname)) {
+                return new ValidationInfo("Missing mount endpoint for root: " + r, mountsEditPanel.getTable());
+            }
+            if (!SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE
+                    .equals(endpointname) && !SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM.equals(endpointname)) {
+                DaemonConnectionIDEProperty mountprop = SakerIDESupportUtils
+                        .getConnectionPropertyWithName(props.getConnections(), endpointname);
+                if (mountprop == null) {
+                    return new ValidationInfo("Mount endpoint not found: " + endpointname, mountsEditPanel.getTable());
+                }
+            }
+            String mountpathstr = m.getMountPath();
+            if (mountpathstr == null) {
+                return new ValidationInfo("Missing mount path for root: " + r, mountsEditPanel.getTable());
+            }
+            SakerPath mountpath = SakerIDESupportUtils.tryParsePath(mountpathstr);
+            if (mountpath == null) {
+                return new ValidationInfo("Invalid mount path: " + mountpathstr, mountsEditPanel.getTable());
+            }
+            switch (endpointname) {
+                case SakerIDEProject.MOUNT_ENDPOINT_PROJECT_RELATIVE: {
+                    if (mountpath.isAbsolute() && !mountpath.getRoot().equals(SakerPath.ROOT_SLASH)) {
+                        return new ValidationInfo("Invalid root for mount path: " + mountpath,
+                                mountsEditPanel.getTable());
+                    }
+                    break;
+                }
+                default: {
+                    if (!mountpath.isAbsolute()) {
+                        return new ValidationInfo("Mount path should be absolute: " + mountpath,
+                                mountsEditPanel.getTable());
+                    }
+                    break;
+                }
+            }
+        }
+        return null;
+    }
+
+    private ValidationInfo validateMirrorDirectory() {
+        String text = mirrorDirectoryTextField.getText();
+        SakerPath path = SakerIDESupportUtils.tryParsePath(text);
+        if (path == null) {
+            return new ValidationInfo("Invalid path format.", mirrorDirectoryTextField);
+        }
+        if (!SakerPath.EMPTY.equals(path) && !path.isAbsolute()) {
+            return new ValidationInfo("Mirror path should be absolute.", mirrorDirectoryTextField);
+        }
+        return null;
+    }
+
+    private ValidationInfo validateBuildDirectory() {
+        String text = buildDirectoryTextField.getText();
+        SakerPath path = SakerIDESupportUtils.tryParsePath(text);
+        if (path == null) {
+            return new ValidationInfo("Invalid path format.", buildDirectoryTextField);
+        }
+        if (path.isAbsolute()) {
+            if (!getRoots().contains(path.getRoot())) {
+                return new ValidationInfo("Build directory root not found. (Missing mount.)", buildDirectoryTextField);
+            }
+        }
+        return null;
+    }
+
+    private ValidationInfo validateWorkingDirectory() {
+        String text = workingDirectoryTextField.getText();
+        SakerPath path = SakerIDESupportUtils.tryParsePath(text);
+        if (path == null) {
+            return new ValidationInfo("Invalid path format.", workingDirectoryTextField);
+        }
+        if (!path.isAbsolute()) {
+            return new ValidationInfo("Working directory path should be absolute.", workingDirectoryTextField);
+        }
+        if (!getRoots().contains(path.getRoot())) {
+            return new ValidationInfo("Working directory root not found. (Missing mount.)", workingDirectoryTextField);
+        }
+        return null;
     }
 
     private Set<String> getRoots() {
         LinkedHashSet<String> result = new LinkedHashSet<>();
         for (ProviderMountIDEProperty m : getMounts()) {
-            String r = SakerIDESupportUtils.tryNormalizePathRoot(m.getRoot());
+            String r = SakerIDESupportUtils.normalizePathRoot(m.getRoot());
             if (ObjectUtils.isNullOrEmpty(r)) {
                 continue;
             }
@@ -115,7 +218,7 @@ public class PathConfigurationForm {
                 configurable.getParent().getProject().getProject(),
                 configurable.getParent().getCurrentProjectProperties().getConnections());
         Set<String> existingroots = getRoots();
-        existingroots.remove(SakerIDESupportUtils.tryNormalizePathRoot(o.getRoot()));
+        existingroots.remove(SakerIDESupportUtils.normalizePathRoot(o.getRoot()));
         dialog.setExistingRoots(existingroots);
         dialog.setEditProperty(o);
         dialog.setVisible(true);
@@ -140,7 +243,7 @@ public class PathConfigurationForm {
     }
 
     public void dispose() {
-        Disposer.dispose(myDisposable);
+        Disposer.dispose(formValidator);
     }
 
     public Set<ProviderMountIDEProperty> getMounts() {
@@ -170,7 +273,7 @@ public class PathConfigurationForm {
         public Object getField(ProviderMountIDEProperty o, int columnIndex) {
             switch (columnIndex) {
                 case 0: {
-                    return SakerIDESupportUtils.tryNormalizePathRoot(o.getRoot());
+                    return SakerIDESupportUtils.normalizePathRoot(o.getRoot());
                 }
                 case 1: {
                     String mountnamestr = o.getMountClientName();
