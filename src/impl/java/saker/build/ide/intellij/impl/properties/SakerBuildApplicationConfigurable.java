@@ -26,7 +26,7 @@ public class SakerBuildApplicationConfigurable implements Configurable, Configur
     private ApplicationConfigurationForm form;
 
     private IDEPluginProperties properties;
-    private Set<ExtensionDisablement> extensionDisablements = null;
+    private Set<ExtensionDisablement> extensionDisablements;
 
     private final SimpleIDEPluginProperties.Builder builder;
     private Set<ExtensionDisablement> pendingExtensionDisablements;

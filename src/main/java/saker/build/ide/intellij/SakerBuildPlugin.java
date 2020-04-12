@@ -194,9 +194,19 @@ public class SakerBuildPlugin {
             }
 
             try {
-                Path sakerbuildjarpath = requireEmbeddedFile("saker.build.jar");
+                Path pluginpath = pluginDescriptor.getPath().toPath();
+                Path pluginDirectory;
+                if (Files.isRegularFile(pluginpath)) {
+                    //the plugin path may point to the jar file itself
+                    pluginDirectory = pluginpath.resolveSibling(pluginpath.getFileName() + ".contents");
+                } else {
+                    pluginDirectory = pluginpath;
+                }
+
+                Path sakerbuildjarpath = requireEmbeddedFile("saker.build.jar", pluginDirectory);
+
                 JarFile sbjf = createMultiReleaseJarFile(sakerbuildjarpath);
-                JarFile sbide = createMultiReleaseJarFile(requireEmbeddedFile("saker.build-ide.jar"));
+                JarFile sbide = createMultiReleaseJarFile(requireEmbeddedFile("saker.build-ide.jar", pluginDirectory));
                 ClassLoader jarcl = new ImplementationClassLoader(Arrays.asList(sbjf, sbide));
 
                 Class<? extends ISakerBuildPluginImpl> pluginimplclass = Class
@@ -205,7 +215,7 @@ public class SakerBuildPlugin {
                 ISakerBuildPluginImpl plugininstance = pluginimplclass.getConstructor().newInstance();
 
                 ImplementationStartArguments initargs = new ImplementationStartArguments(sakerbuildjarpath,
-                        pluginDescriptor.getPath().toPath());
+                        pluginDirectory);
                 pluginimplclass.getMethod("initialize", ImplementationStartArguments.class)
                         .invoke(plugininstance, initargs);
                 SakerBuildPlugin.pluginImpl = plugininstance;
@@ -218,22 +228,22 @@ public class SakerBuildPlugin {
         return SakerBuildPlugin.pluginImpl;
     }
 
-    public static Path requireEmbeddedFile(String file) throws FileNotFoundException {
-        Path path = exportEmbeddedFile(file);
+    public static Path requireEmbeddedFile(String file, Path pluginDirectory) throws FileNotFoundException {
+        Path path = exportEmbeddedFile(file, pluginDirectory);
         if (path == null) {
             throw new FileNotFoundException("Failed to load: " + path);
         }
         return path;
     }
 
-    public static Path exportEmbeddedFile(String file) {
+    public static Path exportEmbeddedFile(String file, Path pluginDirectory) {
         URL entryurl = SakerBuildPlugin.class.getClassLoader().getResource(file);
         if (entryurl == null) {
             return null;
         }
         try {
             URLConnection conn = entryurl.openConnection();
-            Path result = pluginDescriptor.getPath().toPath().resolve("extract").resolve(file);
+            Path result = pluginDirectory.resolve("extract").resolve(file);
             Long existinglast = getLastModifiedTimeOrNull(result);
             try (InputStream is = conn.getInputStream()) {
                 long lastmodified = conn.getLastModified();

@@ -78,7 +78,6 @@ import javax.swing.Icon;
 import javax.swing.SwingUtilities;
 import java.awt.Color;
 import java.awt.Font;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.EnumMap;

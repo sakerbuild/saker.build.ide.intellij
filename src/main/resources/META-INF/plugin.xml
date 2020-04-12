@@ -1,7 +1,7 @@
 <idea-plugin>
     <id>saker.build.ide.intellij</id>
     <version>0.8.0</version>
-    <name>Saker.build system plug-in for IntelliJ</name>
+    <name>Saker.build system</name>
     <vendor email="support@saker.build"
             url="https://saker.build">
         saker.build
@@ -10,6 +10,8 @@
     <description>Plug-in for saker.build system integration</description>
 
     <depends>com.intellij.modules.platform</depends>
+
+    <idea-version since-build="183"/>
 
     <applicationListeners>
         <listener class="saker.build.ide.intellij.SakerBuildAppLifecycleListener"
@@ -140,5 +142,4 @@
             <add-to-group group-id="MainMenu"/>
         </group>
     </actions>
-    <idea-version since-build="183"/>
 </idea-plugin>
