@@ -11,6 +11,7 @@ import com.intellij.openapi.progress.Task;
 import com.intellij.openapi.project.Project;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import saker.build.daemon.DaemonLaunchParameters;
 import saker.build.ide.intellij.ContributedExtensionConfiguration;
 import saker.build.ide.intellij.ExtensionDisablement;
 import saker.build.ide.intellij.ISakerBuildPluginImpl;
@@ -129,9 +130,23 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
 
         try {
             sakerPlugin.initialize(sakerJarPath, plugindirectory);
-            sakerPlugin.start(sakerPlugin.createDaemonLaunchParameters(
-                    getIDEPluginPropertiesWithEnvironmentParameterContributions(sakerPlugin.getIDEPluginProperties(),
-                            new EmptyProgressIndicator())));
+
+            //non cancellable
+            ProgressManager.getInstance().run(new Task.Backgroundable(null, "Initlaizing saker.build plugin", false) {
+                @Override
+                public void run(@NotNull ProgressIndicator indicator) {
+                    //this section should be cancellable as it is part of the initialization process of the plugin
+                    IDEPluginProperties pluginprops = getIDEPluginPropertiesWithEnvironmentParameterContributions(
+                            sakerPlugin.getIDEPluginProperties(), indicator);
+                    DaemonLaunchParameters daemonLaunchParameters = sakerPlugin
+                            .createDaemonLaunchParameters(pluginprops);
+                    try {
+                        sakerPlugin.start(daemonLaunchParameters);
+                    } catch (IOException e) {
+                        displayException(e);
+                    }
+                }
+            });
         } catch (IOException e) {
             displayException(e);
         }

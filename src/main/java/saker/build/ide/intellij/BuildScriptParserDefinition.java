@@ -7,8 +7,8 @@ import com.intellij.lang.Language;
 import com.intellij.lang.ParserDefinition;
 import com.intellij.lang.PsiBuilder;
 import com.intellij.lang.PsiParser;
-import com.intellij.lexer.DummyLexer;
 import com.intellij.lexer.Lexer;
+import com.intellij.lexer.LexerBase;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
@@ -31,23 +31,12 @@ public class BuildScriptParserDefinition implements ParserDefinition, DumbAware 
     @NotNull
     @Override
     public Lexer createLexer(Project project) {
-        return new DummyLexer(TOKEN_TYPE);
+        return new MyDummyLexer();
     }
 
     @Override
     public PsiParser createParser(Project project) {
-        return new PsiParser() {
-            @NotNull
-            @Override
-            public ASTNode parse(@NotNull IElementType root, @NotNull PsiBuilder builder) {
-                PsiBuilder.Marker mark = builder.mark();
-                while (!builder.eof()) {
-                    builder.advanceLexer();
-                }
-                mark.done(root);
-                return builder.getTreeBuilt();
-            }
-        };
+        return MyDummyPsiParser.INSTANCE;
     }
 
     @Override
@@ -107,12 +96,11 @@ public class BuildScriptParserDefinition implements ParserDefinition, DumbAware 
 
         @Override
         public PsiElement findElementAt(int elemoffset) {
-            return new OffsetHoldingASTDelegatePsiElement(elemoffset, super.findElementAt(0));
-//            PsiElement superfound = super.findElementAt(elemoffset);
-//            if (superfound == null) {
-//                return null;
-//            }
-//            return new OffsetHoldingASTDelegatePsiElement(elemoffset, superfound);
+            PsiElement fc = getFirstChild();
+            if (fc != null) {
+                return new OffsetHoldingASTDelegatePsiElement(elemoffset, fc);
+            }
+            return null;
         }
 
     }
@@ -226,6 +214,77 @@ public class BuildScriptParserDefinition implements ParserDefinition, DumbAware 
         @Override
         public PsiElement getNextSibling() {
             return null;
+        }
+    }
+
+    private static class MyDummyLexer extends LexerBase {
+        private CharSequence myBuffer;
+        private int myStartOffset;
+        private int myEndOffset;
+
+        private boolean returned = false;
+
+        @Override
+        public void start(@NotNull final CharSequence buffer, final int startOffset, final int endOffset,
+                final int initialState) {
+            myBuffer = buffer;
+            myStartOffset = startOffset;
+            myEndOffset = endOffset;
+        }
+
+        @NotNull
+        @Override
+        public CharSequence getBufferSequence() {
+            return myBuffer;
+        }
+
+        @Override
+        public int getState() {
+            return 0;
+        }
+
+        @Override
+        public IElementType getTokenType() {
+            if (!returned) {
+                returned = true;
+                return TOKEN_TYPE;
+            }
+            return myStartOffset < myEndOffset ? TOKEN_TYPE : null;
+        }
+
+        @Override
+        public int getTokenStart() {
+            return myStartOffset;
+        }
+
+        @Override
+        public int getTokenEnd() {
+            return myEndOffset;
+        }
+
+        @Override
+        public void advance() {
+            myStartOffset = myEndOffset;
+        }
+
+        @Override
+        public int getBufferEnd() {
+            return myEndOffset;
+        }
+    }
+
+    private static class MyDummyPsiParser implements PsiParser {
+        public static final MyDummyPsiParser INSTANCE = new MyDummyPsiParser();
+
+        @NotNull
+        @Override
+        public ASTNode parse(@NotNull IElementType root, @NotNull PsiBuilder builder) {
+            PsiBuilder.Marker mark = builder.mark();
+            while (!builder.eof()) {
+                builder.advanceLexer();
+            }
+            mark.done(root);
+            return builder.getTreeBuilt();
         }
     }
 }

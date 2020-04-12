@@ -437,6 +437,7 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
         return new HighlighterIterator() {
             private ScriptEditorModel.TokenState token = iter.hasNext() ? iter.next() : null;
             private int offset = token == null ? startOffset : token.getOffset();
+            private boolean atEnd = token == null;
 
             @Override
             public TextAttributes getTextAttributes() {
@@ -469,8 +470,10 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
             @Override
             public void advance() {
                 if (!iter.hasNext()) {
+                    atEnd = true;
                     token = null;
                 } else {
+                    atEnd = false;
                     token = iter.next();
                     offset = token.getOffset();
                 }
@@ -478,14 +481,18 @@ public class BuildScriptEditorHighlighter implements EditorHighlighter, IBuildSc
 
             @Override
             public void retreat() {
-                if (iter.hasPrevious()) {
+                if (!iter.hasPrevious()) {
+                    atEnd = true;
+                    token = null;
+                } else {
+                    atEnd = false;
                     token = iter.previous();
                 }
             }
 
             @Override
             public boolean atEnd() {
-                return token == null && !iter.hasNext();
+                return atEnd;
             }
 
             @Override

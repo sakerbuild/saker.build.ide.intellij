@@ -634,18 +634,23 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
 
                 executionLock.lockInterruptibly();
                 WriteAction.runAndWait(() -> {
-                    tw[0] = ToolWindowManager.getInstance(project).getToolWindow("saker.build");
-                    Content toolwindowcontent = tw[0].getContentManager().getContent(0);
-                    console[0] = SakerBuildConsoleToolWindowFactory.getConsoleViewFromContent(toolwindowcontent);
-                    console[0].clear();
-                    cancelbuildaction[0] = SakerBuildConsoleToolWindowFactory
-                            .getConsoleViewCancelBuildAction(toolwindowcontent);
-                    if (cancelbuildaction[0] != null) {
-                        cancelbuildaction[0].setCancellationActions(buildidentity, monitorwrapper::setCancelled,
-                                buildThread::interrupt);
+                    try {
+                        tw[0] = ToolWindowManager.getInstance(project)
+                                .getToolWindow(SakerBuildConsoleToolWindowFactory.ID);
+                        Content toolwindowcontent = tw[0].getContentManager().getContent(0);
+                        console[0] = SakerBuildConsoleToolWindowFactory.getConsoleViewFromContent(toolwindowcontent);
+                        console[0].clear();
+                        cancelbuildaction[0] = SakerBuildConsoleToolWindowFactory
+                                .getConsoleViewCancelBuildAction(toolwindowcontent);
+                        if (cancelbuildaction[0] != null) {
+                            cancelbuildaction[0].setCancellationActions(buildidentity, monitorwrapper::setCancelled,
+                                    buildThread::interrupt);
+                        }
+                        tw[0].activate(null, false);
+                        FileDocumentManager.getInstance().saveAllDocuments();
+                    } catch (Exception e) {
+                        displayException(e);
                     }
-                    tw[0].activate(null, false);
-                    FileDocumentManager.getInstance().saveAllDocuments();
                 });
                 if (monitorwrapper.isCancelled()) {
                     out.write(("Build cancelled." + LINE_SEPARATOR).getBytes());

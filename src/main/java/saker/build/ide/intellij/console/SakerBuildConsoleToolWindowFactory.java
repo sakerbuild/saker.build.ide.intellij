@@ -26,6 +26,7 @@ import com.intellij.openapi.editor.markup.TextAttributes;
 import com.intellij.openapi.project.DumbAware;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.SimpleToolWindowPanel;
+import com.intellij.openapi.util.Condition;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.wm.ToolWindow;
@@ -47,6 +48,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
 public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, DumbAware {
+    //the display name of the tool window
+    //https://www.jetbrains.org/intellij/sdk/docs/user_interface_components/tool_windows.html
+    public static final String ID = "saker.build";
+
     private static final Key<ConsoleView> KEY_CONTENT_CONSOLE_VIEW = Key.create("consoleView");
     private static final Key<CancelBuildAnAction> KEY_CONTENT_CANCEL_BUILD_ACTION = Key.create("cancelBuildAction");
 
@@ -106,6 +111,10 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, Du
 
     @Override
     public boolean shouldBeAvailable(@NotNull Project project) {
+        return shouldBeAvailableImpl(project);
+    }
+
+    protected static boolean shouldBeAvailableImpl(@NotNull Project project) {
         return SakerBuildPlugin.isSakerBuildProjectNatureEnabled(project);
     }
 
@@ -302,6 +311,14 @@ public class SakerBuildConsoleToolWindowFactory implements ToolWindowFactory, Du
                 this.buildIdentity = null;
                 ActivityTracker.getInstance().inc();
             }
+        }
+    }
+
+    //for compatibility with older IDEA releases
+    public static class ToolWindowCondition implements Condition<Project> {
+        @Override
+        public boolean value(Project project) {
+            return shouldBeAvailableImpl(project);
         }
     }
 }

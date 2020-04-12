@@ -13,11 +13,6 @@
 
     <idea-version since-build="183"/>
 
-    <applicationListeners>
-        <listener class="saker.build.ide.intellij.SakerBuildAppLifecycleListener"
-                  topic="com.intellij.ide.AppLifecycleListener"/>
-    </applicationListeners>
-
     <extensionPoints>
         <extensionPoint name="params.environment.contributor"
                         beanClass="saker.build.ide.intellij.extension.params.EnvironmentUserParameterContributorProviderExtensionPointBean">
@@ -60,7 +55,8 @@
         <toolWindow id="saker.build"
                     anchor="bottom"
                     factoryClass="saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory"
-                    doNotActivateOnStart="true"/>
+                    doNotActivateOnStart="true"
+                    conditionClass="saker.build.ide.intellij.console.SakerBuildConsoleToolWindowFactory$ToolWindowCondition"/>
         <projectConfigurable id="SAKER_BUILD_PROJECT_SETTINGS"
                              displayName="Saker.build Project Settings"
                              provider="saker.build.ide.intellij.properties.SakerBuildProjectConfigurableProvider"
@@ -97,7 +93,8 @@
                                       language="SAKER_BUILD_SCRIPT_LANGUAGE"/>
         <completion.contributor implementationClass="saker.build.ide.intellij.BuildScriptCompletionContributor"
                                 language="SAKER_BUILD_SCRIPT_LANGUAGE"
-                                id="SAKER_BUILD_SCRIPT_COMPLETION_CONTRIBUTOR"/>
+                                id="SAKER_BUILD_SCRIPT_COMPLETION_CONTRIBUTOR"
+                                order="first"/>
         <lookup.charFilter implementation="saker.build.ide.intellij.BuildScriptEditorCharFilter"
                            id="SAKER_BUILD_SCRIPT_EDITOR_CHAR_FILTER"/>
     </extensions>
@@ -115,7 +112,8 @@
     </extensions>
 
     <actions>
-        <action class="saker.build.ide.intellij.ConfigureSakerBuildProjectAction"
+        <action id="SAKER_BUILD_ADD_NATURE"
+                class="saker.build.ide.intellij.ConfigureSakerBuildProjectAction"
                 text="Add saker.build support">
             <add-to-group group-id="FileMainSettingsGroup"
                           relative-to-action="ShowProjectStructureSettings"
