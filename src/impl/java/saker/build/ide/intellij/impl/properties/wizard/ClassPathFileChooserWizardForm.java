@@ -53,7 +53,7 @@ public class ClassPathFileChooserWizardForm {
         resetEndpointSelector(endpoint);
         archivePathTextField.addActionListener(e -> {
             MountPathDialog.showFileChooser(wizardstep.getModel().getProject(), archivePathTextField, rootPanel,
-                    endpointSelector, fileSystemEndpointComboBox);
+                    endpointSelector, fileSystemEndpointComboBox, MountPathDialog.JARS_FILE_CHOOSER_DESCRIPTOR);
         });
         archivePathTextField.getTextField().getDocument().addDocumentListener(new DocumentAdapter() {
             @Override

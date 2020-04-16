@@ -7,16 +7,14 @@ import com.intellij.ui.DocumentAdapter;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import saker.build.ide.intellij.util.PluginCompatUtil;
-import saker.build.thirdparty.saker.util.function.Functionals;
 
 import javax.swing.JButton;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JTable;
 import javax.swing.JTextField;
 import javax.swing.event.DocumentEvent;
-import javax.swing.event.TableModelEvent;
-import javax.swing.event.TableModelListener;
+import java.awt.event.ItemEvent;
+import java.awt.event.ItemListener;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -110,28 +108,16 @@ public class FormValidator implements Disposable {
     }
 
     public <T> FormValidator add(JComboBox<T> combo, Supplier<? extends ValidationInfo> validator, int flags) {
-        return addForComponent(combo, validator, flags, Functionals.nullBiConsumer());
+        return addForComponent(combo, validator, flags, (v, c) -> {
+            c.addItemListener(e -> {
+                // Don't use 'this' to avoid cyclic references.
+                ComponentValidator.getInstance(c).ifPresent(ComponentValidator::revalidate);
+            });
+        });
     }
 
     public <T> FormValidator add(JComboBox<T> combo, Supplier<? extends ValidationInfo> validator) {
         return add(combo, validator, 0);
-    }
-
-    public FormValidator add(JTable table, Supplier<? extends ValidationInfo> validator) {
-        return add(table, validator, 0);
-    }
-
-    public FormValidator add(JTable table, Supplier<? extends ValidationInfo> validator, int flags) {
-        return addForComponent(table, validator, flags, (v, t) -> {
-            t.getModel().addTableModelListener(new TableModelListener() {
-                @Override
-                public void tableChanged(TableModelEvent e) {
-                    v.revalidate();
-                    // Don't use 'this' to avoid cyclic references.
-                    ComponentValidator.getInstance(t).ifPresent(ComponentValidator::revalidate);
-                }
-            });
-        });
     }
 
     public boolean canPerformOkRevalidateRefocus() {

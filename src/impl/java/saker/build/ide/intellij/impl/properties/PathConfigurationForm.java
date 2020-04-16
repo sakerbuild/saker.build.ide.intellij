@@ -1,6 +1,5 @@
 package saker.build.ide.intellij.impl.properties;
 
-import com.intellij.openapi.Disposable;
 import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.AddEditRemovePanel;
@@ -94,12 +93,17 @@ public class PathConfigurationForm {
         formValidator.add(workingDirectoryTextField, this::validateWorkingDirectory);
         formValidator.add(buildDirectoryTextField, this::validateBuildDirectory);
         formValidator.add(mirrorDirectoryTextField, this::validateMirrorDirectory);
-        formValidator.add(mountsEditPanel.getTable(), this::validateMounts);
+        mountsEditPanel.getTable().getModel().addTableModelListener(new TableModelListener() {
+            @Override
+            public void tableChanged(TableModelEvent e) {
+                formValidator.revalidate();
+            }
+        });
         formValidator.revalidate();
     }
 
+    @Deprecated
     private ValidationInfo validateMounts() {
-        formValidator.revalidateComponent(workingDirectoryTextField, buildDirectoryTextField, mirrorDirectoryTextField);
         IDEProjectProperties props = configurable.getParent().getBuilder().buildReuse();
         for (ProviderMountIDEProperty m : getMounts()) {
             String rootstr = m.getRoot();

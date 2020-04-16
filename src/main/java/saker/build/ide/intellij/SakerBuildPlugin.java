@@ -7,6 +7,7 @@ import com.intellij.ide.util.PropertiesComponent;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
+import com.intellij.openapi.extensions.PluginId;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -50,13 +51,6 @@ public class SakerBuildPlugin {
     public static final Key<Boolean> SAKER_BUILD_NATURE_KEY = new Key<>(NATURE_KEY_NAME);
 
     private static volatile ISakerBuildPluginImpl pluginImpl;
-    private static final IdeaPluginDescriptor pluginDescriptor;
-
-    static {
-        PluginClassLoader plugincl = (PluginClassLoader) SakerBuildPlugin.class.getClassLoader();
-
-        pluginDescriptor = PluginManager.getPlugin(plugincl.getPluginId());
-    }
 
     public static synchronized void setSakerBuildProjectNatureEnabled(Project project, boolean enabled) {
         if (project.isDisposed()) {
@@ -188,7 +182,23 @@ public class SakerBuildPlugin {
             }
 
             try {
-                Path pluginpath = pluginDescriptor.getPath().toPath();
+                PluginClassLoader plugincl = (PluginClassLoader) SakerBuildPlugin.class.getClassLoader();
+
+                PluginId pluginid = plugincl.getPluginId();
+                IdeaPluginDescriptor pluginDescriptor = PluginManager.getPlugin(pluginid);
+                if (pluginDescriptor == null) {
+                    Logger.getInstance(SakerBuildPlugin.class).error("Plugin descriptor not found for id: " + pluginid);
+                    SakerBuildPlugin.pluginImpl = new InitFailedPluginImpl();
+                    return SakerBuildPlugin.pluginImpl;
+                }
+
+                File pluginpathfile = pluginDescriptor.getPath();
+                if (pluginpathfile == null) {
+                    Logger.getInstance(SakerBuildPlugin.class).error("Failed to retrieve plugin path");
+                    SakerBuildPlugin.pluginImpl = new InitFailedPluginImpl();
+                    return SakerBuildPlugin.pluginImpl;
+                }
+                Path pluginpath = pluginpathfile.toPath();
                 Path pluginDirectory;
                 if (Files.isRegularFile(pluginpath)) {
                     //the plugin path may point to the jar file itself

@@ -2,6 +2,8 @@ package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.actionSystem.ActionToolbarPosition;
 import com.intellij.openapi.ui.ComboBox;
+import com.intellij.openapi.ui.ValidationInfo;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
@@ -13,10 +15,12 @@ import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import com.intellij.util.ui.tree.TreeModelAdapter;
 import org.jetbrains.annotations.NotNull;
+import saker.build.ide.intellij.impl.ui.FormValidator;
 import saker.build.ide.intellij.impl.ui.PropertyAttributeTreeNode;
 import saker.build.ide.intellij.impl.ui.PropertyTreeNode;
 import saker.build.ide.intellij.impl.ui.RootTreeNode;
 import saker.build.ide.intellij.impl.ui.UIUtils;
+import saker.build.ide.support.SakerIDESupportUtils;
 import saker.build.ide.support.properties.DaemonConnectionIDEProperty;
 import saker.build.ide.support.properties.IDEProjectProperties;
 import saker.build.ide.support.ui.ExecutionDaemonSelector;
@@ -49,12 +53,16 @@ public class DaemonConnectionsForm {
     private ToolbarDecorator decorator;
     private DaemonConnectionsConfigurable configurable;
 
+    private FormValidator formValidator;
+
     public DaemonConnectionsForm(DaemonConnectionsConfigurable configurable) {
         this.configurable = configurable;
         DefaultTreeModel treemodel = new DefaultTreeModel(rootTreeNode, false);
         configTree = new Tree(treemodel);
         configTree.setRootVisible(false);
         configTree.getEmptyText().clear().appendText("No daemon connections defined.");
+
+        formValidator = new FormValidator();
 
         decorator = ToolbarDecorator.createDecorator(configTree);
         treeContainer.add(decorator.disableUpDownActions().setToolbarPosition(ActionToolbarPosition.RIGHT)
@@ -94,9 +102,26 @@ public class DaemonConnectionsForm {
             configurable.getParent().getBuilder()
                     .setExecutionDaemonConnectionName(daemonSelector.getSelectedExecutionDaemonName());
         });
+        formValidator.add(executionDaemonComboBox, this::validateExecutionDaemon);
+        formValidator.revalidate();
+    }
+
+    private ValidationInfo validateExecutionDaemon() {
+        String name = daemonSelector.getSelectedExecutionDaemonName();
+        if (name == null) {
+            //in-process
+            return null;
+        }
+        DaemonConnectionIDEProperty dcprop = SakerIDESupportUtils
+                .getConnectionPropertyWithName(getDaemonConnections(), name);
+        if (dcprop == null) {
+            return new ValidationInfo("Execution daemon not found.", executionDaemonComboBox);
+        }
+        return null;
     }
 
     public void dispose() {
+        Disposer.dispose(formValidator);
     }
 
     public void reset() {

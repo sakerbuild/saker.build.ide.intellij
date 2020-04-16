@@ -217,8 +217,20 @@ public class MountPathDialog extends JDialog {
                 this.fileSystemEndpointComboBox);
     }
 
+    public static final FileChooserDescriptor FOLDERS_FILE_CHOOSER_DESCRIPTOR = new FileChooserDescriptor(false, true,
+            false, false, false, false);
+    public static final FileChooserDescriptor JARS_FILE_CHOOSER_DESCRIPTOR = new FileChooserDescriptor(false, false,
+            true, true, false, false);
+
     public static void showFileChooser(Project project, TextFieldWithBrowseButton resulttextfield,
             JPanel relativecomponent, FileSystemEndpointSelector endpointselector, JComboBox<String> endpointComboBox) {
+        showFileChooser(project, resulttextfield, relativecomponent, endpointselector, endpointComboBox,
+                FOLDERS_FILE_CHOOSER_DESCRIPTOR);
+    }
+
+    public static void showFileChooser(Project project, TextFieldWithBrowseButton resulttextfield,
+            JPanel relativecomponent, FileSystemEndpointSelector endpointselector, JComboBox<String> endpointComboBox,
+            FileChooserDescriptor basedescriptor) {
         String endpointname = endpointselector.getSelectedEndpointName();
         if (endpointname == null) {
             //TODO info
@@ -262,8 +274,7 @@ public class MountPathDialog extends JDialog {
                         //XXX display exception?
                     }
                 }
-                FileChooserDescriptor chooserdescriptor = new FileChooserDescriptor(false, true, false, false, false,
-                        false) {
+                FileChooserDescriptor chooserdescriptor = new FileChooserDescriptor(basedescriptor) {
                     @Override
                     public boolean isFileVisible(VirtualFile f, boolean showHiddenFiles) {
                         try {
@@ -294,8 +305,7 @@ public class MountPathDialog extends JDialog {
                 break;
             }
             case SakerIDEProject.MOUNT_ENDPOINT_LOCAL_FILESYSTEM: {
-                FileChooserDescriptor chooserdescriptor = new FileChooserDescriptor(false, true, false, false, false,
-                        false);
+                FileChooserDescriptor chooserdescriptor = new FileChooserDescriptor(basedescriptor);
                 VirtualFile toSelect = null;
 
                 try {
