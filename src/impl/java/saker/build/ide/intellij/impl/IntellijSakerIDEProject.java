@@ -1263,6 +1263,13 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 cleanAsync();
             }
         });
+        result.add(new Separator());
+        result.add(new AnAction("Reload plugin environment") {
+            @Override
+            public void actionPerformed(@NotNull AnActionEvent e) {
+                plugin.reloadPluginEnvironment();
+            }
+        });
     }
 
     private void cleanAsync() {

@@ -425,6 +425,27 @@ public class IntellijSakerIDEPlugin implements Closeable, ExceptionDisplayer, IS
         });
     }
 
+    public void reloadPluginEnvironment() {
+        ProgressManager.getInstance().run(new Task.Backgroundable(null, "Reloading plugin environment", true) {
+            @Override
+            public void run(@NotNull ProgressIndicator indicator) {
+                try {
+                    synchronized (configurationChangeLock) {
+                        DaemonLaunchParameters launchparams = sakerPlugin.createDaemonLaunchParameters(
+                                getIDEPluginPropertiesWithEnvironmentParameterContributions(
+                                        sakerPlugin.getIDEPluginProperties(), indicator));
+                        if (indicator.isCanceled()) {
+                            return;
+                        }
+                        sakerPlugin.forceReloadPluginDaemon(launchparams);
+                    }
+                } catch (Exception e) {
+                    displayException(e);
+                }
+            }
+        });
+    }
+
     public final void addPluginResourceListener(SakerIDEPlugin.PluginResourceListener listener) {
         sakerPlugin.addPluginResourceListener(listener);
     }
