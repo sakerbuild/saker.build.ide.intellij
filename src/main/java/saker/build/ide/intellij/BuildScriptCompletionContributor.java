@@ -35,6 +35,9 @@ public class BuildScriptCompletionContributor extends CompletionContributor impl
     @Override
     public void beforeCompletion(@NotNull CompletionInitializationContext context) {
         super.beforeCompletion(context);
+        if (!context.getFile().getViewProvider().getLanguages().contains(BuildScriptLanguage.INSTANCE)) {
+            return;
+        }
         //https://intellij-support.jetbrains.com/hc/en-us/community/posts/206752355-The-dreaded-IntellijIdeaRulezzz-string
         if (!"".equals(context.getDummyIdentifier())) {
             //there was an exception logged during testing, so we check if it has been alerady set:

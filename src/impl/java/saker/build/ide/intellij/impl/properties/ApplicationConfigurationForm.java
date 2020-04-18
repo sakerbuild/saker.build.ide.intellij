@@ -7,6 +7,7 @@ import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
 import saker.build.ide.support.ui.ExceptionFormatSelector;
+import saker.build.meta.Versions;
 import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.DefaultComboBoxModel;
@@ -19,6 +20,7 @@ public class ApplicationConfigurationForm {
     private JPanel rootPanel;
     private JPanel exceptionFormatPanel;
     private ComboBox<String> exceptionFormatComboBox;
+    private JBLabel pluginVersionLabel;
 
     private ExceptionFormatSelector formatSelector = new ExceptionFormatSelector(null);
 
@@ -31,6 +33,7 @@ public class ApplicationConfigurationForm {
             formatSelector.setSelectedIndex(exceptionFormatComboBox.getSelectedIndex());
             configurable.getBuilder().setExceptionFormat(formatSelector.getSelectedFormat());
         });
+        pluginVersionLabel.setText("Saker.build system version: " + Versions.VERSION_STRING_FULL);
     }
 
     public void reset() {
@@ -64,11 +67,11 @@ public class ApplicationConfigurationForm {
      */
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
-        rootPanel.setLayout(new GridLayoutManager(2, 1, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
         exceptionFormatPanel = new JPanel();
         exceptionFormatPanel.setLayout(new GridLayoutManager(2, 3, new Insets(0, 0, 0, 0), -1, -1));
         rootPanel.add(exceptionFormatPanel,
-                new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
                         0, false));
@@ -95,6 +98,11 @@ public class ApplicationConfigurationForm {
         jBLabel2.setText("General settings for the saker.build plugin.");
         rootPanel.add(jBLabel2,
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null,
+                        null, 0, false));
+        pluginVersionLabel = new JBLabel();
+        rootPanel.add(pluginVersionLabel,
+                new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null,
                         null, 0, false));
     }

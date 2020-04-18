@@ -6,7 +6,11 @@ pool:
 
 steps:
 - script: sh gradlew --no-daemon jar
-  displayName: 'Run Gradle build'
+  displayName: 'Gradle jar'
+- script: sh gradlew --no-daemon verifyPlugin
+  displayName: 'Gradle verifyPlugin'
+- script: sh gradlew --no-daemon buildPlugin
+  displayName: 'Gradle buildPlugin'
 - task: PublishBuildArtifacts@1
   displayName: 'Publish artifacts'
   inputs:

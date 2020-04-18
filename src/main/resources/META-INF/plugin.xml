@@ -7,10 +7,14 @@
         saker.build
     </vendor>
     <change-notes>
-        Initial release
+        <p>Initial release</p>
     </change-notes>
 
-    <description>Plug-in for saker.build system integration</description>
+    <description>
+        Core plug-in for the saker.build system.
+        <br/>
+        Enables running saker.build for your projects and provides build script assistance.
+    </description>
 
     <depends>com.intellij.modules.platform</depends>
 

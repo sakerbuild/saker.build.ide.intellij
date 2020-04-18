@@ -44,6 +44,14 @@ sourceSets {
         }
     }
 }
+jar {
+    manifest {
+        attributes (
+            "Nest-Bundle-Format-Version" : "1",
+            "Nest-Bundle-Identifier" : "saker.build.ide.intellij"
+        )
+    }
+}
 tasks.withType(Jar) {
     dependsOn pluginImplClasses
     into('impl') {
@@ -64,4 +72,7 @@ dependencies {
 patchPluginXml {
     untilBuild null
     sinceBuild null
+}
+verifyPlugin {
+    ignoreWarnings = false
 }
