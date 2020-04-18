@@ -15,7 +15,13 @@ compileJava {
 }
 
 group 'saker.build'
-version '0.8.11'
+
+if (project.projVersion?.trim()) {
+    project.version = project.projVersion
+} else {
+    project.version = '0.8.11'
+}
+
 
 sourceCompatibility = 1.8
 
@@ -56,6 +62,7 @@ jar {
     into('impl') {
         from sourceSets.pluginImpl.java.outputDir
     }
+    archiveName("saker.build.ide.intellij-v" + version + ".jar")
 }
 task sourcesJar(type: Jar) {
     dependsOn patchPluginXml
@@ -71,6 +78,7 @@ task sourcesJar(type: Jar) {
             "Nest-Bundle-Identifier" : "saker.build.ide.intellij-sources-v" +  version
         )
     }
+    archiveName("saker.build.ide.intellij-sources-v" + version + ".jar")
 }
 
 configurations {
