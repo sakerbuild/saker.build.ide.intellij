@@ -48,14 +48,28 @@ jar {
     manifest {
         attributes (
             "Nest-Bundle-Format-Version" : "1",
-            "Nest-Bundle-Identifier" : "saker.build.ide.intellij"
+            "Nest-Bundle-Identifier" : "saker.build.ide.intellij-v" +  version,
+            "Nest-Bundle-Source": "saker.build.ide.intellij-sources-v" +  version
         )
     }
-}
-tasks.withType(Jar) {
     dependsOn pluginImplClasses
     into('impl') {
         from sourceSets.pluginImpl.java.outputDir
+    }
+}
+task sourcesJar(type: Jar) {
+    dependsOn patchPluginXml
+    classifier = 'sources'
+    from sourceSets.main.java.srcDirs
+    from sourceSets.pluginImpl.java.srcDirs
+    into 'META-INF', {
+        from patchPluginXml.destinationDir
+    }
+    manifest {
+        attributes (
+            "Nest-Bundle-Format-Version" : "1",
+            "Nest-Bundle-Identifier" : "saker.build.ide.intellij-sources-v" +  version
+        )
     }
 }
 

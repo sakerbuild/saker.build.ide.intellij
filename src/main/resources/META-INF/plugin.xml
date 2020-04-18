@@ -7,13 +7,17 @@
         saker.build
     </vendor>
     <change-notes>
+        <![CDATA[
         <p>Initial release</p>
+        ]]>
     </change-notes>
 
     <description>
+        <![CDATA[
         Core plug-in for the saker.build system.
         <br/>
         Enables running saker.build for your projects and provides build script assistance.
+        ]]>
     </description>
 
     <depends>com.intellij.modules.platform</depends>
