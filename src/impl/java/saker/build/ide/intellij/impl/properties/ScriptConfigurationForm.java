@@ -245,6 +245,9 @@ public class ScriptConfigurationForm {
         }
     }
 
+    public void dispose() {
+    }
+
     public void reset() {
         IDEProjectProperties properties = configurable.getParent().getProperties();
         exclusionsEditPanel.setData(new ArrayList<>(properties.getScriptModellingExclusions()));

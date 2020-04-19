@@ -35,6 +35,11 @@ public class ScriptConfigurationConfigurable implements Configurable, Configurab
     }
 
     @Override
+    public void disposeUIResources() {
+        form.dispose();
+    }
+
+    @Override
     public void reset() {
         form.reset();
     }

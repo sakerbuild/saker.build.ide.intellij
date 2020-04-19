@@ -1,5 +1,7 @@
 package saker.build.ide.intellij.impl.properties;
 
+import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.fileTypes.ex.FileTypeManagerEx;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.options.ConfigurationException;
 import com.intellij.ui.DocumentAdapter;
@@ -110,6 +112,10 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
                 .equals(this.pendingExtensionDisablements)) {
             project.setIDEProjectProperties(properties, this.pendingExtensionDisablements);
             this.properties = properties;
+            //update the file types as modifying the script configuration can cause different files
+            //to be interpreted as scripts
+            ApplicationManager.getApplication()
+                    .runWriteAction(() -> FileTypeManagerEx.getInstanceEx().fireFileTypesChanged());
         }
     }
 

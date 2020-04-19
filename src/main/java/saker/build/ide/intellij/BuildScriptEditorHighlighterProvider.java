@@ -1,6 +1,7 @@
 package saker.build.ide.intellij;
 
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
+import com.intellij.openapi.editor.ex.util.EmptyEditorHighlighter;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.fileTypes.EditorHighlighterProvider;
 import com.intellij.openapi.fileTypes.FileType;
@@ -18,7 +19,7 @@ public class BuildScriptEditorHighlighterProvider implements EditorHighlighterPr
             return null;
         }
         if (!SakerBuildPlugin.isSakerBuildProjectNatureEnabled(project)) {
-            return null;
+            return new EmptyEditorHighlighter(null);
         }
         return SakerBuildPlugin.getEditorHighlighter(project, virtualFile, colors);
     }

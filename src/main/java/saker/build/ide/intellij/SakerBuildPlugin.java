@@ -1,13 +1,16 @@
 package saker.build.ide.intellij;
 
+import com.intellij.ide.ActivityTracker;
 import com.intellij.ide.plugins.IdeaPluginDescriptor;
 import com.intellij.ide.plugins.PluginManager;
 import com.intellij.ide.plugins.cl.PluginClassLoader;
 import com.intellij.ide.util.PropertiesComponent;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.colors.EditorColorsScheme;
 import com.intellij.openapi.editor.highlighter.EditorHighlighter;
 import com.intellij.openapi.extensions.PluginId;
+import com.intellij.openapi.fileTypes.ex.FileTypeManagerEx;
 import com.intellij.openapi.options.Configurable;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Key;
@@ -70,6 +73,9 @@ public class SakerBuildPlugin {
                 }
             }
         }
+        ActivityTracker.getInstance().inc();
+        ApplicationManager.getApplication()
+                .runWriteAction(() -> FileTypeManagerEx.getInstanceEx().fireFileTypesChanged());
     }
 
     public static boolean isSakerBuildProjectNatureEnabled(Project project) {

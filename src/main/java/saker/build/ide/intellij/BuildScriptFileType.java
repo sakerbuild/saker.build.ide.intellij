@@ -53,13 +53,13 @@ public class BuildScriptFileType extends LanguageFileType implements FileTypeIde
     @NotNull
     @Override
     public String getDescription() {
-        return "Build script file for saker.build";
+        return "Saker.build script file";
     }
 
     @NotNull
     @Override
     public String getDefaultExtension() {
-        return "build";
+        return "";
     }
 
     @Nullable
