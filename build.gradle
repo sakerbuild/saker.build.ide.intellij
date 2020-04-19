@@ -16,8 +16,8 @@ compileJava {
 
 group 'saker.build'
 
-if (project.projVersion?.trim()) {
-    project.version = project.projVersion
+if (project.findProperty("projVersion")?.trim()) {
+    project.version = project.findProperty("projVersion")
 } else {
     project.version = '0.8.11'
 }
