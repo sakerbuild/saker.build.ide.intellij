@@ -1262,12 +1262,22 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
             public void actionPerformed(@NotNull AnActionEvent e) {
                 cleanAsync();
             }
+
+            @Override
+            public boolean isDumbAware() {
+                return true;
+            }
         });
         result.add(new Separator());
         result.add(new AnAction("Reload plugin environment") {
             @Override
             public void actionPerformed(@NotNull AnActionEvent e) {
                 plugin.reloadPluginEnvironment();
+            }
+
+            @Override
+            public boolean isDumbAware() {
+                return true;
             }
         });
     }
@@ -1466,7 +1476,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                 @Override
                 public void actionPerformed(@NotNull AnActionEvent e) {
                     VirtualFile projectdir = LocalFileSystem.getInstance().findFileByPath(getProjectPath().toString());
-                    if (!projectdir.isDirectory()) {
+                    if (projectdir == null || !projectdir.isDirectory()) {
                         return;
                     }
                     VirtualFile child = projectdir.findChild("saker.build");
@@ -1474,14 +1484,15 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                         FileEditorManager.getInstance(project).openEditor(new OpenFileDescriptor(project, child), true);
                         return;
                     }
-                    try {
-                        VirtualFile createdfile = projectdir.createChildData(e, "saker.build");
-                        FileEditorManager.getInstance(project)
-                                .openEditor(new OpenFileDescriptor(project, createdfile), true);
-                        return;
-                    } catch (IOException ex) {
-                        displayException(ex);
-                    }
+                    ApplicationManager.getApplication().runWriteAction(() -> {
+                        try {
+                            VirtualFile createdfile = projectdir.createChildData(e, "saker.build");
+                            FileEditorManager.getInstance(project)
+                                    .openEditor(new OpenFileDescriptor(project, createdfile), true);
+                        } catch (IOException ex) {
+                            displayException(ex);
+                        }
+                    });
                 }
 
                 @Override
