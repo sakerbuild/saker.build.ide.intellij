@@ -41,7 +41,7 @@ public class ImplementationClassLoader extends ClassLoader {
     @Override
     protected Class<?> findClass(String name) throws ClassNotFoundException {
         String cfilepath = name.replace('.', '/') + ".class";
-        try (InputStream resin = getParent().getResourceAsStream("impl/" + cfilepath)) {
+        try (InputStream resin = getParent().getResourceAsStream("impl/" + cfilepath + "_x")) {
             if (resin != null) {
                 byte[] classbytes = readStreamFully(resin);
                 return defineClass(name, classbytes, 0, classbytes.length);

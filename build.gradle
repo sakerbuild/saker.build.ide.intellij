@@ -61,6 +61,7 @@ jar {
     dependsOn pluginImplClasses
     into('impl') {
         from sourceSets.pluginImpl.java.outputDir
+        rename("(.*)", '$1_x')
     }
     archiveName("saker.build.ide.intellij-v" + version + ".jar")
 }
