@@ -1,11 +1,16 @@
 package saker.build.ide.intellij.impl.properties;
 
 import com.intellij.openapi.ui.ComboBox;
+import com.intellij.openapi.ui.ValidationInfo;
 import com.intellij.ui.IdeBorderFactory;
+import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBTextField;
 import com.intellij.uiDesigner.core.GridConstraints;
 import com.intellij.uiDesigner.core.GridLayoutManager;
 import com.intellij.uiDesigner.core.Spacer;
+import saker.build.ide.intellij.impl.ui.FormValidator;
+import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.ide.support.ui.ExceptionFormatSelector;
 import saker.build.meta.Versions;
 import saker.build.thirdparty.saker.util.ObjectUtils;
@@ -13,6 +18,7 @@ import saker.build.thirdparty.saker.util.ObjectUtils;
 import javax.swing.DefaultComboBoxModel;
 import javax.swing.JComponent;
 import javax.swing.JPanel;
+import java.awt.Dimension;
 import java.awt.Insets;
 
 public class ApplicationConfigurationForm {
@@ -21,23 +27,61 @@ public class ApplicationConfigurationForm {
     private JPanel exceptionFormatPanel;
     private ComboBox<String> exceptionFormatComboBox;
     private JBLabel pluginVersionLabel;
+    private JBTextField daemonPortTextField;
+    private JBCheckBox actsAsServerCheckBox;
+    private JPanel buildDaemonPanel;
 
     private ExceptionFormatSelector formatSelector = new ExceptionFormatSelector(null);
+
+    private FormValidator formValidator;
 
     public ApplicationConfigurationForm(SakerBuildApplicationConfigurable configurable) {
         this.configurable = configurable;
 
         exceptionFormatPanel.setBorder(IdeBorderFactory.createTitledBorder("Exception format", true));
+        buildDaemonPanel.setBorder(IdeBorderFactory.createTitledBorder("Build daemon", true));
+
+        formValidator = new FormValidator();
+
+        daemonPortTextField.getEmptyText().clear().appendText("Port number 0-65535");
 
         exceptionFormatComboBox.addItemListener(e -> {
             formatSelector.setSelectedIndex(exceptionFormatComboBox.getSelectedIndex());
             configurable.getBuilder().setExceptionFormat(formatSelector.getSelectedFormat());
         });
         pluginVersionLabel.setText("Saker.build system version: " + Versions.VERSION_STRING_FULL);
+
+        formValidator.add(daemonPortTextField, this::validateDaemonPort);
+        actsAsServerCheckBox.addActionListener(e -> {
+            configurable.getBuilder().setActsAsServer(actsAsServerCheckBox.isSelected());
+        });
+        SakerBuildProjectConfigurable
+                .addTextPropertyChangeListener(daemonPortTextField, configurable.getBuilder()::setPort);
+
+        formValidator.revalidate();
+    }
+
+    private ValidationInfo validateDaemonPort() {
+        String portstr = daemonPortTextField.getText();
+        if (ObjectUtils.isNullOrEmpty(portstr)) {
+            return null;
+        }
+        try {
+            int val = Integer.parseInt(portstr);
+            if (val < 0 || val > 0xFFFF) {
+                return new ValidationInfo("Port number should be between 0-65535", daemonPortTextField);
+            }
+        } catch (NumberFormatException ignored) {
+            return new ValidationInfo("Expected integer port number between 0-65535", daemonPortTextField);
+        }
+        return null;
     }
 
     public void reset() {
-        formatSelector.reset(configurable.getProperties());
+        IDEPluginProperties properties = configurable.getProperties();
+        formatSelector.reset(properties);
+        daemonPortTextField.setText(properties.getPort());
+        actsAsServerCheckBox.setSelected(Boolean.parseBoolean(properties.getActsAsServer()));
         updateFormatComboBox();
     }
 
@@ -67,9 +111,9 @@ public class ApplicationConfigurationForm {
      */
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
-        rootPanel.setLayout(new GridLayoutManager(3, 1, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setLayout(new GridLayoutManager(5, 1, new Insets(0, 0, 0, 0), -1, -1));
         exceptionFormatPanel = new JPanel();
-        exceptionFormatPanel.setLayout(new GridLayoutManager(2, 3, new Insets(0, 0, 0, 0), -1, -1));
+        exceptionFormatPanel.setLayout(new GridLayoutManager(1, 3, new Insets(0, 0, 0, 0), -1, -1));
         rootPanel.add(exceptionFormatPanel,
                 new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
@@ -81,17 +125,13 @@ public class ApplicationConfigurationForm {
                 new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                         GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
                         false));
-        final Spacer spacer1 = new Spacer();
-        exceptionFormatPanel.add(spacer1,
-                new GridConstraints(1, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
-                        GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
         exceptionFormatComboBox = new ComboBox();
         exceptionFormatPanel.add(exceptionFormatComboBox,
                 new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0,
                         false));
-        final Spacer spacer2 = new Spacer();
-        exceptionFormatPanel.add(spacer2,
+        final Spacer spacer1 = new Spacer();
+        exceptionFormatPanel.add(spacer1,
                 new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
                         GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
         final JBLabel jBLabel2 = new JBLabel();
@@ -105,6 +145,40 @@ public class ApplicationConfigurationForm {
                 new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
                         GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null,
                         null, 0, false));
+        buildDaemonPanel = new JPanel();
+        buildDaemonPanel.setLayout(new GridLayoutManager(2, 4, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.add(buildDaemonPanel,
+                new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_BOTH,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
+                        0, false));
+        final JBLabel jBLabel3 = new JBLabel();
+        jBLabel3.setText("Port number (default 3500):");
+        buildDaemonPanel.add(jBLabel3,
+                new GridConstraints(0, 0, 1, 2, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_NONE,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, 1, null, null,
+                        null, 0, false));
+        daemonPortTextField = new JBTextField();
+        buildDaemonPanel.add(daemonPortTextField,
+                new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_WANT_GROW,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null,
+                        new Dimension(50, -1), null, 0, false));
+        final Spacer spacer2 = new Spacer();
+        buildDaemonPanel.add(spacer2,
+                new GridConstraints(0, 3, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL,
+                        GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+        actsAsServerCheckBox = new JBCheckBox();
+        actsAsServerCheckBox.setText("Acts as server");
+        buildDaemonPanel.add(actsAsServerCheckBox,
+                new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+                        GridConstraints.SIZEPOLICY_FIXED,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, null, null, null,
+                        0, false));
+        final Spacer spacer3 = new Spacer();
+        rootPanel.add(spacer3,
+                new GridConstraints(4, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1,
+                        GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
     }
 
     /**

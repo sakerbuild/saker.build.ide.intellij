@@ -65,8 +65,9 @@ public class ProjectConfigurationForm {
 
     public void reset() {
         IDEProjectProperties properties = configurable.getProperties();
-        generateIDEConfigurationFromCheckBox.setSelected(properties.isRequireTaskIDEConfiguration());
-        embedOutputArtifactsCheckBox.setSelected(properties.isBuildTraceEmbedArtifacts());
+        generateIDEConfigurationFromCheckBox
+                .setSelected(Boolean.parseBoolean(properties.getRequireTaskIDEConfiguration()));
+        embedOutputArtifactsCheckBox.setSelected(Boolean.parseBoolean(properties.getBuildTraceEmbedArtifacts()));
 
         MountPathIDEProperty btout = properties.getBuildTraceOutput();
         if (btout != null) {

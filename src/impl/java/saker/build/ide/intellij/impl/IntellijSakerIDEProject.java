@@ -271,7 +271,7 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
         return sakerProject.getProjectPath();
     }
 
-    public final ScriptModellingEnvironment getScriptingEnvironment() {
+    public final ScriptModellingEnvironment getScriptingEnvironment() throws IOException {
         return sakerProject.getScriptingEnvironment();
     }
 
@@ -696,9 +696,13 @@ public class IntellijSakerIDEProject implements ExceptionDisplayer, ISakerBuildP
                     return;
                 }
                 DaemonEnvironment daemonenv = sakerProject.getExecutionDaemonEnvironment(projectproperties);
+                if (daemonenv == null) {
+                    throw new IllegalStateException("Build daemon environment is not running.");
+                }
                 ExecutionPathConfiguration pathconfiguration = params.getPathConfiguration();
                 executionworkingdir = pathconfiguration.getWorkingDirectory();
-                params.setRequiresIDEConfiguration(projectproperties.isRequireTaskIDEConfiguration());
+                params.setRequiresIDEConfiguration(SakerIDESupportUtils
+                        .getBooleanValueOrDefault(projectproperties.getRequireTaskIDEConfiguration(), true));
 
                 try {
                     PropertiesComponent propertiescomponent = PropertiesComponent.getInstance(project);

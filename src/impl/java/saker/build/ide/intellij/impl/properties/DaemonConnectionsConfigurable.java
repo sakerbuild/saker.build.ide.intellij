@@ -45,10 +45,14 @@ public class DaemonConnectionsConfigurable implements Configurable, Configurable
         IDEProjectProperties currentprops = parent.getCurrentProjectProperties();
         IDEProjectProperties properties = parent.getProperties();
 
-        if (!Objects.equals(currentprops.getExecutionDaemonConnectionName(), properties.getExecutionDaemonConnectionName())) {
+        if (!Objects.equals(currentprops.getExecutionDaemonConnectionName(),
+                properties.getExecutionDaemonConnectionName())) {
             return true;
         }
         if (!Objects.equals(currentprops.getConnections(), properties.getConnections())) {
+            return true;
+        }
+        if (!Objects.equals(currentprops.getUseClientsAsClusters(), properties.getUseClientsAsClusters())) {
             return true;
         }
         return false;

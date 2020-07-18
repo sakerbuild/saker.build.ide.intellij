@@ -19,7 +19,7 @@ group 'saker.build'
 if (project.findProperty("projVersion")?.trim()) {
     project.version = project.findProperty("projVersion")
 } else {
-    project.version = '0.8.12'
+    project.version = '0.8.15'
 }
 
 
@@ -54,8 +54,8 @@ jar {
     manifest {
         attributes (
             "Nest-Bundle-Format-Version" : "1",
-            "Nest-Bundle-Identifier" : "saker.build.ide.intellij-v" +  version,
-            "Nest-Bundle-Source": "saker.build.ide.intellij-sources-v" +  version
+            "Nest-Bundle-Identifier" : "saker.build.ide.intellij-v" +  project.version,
+            "Nest-Bundle-Source": "saker.build.ide.intellij-sources-v" +  project.version
         )
     }
     dependsOn pluginImplClasses
@@ -63,7 +63,7 @@ jar {
         from sourceSets.pluginImpl.java.outputDir
         rename("(.*)", '$1_x')
     }
-    archiveName("saker.build.ide.intellij-v" + version + ".jar")
+    archiveName("saker.build.ide.intellij-v" + project.version + ".jar")
 }
 task sourcesJar(type: Jar) {
     dependsOn patchPluginXml
@@ -76,10 +76,10 @@ task sourcesJar(type: Jar) {
     manifest {
         attributes (
             "Nest-Bundle-Format-Version" : "1",
-            "Nest-Bundle-Identifier" : "saker.build.ide.intellij-sources-v" +  version
+            "Nest-Bundle-Identifier" : "saker.build.ide.intellij-sources-v" +  project.version
         )
     }
-    archiveName("saker.build.ide.intellij-sources-v" + version + ".jar")
+    archiveName("saker.build.ide.intellij-sources-v" + project.version + ".jar")
 }
 
 configurations {

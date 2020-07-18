@@ -93,10 +93,12 @@ public class SakerBuildProjectConfigurable implements Configurable, Configurable
     @Override
     public boolean isModified() {
         IDEProjectProperties currentprops = getCurrentProjectProperties();
-        if (currentprops.isRequireTaskIDEConfiguration() != this.properties.isRequireTaskIDEConfiguration()) {
+        if (!Objects.equals(currentprops.getRequireTaskIDEConfiguration(),
+                this.properties.getRequireTaskIDEConfiguration())) {
             return true;
         }
-        if (currentprops.isBuildTraceEmbedArtifacts() != this.properties.isBuildTraceEmbedArtifacts()) {
+        if (!Objects
+                .equals(currentprops.getBuildTraceEmbedArtifacts(), this.properties.getBuildTraceEmbedArtifacts())) {
             return true;
         }
         if (!Objects.equals(currentprops.getBuildTraceOutput(), this.properties.getBuildTraceOutput())) {

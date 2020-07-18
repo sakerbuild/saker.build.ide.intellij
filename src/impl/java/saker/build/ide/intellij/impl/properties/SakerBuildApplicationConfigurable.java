@@ -12,6 +12,7 @@ import saker.build.ide.intellij.impl.IntellijSakerIDEPlugin;
 import saker.build.ide.support.SimpleIDEPluginProperties;
 import saker.build.ide.support.properties.IDEPluginProperties;
 import saker.build.thirdparty.saker.util.ImmutableUtils;
+import saker.build.thirdparty.saker.util.ObjectUtils;
 
 import javax.swing.JComponent;
 import javax.swing.JLabel;
@@ -96,6 +97,12 @@ public class SakerBuildApplicationConfigurable implements Configurable, Configur
     public boolean isModified() {
         IDEPluginProperties currentprops = getCurrentPluginProperties();
         if (!Objects.equals(currentprops.getExceptionFormat(), properties.getExceptionFormat())) {
+            return true;
+        }
+        if (!Objects.equals(currentprops.getPort(), this.properties.getPort())) {
+            return true;
+        }
+        if (!Objects.equals(currentprops.getActsAsServer(), this.properties.getActsAsServer())) {
             return true;
         }
         return false;

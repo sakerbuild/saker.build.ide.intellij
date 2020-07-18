@@ -8,6 +8,7 @@ import com.intellij.ui.AnActionButton;
 import com.intellij.ui.CommonActionsPanel;
 import com.intellij.ui.DoubleClickListener;
 import com.intellij.ui.ToolbarDecorator;
+import com.intellij.ui.components.JBCheckBox;
 import com.intellij.ui.components.JBLabel;
 import com.intellij.ui.treeStructure.Tree;
 import com.intellij.uiDesigner.core.GridConstraints;
@@ -46,6 +47,7 @@ public class DaemonConnectionsForm {
     private ComboBox<String> executionDaemonComboBox;
     private JPanel treeContainer;
     private JPanel rootPanel;
+    private JBCheckBox clientsAsBuildClustersCheckBox;
 
     private Tree configTree;
     private ExecutionDaemonSelector daemonSelector = new ExecutionDaemonSelector(null);
@@ -102,6 +104,9 @@ public class DaemonConnectionsForm {
             configurable.getParent().getBuilder()
                     .setExecutionDaemonConnectionName(daemonSelector.getSelectedExecutionDaemonName());
         });
+        clientsAsBuildClustersCheckBox.addActionListener(e -> {
+            configurable.getParent().getBuilder().setUseClientsAsClusters(clientsAsBuildClustersCheckBox.isSelected());
+        });
         formValidator.add(executionDaemonComboBox, this::validateExecutionDaemon);
         formValidator.revalidate();
     }
@@ -134,6 +139,7 @@ public class DaemonConnectionsForm {
             rootTreeNode.add(node);
         }
         ((DefaultTreeModel) configTree.getModel()).reload(rootTreeNode);
+        clientsAsBuildClustersCheckBox.setSelected(Boolean.parseBoolean(properties.getUseClientsAsClusters()));
 
         updateDaemonComboBox();
     }
@@ -308,7 +314,7 @@ public class DaemonConnectionsForm {
      */
     private void $$$setupUI$$$() {
         rootPanel = new JPanel();
-        rootPanel.setLayout(new GridLayoutManager(3, 3, new Insets(0, 0, 0, 0), -1, -1));
+        rootPanel.setLayout(new GridLayoutManager(4, 3, new Insets(0, 0, 0, 0), -1, -1));
         treeContainer = new JPanel();
         treeContainer.setLayout(new CardLayout(0, 0));
         rootPanel.add(treeContainer,
@@ -333,6 +339,12 @@ public class DaemonConnectionsForm {
         jBLabel2.setText("The build will use the following daemons as part of the execution:");
         rootPanel.add(jBLabel2, new GridConstraints(0, 0, 1, 3, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
                 GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        clientsAsBuildClustersCheckBox = new JBCheckBox();
+        clientsAsBuildClustersCheckBox.setText("Use clients as build clusters");
+        rootPanel.add(clientsAsBuildClustersCheckBox,
+                new GridConstraints(3, 0, 1, 3, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE,
+                        GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW,
+                        GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**

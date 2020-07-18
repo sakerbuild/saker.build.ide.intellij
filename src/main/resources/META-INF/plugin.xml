@@ -8,7 +8,8 @@
     </vendor>
     <change-notes>
         <![CDATA[
-        <p>Updated saker.build runtime to v0.8.12</p>
+        <p>Updated saker.build runtime to v0.8.15.</p>
+        <p>Added preferences for configuring plugin daemon port and server behaviour.</p>
         ]]>
     </change-notes>
 
